@@ -208,8 +208,21 @@ class PSPrefs extends PSStreamModel<string | null> {
 			if (key in newPrefs) (this as any)[key] = (newPrefs as any)[key];
 		}
 		this.setAFD();
+		this.applyDebugCSS();
 		this.update(null);
 		if (!noSave) this.save();
+	}
+	applyDebugCSS() {
+		const debugCSS = this.showdebug ? '.debug {display: block;}' : '.debug {display: none;}';
+		let style = document.querySelector('style#debugstyle');
+		if (style) {
+			style.innerHTML = debugCSS;
+		} else {
+			style = document.createElement('style');
+			style.id = 'debugstyle';
+			style.innerHTML = debugCSS;
+			document.querySelector('head')?.append(style);
+		}
 	}
 	save() {
 		switch (this.storageEngine) {
@@ -1407,31 +1420,13 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 		},
 		'showdebug'() {
 			PS.prefs.set('showdebug', true);
+			PS.prefs.applyDebugCSS();
 			this.add('||Debug battle messages: ON');
-			let onCSS = '.debug {display: block;}';
-			let style = document.querySelector('style[id=debugstyle]');
-			if (style) {
-				style.innerHTML = onCSS;
-			} else {
-				style = document.createElement('style');
-				style.id = "debugstyle";
-				style.innerHTML = onCSS;
-				document.querySelector('head')?.append(style);
-			}
 		},
 		'hidedebug'() {
-			PS.prefs.set('showdebug', true);
+			PS.prefs.set('showdebug', false);
+			PS.prefs.applyDebugCSS();
 			this.add('||Debug battle messages: OFF');
-			let onCSS = '.debug {display: none;}';
-			let style = document.querySelector('style[id=debugstyle]');
-			if (style) {
-				style.innerHTML = onCSS;
-			} else {
-				style = document.createElement('style');
-				style.id = "debugstyle";
-				style.innerHTML = onCSS;
-				document.querySelector('head')?.append(style);
-			}
 		},
 		'showbattles'() {
 			PS.prefs.set('showbattles', true);
