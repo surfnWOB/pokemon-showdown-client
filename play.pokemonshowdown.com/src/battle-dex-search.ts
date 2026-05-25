@@ -582,7 +582,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 
 	protected formatType: 'doubles' | 'bdsp' | 'bdspdoubles' | 'rs' | 'frlg' | 'bw1' | 'letsgo' | 'metronome' | 'natdex' |
 		'nfe' | 'ssdlc1' | 'ssdlc1doubles' | 'predlc' | 'predlcdoubles' | 'predlcnatdex' | 'svdlc1' | 'svdlc1doubles' |
-		'svdlc1natdex' | 'stadium' | 'lc' | 'legendsza' | 'champions' | null = null;
+		'svdlc1natdex' | 'stadium' | 'lc' | 'legendsza' | 'champions' | 'zangouse' | 'gen3mega' | 'gen3ubersuu' | null = null;
 	isDoubles = false;
 
 	/**
@@ -727,6 +727,23 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.dex = Dex.mod('gen9legendsou' as ID);
 			format = format.slice(9) as ID;
 			if (!format) format = 'ou' as ID;
+		}
+		if (this.dex.gen === 4 && format.includes('nopss')) {
+			this.dex = Dex.mod('gen4nopss' as ID);
+		} else if (this.dex.gen === 3 && format.includes('pss')) {
+			this.dex = Dex.mod('gen3pss' as ID);
+		}
+		if (format.includes('zangouse')) {
+			this.formatType = 'zangouse';
+			this.dex = Dex.mod('gen3zangouse' as ID);
+		}
+		if (this.dex.gen === 3 && format.includes('mega')) {
+			this.formatType = 'gen3mega';
+			this.dex = Dex.mod('gen3mega' as ID);
+		}
+		if (this.dex.gen === 3 && format === 'ubersuu') {
+			// vanilla gen3 dex; custom builder table separates banned ("Uber") from legal ("Ubers UU")
+			this.formatType = 'gen3ubersuu';
 		}
 		this.format = format;
 
@@ -938,6 +955,9 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType === 'stadium' ? `gen${gen}stadium${gen > 1 ? gen : ''}` :
 			this.formatType === 'legendsza' ? `gen9legendsou` :
 			this.formatType === 'champions' ? `champions` :
+			this.formatType === 'zangouse' ? `gen3zangouse` :
+			this.formatType === 'gen3mega' ? `gen3mega` :
+			this.formatType === 'gen3ubersuu' ? `gen3ubersuu` :
 			`gen${gen}`;
 		if (table?.[tableKey]) {
 			table = table[tableKey];
@@ -1101,6 +1121,12 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			table = table[`gen${dex.gen}stadium${dex.gen > 1 ? dex.gen : ''}`];
 		} else if (this.formatType === 'legendsza') {
 			table = table[`gen9legendsou`];
+		} else if (this.formatType === 'zangouse') {
+			table = table['gen3zangouse'];
+		} else if (this.formatType === 'gen3mega') {
+			table = table['gen3mega'];
+		} else if (this.formatType === 'gen3ubersuu') {
+			table = table['gen3ubersuu'];
 		}
 
 		if (!table.tierSet) {
@@ -1112,7 +1138,16 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 		}
 		let tierSet: SearchRow[] = table.tierSet;
 		let slices: { [k: string]: number } = table.formatSlices;
-		if (format === 'ubers' || format === 'uber' || format === 'ubersuu' || format === 'nationaldexdoubles') {
+		if (this.formatType === 'gen3ubersuu') {
+			// Slice at the first legal tier (right after the "Banned" bucket) so the
+			// 38 banlist mons are excluded from the browse pool, leaving Uber → … → LC.
+			tierSet = tierSet.slice(slices.Uber);
+		} else if (this.formatType === 'gen3mega' && format === 'megaubers') {
+			// Ubers metagame on the Mega mod: keep the natural Uber → OU → … → LC order
+			// (Uber on top) instead of the OU-first default used by [Gen 3] Megas.
+			// Groudon-Primal stays in the Uber bucket and is enforced as banned server-side.
+			tierSet = tierSet.slice(slices.Uber);
+		} else if (format === 'ubers' || format === 'uber' || format === 'ubersuu' || format === 'nationaldexdoubles') {
 			tierSet = tierSet.slice(slices.Uber);
 		} else if (isVGCOrBS || (isHackmons && dex.gen === 9 && !this.formatType)) {
 			if (format.endsWith('series13') || format.endsWith('regj') || isHackmons) {
@@ -1142,12 +1177,14 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 				});
 			}
 		} else if (format === 'ou') tierSet = tierSet.slice(slices.OU);
-		else if (format === 'uubl') tierSet = tierSet.slice(slices.UUBL);
+		else if (format === 'uubl') tierSet = tierSet.slice(slices['(OU)'] || slices.UUBL);
 		else if (format === 'uu') tierSet = tierSet.slice(slices.UU);
 		else if (format === 'ru') tierSet = tierSet.slice(slices.RU || slices.UU);
 		else if (format === 'nu') tierSet = tierSet.slice(slices.NU);
 		else if (format === 'pu') tierSet = tierSet.slice(slices.PU);
 		else if (format === 'zu') tierSet = tierSet.slice(slices.ZU);
+		else if (format === 'su') tierSet = tierSet.slice(slices.SU || slices.ZU);
+		else if (format === 'iu') tierSet = tierSet.slice(slices.IU || slices.SU || slices.ZU);
 		else if (
 			format === 'lc' || format === 'lcuu' || format.startsWith('lc') || (format !== 'caplc' && format.endsWith('lc'))
 		) tierSet = tierSet.slice(slices.LC);
@@ -1168,6 +1205,8 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			tierSet = tierSet.slice(slices.Uber);
 		} else if (this.formatType === 'rs' || this.formatType === 'frlg') {
 			tierSet = tierSet.slice(slices.Regular);
+		} else if (this.formatType === 'zangouse') {
+			// keep tier order as-is: Zang, OU, NFE
 		} else if (!isDoublesOrBS) {
 			tierSet = [
 				...tierSet.slice(slices.OU, slices.UU),
@@ -1274,23 +1313,41 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 		}
 		return true;
 	}
+	getStatBoost(species: Dex.Species): number {
+		if (!this.format.includes('tiershift')) return 0;
+		const boosts: {[tier: string]: number} = {
+			uu: 10, rubl: 10, ru: 20, nubl: 20, nu: 30, publ: 30,
+			pu: 40, zubl: 40, zu: 40, nfe: 40, lc: 40,
+		};
+		return boosts[toID(species.tier)] || 0;
+	}
+	getStat(species: Dex.Species, stat: Dex.StatName): number {
+		const base = species.baseStats[stat];
+		if (this.format.includes('badnboosted')) {
+			return base <= 70 ? Math.min(255, base * 2) : base;
+		}
+		if (stat === 'hp') return base;
+		return Math.min(255, base + this.getStatBoost(species));
+	}
 	sort(results: SearchRow[], sortCol: string, reverseSort?: boolean) {
 		const sortOrder = reverseSort ? -1 : 1;
 		if (['hp', 'atk', 'def', 'spa', 'spd', 'spe'].includes(sortCol)) {
 			return results.sort(([rowType1, id1], [rowType2, id2]) => {
-				const stat1 = this.dex.species.get(id1).baseStats[sortCol as Dex.StatName];
-				const stat2 = this.dex.species.get(id2).baseStats[sortCol as Dex.StatName];
+				const stat1 = this.getStat(this.dex.species.get(id1), sortCol as Dex.StatName);
+				const stat2 = this.getStat(this.dex.species.get(id2), sortCol as Dex.StatName);
 				return (stat2 - stat1) * sortOrder;
 			});
 		} else if (sortCol === 'bst') {
 			return results.sort(([rowType1, id1], [rowType2, id2]) => {
-				const base1 = this.dex.species.get(id1).baseStats;
-				const base2 = this.dex.species.get(id2).baseStats;
-				let bst1 = base1.hp + base1.atk + base1.def + base1.spa + base1.spd + base1.spe;
-				let bst2 = base2.hp + base2.atk + base2.def + base2.spa + base2.spd + base2.spe;
+				const s1 = this.dex.species.get(id1);
+				const s2 = this.dex.species.get(id2);
+				let bst1 = this.getStat(s1, 'hp') + this.getStat(s1, 'atk') + this.getStat(s1, 'def') +
+					this.getStat(s1, 'spa') + this.getStat(s1, 'spd') + this.getStat(s1, 'spe');
+				let bst2 = this.getStat(s2, 'hp') + this.getStat(s2, 'atk') + this.getStat(s2, 'def') +
+					this.getStat(s2, 'spa') + this.getStat(s2, 'spd') + this.getStat(s2, 'spe');
 				if (this.dex.gen === 1) {
-					bst1 -= base1.spd;
-					bst2 -= base2.spd;
+					bst1 -= this.getStat(s1, 'spd');
+					bst2 -= this.getStat(s2, 'spd');
 				}
 				return (bst2 - bst1) * sortOrder;
 			});
