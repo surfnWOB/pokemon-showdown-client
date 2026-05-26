@@ -272,6 +272,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		7.1,
 		5.1,
 		3.1, 3.11, 3.02, 3.03, 3.05,
+		1.05,
 	];
 
 	// process.stdout.write("\n  ");
@@ -299,6 +300,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		const isZangOuSe = genIdent === 3.02;
 		const isGen3Mega = genIdent === 3.03;
 		const isGen3UbersUU = genIdent === 3.05;
+		const isGen1RbyPlus = genIdent === 1.05;
 		const gen = (() => {
 			let genStr = 'gen' + genNum;
 			if (isSSDLC1) genStr += 'dlc1';
@@ -315,6 +317,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			if (isZangOuSe) genStr += 'zangouse';
 			if (isGen3Mega) genStr += 'mega';
 			if (isGen3UbersUU) genStr += 'ubersuu';
+			if (isGen1RbyPlus) genStr += 'rbyplus';
 			if (isChampions) genStr = 'champions';
 			return genStr;
 		})();
@@ -614,6 +617,13 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			BattleTeambuilderTable[gen].tiers = tiers;
 			BattleTeambuilderTable[gen].items = items;
 			BattleTeambuilderTable[gen].formatSlices = formatSlices;
+		} else if (isGen1RbyPlus) {
+			BattleTeambuilderTable[gen] = {};
+			BattleTeambuilderTable[gen].overrideTier = overrideTier;
+			BattleTeambuilderTable[gen].tiers = tiers;
+			BattleTeambuilderTable[gen].items = items;
+			BattleTeambuilderTable[gen].formatSlices = formatSlices;
+			BattleTeambuilderTable[gen].learnsets = {};
 		} else if (isBW1 || isRS || isFRLG) {
 			BattleTeambuilderTable[gen] = {};
 			BattleTeambuilderTable[gen].overrideTier = overrideTier;
@@ -664,7 +674,8 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 
 		for (const tier of tierOrder) {
 			if (tier in {
-				OU: 1, "(OU)": 1, UUBL: 1, AG: 1, Uber: 1, UU: 1, RU: 1, NU: 1, PU: 1, ZU: 1, SU: 1, IU: 1, NFE: 1, LC: 1, DOU: 1, DUU: 1,
+				OU: 1, "(OU)": 1, UUBL: 1, AG: 1, Uber: 1, UU: 1, RU: 1, NU: 1, PU: 1, ZU: 1,
+				SU: 1, IU: 1, NFE: 1, LC: 1, DOU: 1, DUU: 1,
 				"(DUU)": 1, New: 1, Legal: 1, Regular: 1, Restricted: 1, "CAP LC": 1,
 			}) {
 				let usedTier = tier;
@@ -1050,6 +1061,18 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			BattleTeambuilderTable['gen3frlg'].learnsets[id][moveid] = '3';
 		}
 	}
+	const RbyPlusLearnsets = Dex.mod('gen1rbyplus').data.Learnsets;
+	for (const id in RbyPlusLearnsets) {
+		// Only the curated RBY Plus roster (every entry is gen 1); skip inherited
+		// later-gen learnsets that would otherwise be mistagged as gen 1.
+		if (Dex.mod('gen1rbyplus').species.get(id).gen > 1) continue;
+		const learnset = RbyPlusLearnsets[id].learnset;
+		if (!learnset) continue;
+		BattleTeambuilderTable['gen1rbyplus'].learnsets[id] = {};
+		for (const moveid in learnset) {
+			BattleTeambuilderTable['gen1rbyplus'].learnsets[id][moveid] = '1';
+		}
+	}
 	const G5BW1Learnsets = Dex.mod('gen5bw1').data.Learnsets;
 	for (const id in G5BW1Learnsets) {
 		const species = Dex.mod('gen5bw1').species.get(id);
@@ -1378,6 +1401,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 
 	for (const mod of [
 		'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'gen9legendsou', 'champions',
+		'gen1rbyplus',
 	]) {
 		const modDex = Dex.mod(mod);
 		const modData = modDex.data;

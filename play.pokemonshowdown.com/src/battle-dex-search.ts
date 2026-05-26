@@ -582,7 +582,8 @@ abstract class BattleTypedSearch<T extends SearchType> {
 
 	protected formatType: 'doubles' | 'bdsp' | 'bdspdoubles' | 'rs' | 'frlg' | 'bw1' | 'letsgo' | 'metronome' | 'natdex' |
 		'nfe' | 'ssdlc1' | 'ssdlc1doubles' | 'predlc' | 'predlcdoubles' | 'predlcnatdex' | 'svdlc1' | 'svdlc1doubles' |
-		'svdlc1natdex' | 'stadium' | 'lc' | 'legendsza' | 'champions' | 'zangouse' | 'gen3mega' | 'gen3ubersuu' | null = null;
+		'svdlc1natdex' | 'stadium' | 'lc' | 'legendsza' | 'champions' | 'zangouse' | 'gen3mega' | 'gen3ubersuu' |
+		'gen1rbyplus' | null = null;
 	isDoubles = false;
 
 	/**
@@ -745,6 +746,10 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			// vanilla gen3 dex; custom builder table separates banned ("Uber") from legal ("Ubers UU")
 			this.formatType = 'gen3ubersuu';
 		}
+		if (this.dex.gen === 1 && format.includes('rbyplus')) {
+			this.formatType = 'gen1rbyplus';
+			this.dex = Dex.mod('gen1rbyplus' as ID);
+		}
 		this.format = format;
 
 		this.species = '' as ID;
@@ -843,6 +848,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (this.formatType === 'frlg') table = table['gen3frlg'];
 		if (this.formatType === 'legendsza') table = table['gen9legendsou'];
 		if (this.formatType === 'champions') table = table['champions'];
+		if (this.formatType === 'gen1rbyplus') table = table['gen1rbyplus'];
 		if (speciesid in table.learnsets) return speciesid;
 		const species = this.dex.species.get(speciesid);
 		if (!species.exists) return '' as ID;
@@ -916,6 +922,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			if (this.formatType === 'frlg') table = table['gen3frlg'];
 			if (this.formatType === 'legendsza') table = table['gen9legendsou'];
 			if (this.formatType === 'champions') table = table['champions'];
+			if (this.formatType === 'gen1rbyplus') table = table['gen1rbyplus'];
 			let learnset = table.learnsets[learnsetid];
 			const eggMovesOnly = this.eggMovesOnly(learnsetid, speciesid);
 			if (learnset && (moveid in learnset) && (!this.format.startsWith('tradebacks') ? learnset[moveid].includes(genChar) :
@@ -958,6 +965,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType === 'zangouse' ? `gen3zangouse` :
 			this.formatType === 'gen3mega' ? `gen3mega` :
 			this.formatType === 'gen3ubersuu' ? `gen3ubersuu` :
+			this.formatType === 'gen1rbyplus' ? `gen1rbyplus` :
 			`gen${gen}`;
 		if (table?.[tableKey]) {
 			table = table[tableKey];
@@ -1127,6 +1135,8 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			table = table['gen3mega'];
 		} else if (this.formatType === 'gen3ubersuu') {
 			table = table['gen3ubersuu'];
+		} else if (this.formatType === 'gen1rbyplus') {
+			table = table['gen1rbyplus'];
 		}
 
 		if (!table.tierSet) {
@@ -1315,7 +1325,7 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 	}
 	getStatBoost(species: Dex.Species): number {
 		if (!this.format.includes('tiershift')) return 0;
-		const boosts: {[tier: string]: number} = {
+		const boosts: { [tier: string]: number } = {
 			uu: 10, rubl: 10, ru: 20, nubl: 20, nu: 30, publ: 30,
 			pu: 40, zubl: 40, zu: 40, nfe: 40, lc: 40,
 		};
