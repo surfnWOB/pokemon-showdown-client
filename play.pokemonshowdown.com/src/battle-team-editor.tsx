@@ -1681,7 +1681,7 @@ class TeamTextbox extends preact.Component<{
 			<span class="detailcell">
 				<label>Shiny</label>{set.shiny ? 'Yes' : '\u2014'}
 			</span>
-			{editor.gen === 9 && !editor.isChampions ? (
+			{((editor.gen === 9 && !editor.isChampions) || editor.format.includes('advtera')) ? (
 				<span class="detailcell">
 					<label>Tera</label><PSIcon type={set.teraType || species.requiredTeraType || species.types[0]} />
 				</span>
@@ -3161,7 +3161,7 @@ class DetailsForm extends preact.Component<{
 						))}
 					</select></label>
 				</p>}
-				{editor.gen === 9 && !editor.isChampions && <p>
+				{((editor.gen === 9 && !editor.isChampions) || editor.format.includes('advtera')) && <p>
 					<label class="label" title="Tera Type">
 						Tera Type: {}
 						{species.requiredTeraType && editor.formeLegality === 'normal' ? (
@@ -3171,7 +3171,9 @@ class DetailsForm extends preact.Component<{
 								name="teratype" class="button" onChange={this.changeTera}
 								value={set.teraType || species.requiredTeraType || species.types[0]}
 							>
-								{Dex.types.all().map(type => (
+								{Dex.types.all().filter(type =>
+									type.name !== 'Stellar' && (editor.gen >= 6 || type.name !== 'Fairy')
+								).map(type => (
 									<option value={type.name}>{type.name}</option>
 								))}
 							</select>

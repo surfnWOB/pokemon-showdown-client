@@ -1846,7 +1846,7 @@ export const PS = new class extends PSModel {
 		"battle-*": "*",
 		"battles": "*right",
 		"teamdropdown": "*modal-popup",
-		"formatdropdown": "*modal-popup",
+		"formatdropdown": "*popup",
 		"team-*": "*",
 		"ladder": "*",
 		"ladder-*": "*",
