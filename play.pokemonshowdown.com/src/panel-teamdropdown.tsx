@@ -372,7 +372,7 @@ export type SelectType = 'teambuilder' | 'challenge' | 'search' | 'tournament';
 class FormatDropdownPanel extends PSRoomPanel {
 	static readonly id = 'formatdropdown';
 	static readonly routes = ['formatdropdown'];
-	static readonly location = 'modal-popup';
+	static readonly location = 'popup';
 	static readonly noURL = true;
 	gen = '' as ID;
 	format: string | null = null;

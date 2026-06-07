@@ -8,15 +8,20 @@ const child_process = require("child_process");
 const rootDir = path.resolve(__dirname, '..');
 process.chdir(rootDir);
 
-if (!fs.existsSync('caches/pokemon-showdown')) {
+if (fs.existsSync('caches/pokemon-showdown/dist/sim/dex.js')) {
+	process.stdout.write("Using pre-populated server cache... ");
+} else if (!fs.existsSync('caches/pokemon-showdown')) {
 	child_process.execSync('git clone https://github.com/smogon/pokemon-showdown.git', {
 		cwd: 'caches',
 	});
+	process.stdout.write("Syncing data from Git repository... ");
+	child_process.execSync('git pull', { cwd: 'caches/pokemon-showdown' });
+	child_process.execSync('npm run build', { cwd: 'caches/pokemon-showdown' });
+} else {
+	process.stdout.write("Syncing data from Git repository... ");
+	child_process.execSync('git pull', { cwd: 'caches/pokemon-showdown' });
+	child_process.execSync('npm run build', { cwd: 'caches/pokemon-showdown' });
 }
-
-process.stdout.write("Syncing data from Git repository... ");
-child_process.execSync('git pull', { cwd: 'caches/pokemon-showdown' });
-child_process.execSync('npm run build', { cwd: 'caches/pokemon-showdown' });
 console.log("DONE");
 
 const Dex = require('../caches/pokemon-showdown/dist/sim/dex').Dex;
@@ -266,7 +271,8 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		8.6, 8.4, 8.2, -8.4, -8.6,
 		7.1,
 		5.1,
-		3.1, 3.11,
+		3.1, 3.11, 3.02, 3.03, 3.05, 3.06, 3.17,
+		1.05,
 	];
 
 	// process.stdout.write("\n  ");
@@ -289,7 +295,13 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		const genNum = Math.floor(isDoubles ? -genIdent : genIdent);
 		const isBW1 = genIdent === 5.1;
 		const isRS = genIdent === 3.1;
+		const isRSLC = genIdent === 3.17;
 		const isFRLG = genIdent === 3.11;
+		const isZangOuSe = genIdent === 3.02;
+		const isGen3Mega = genIdent === 3.03;
+		const isGen3UbersUU = genIdent === 3.05;
+		const isGen3SubZU = genIdent === 3.06;
+		const isGen1RbyPlus = genIdent === 1.05;
 		const gen = (() => {
 			let genStr = 'gen' + genNum;
 			if (isSSDLC1) genStr += 'dlc1';
@@ -301,10 +313,22 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			if (isSSB) genStr += 'ssb';
 			if (isBW1) genStr += 'bw1';
 			if (isRS) genStr += 'rs';
+			if (isRSLC) genStr = 'gen3rslc';
 			if (isFRLG) genStr += 'frlg';
+			if (isZangOuSe) genStr += 'zangouse';
+			if (isGen3Mega) genStr += 'mega';
+			if (isGen3UbersUU) genStr += 'ubersuu';
+			if (isGen3SubZU) genStr += 'subzu';
+			if (isGen1RbyPlus) genStr += 'rbyplus';
 			if (isChampions) genStr = 'champions';
 			return genStr;
 		})();
+		// Ubers UU has no dedicated mod — it's vanilla gen3 data with a custom builder section.
+		// ADV 200 (isRS) sources tiers from gen3adv200, which inherits gen3rs and overlays the
+		// compressed ADV-200 ladder. The output table key stays 'gen3rs' (see table assignment
+		// and battle-dex-search routing) so learnsets, items, and routing are byte-identical to
+		// upstream gen3rs — only the tier labels (and thus the browsable slices) change.
+		const modId = isGen3UbersUU ? 'gen3' : isRSLC ? 'gen3rs' : isRS ? 'gen3adv200' : gen;
 		// process.stdout.write("" + gen + (isDoubles ? " doubles" : "") + "... ");
 		const pokemon = Object.keys(Dex.data.Pokedex);
 		pokemon.sort();
@@ -313,8 +337,8 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		const metagameBans = {};
 		const nonstandardMoves = [];
 		for (const id of pokemon) {
-			const species = Dex.mod(gen).species.get(id);
-			const baseSpecies = Dex.mod(gen).species.get(species.baseSpecies);
+			const species = Dex.mod(modId).species.get(id);
+			const baseSpecies = Dex.mod(modId).species.get(species.baseSpecies);
 			if (species.gen > genNum) continue;
 			const speciesTier = (() => {
 				if (isMetBattle) {
@@ -383,12 +407,35 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 						if (species.isNonstandard === 'Unobtainable') return 'Unreleased';
 						return 'Illegal';
 					}
-					if (species.tier === 'Uber') return 'Uber';
-					if (species.nfe) {
-						if (species.prevo.length === 0) return "LC";
-						return "NFE";
+					// Tiers come straight from the gen3adv200 formats-data (Uber/OU/UU/NFE/LC) —
+					// the compressed ADV-200 ladder, which inherits gen3rs and only re-tiers.
+					// A handful of NFE mons (Kadabra, Pikachu, Clamperl) sit in UU there
+					// because their held-item niches earn a real tier — no special-casing
+					// here, the data is authoritative.
+					return species.tier;
+				}
+				if (isRSLC) {
+					// Every legal mon in a Little Cup table is, by definition, LC — so force
+					// the tier rather than trusting the source tier (which carries held-item
+					// niche rankings like Clamperl=UU). Ineligible = non-first-stage or banned.
+					if (species.isNonstandard) return 'Illegal';
+					const lc = Dex.formats.get('gen3adv200lc');
+					const lcBanlist = Dex.formats.getRuleTable(lc);
+					const prevoSpecies = Dex.mod('gen3rs').species.get(species.prevo);
+					if (!species.nfe || (prevoSpecies.exists && prevoSpecies.gen <= genNum) || lcBanlist.isBannedSpecies(species)) {
+						return 'Illegal';
 					}
-					return "Regular";
+					return 'LC';
+				}
+				if (isGen3UbersUU) {
+					// The 38 above-C ADV-Ubers-VR species are banned: bucket them under
+					// "Banned" (sliced out of the browsable pool, grayed only on search).
+					// Everything else keeps its real Gen-3 tier, so the legal pool reads
+					// OU → UU → RU → NU → PU → … → NFE → LC, going down.
+					if (species.isNonstandard) return 'Illegal';
+					const format = Dex.formats.get('gen3ubersuu');
+					if (Dex.formats.getRuleTable(format).isBannedSpecies(species)) return 'Banned';
+					return species.tier;
 				}
 				if (isGen9BH) {
 					if ((species.natDexTier === 'Illegal' || species.forme.includes('Totem')) &&
@@ -565,6 +612,42 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			BattleTeambuilderTable.overrideTier = overrideTier;
 			BattleTeambuilderTable.metagameBans = metagameBans;
 			BattleTeambuilderTable.formatSlices = formatSlices;
+		} else if (isZangOuSe) {
+			BattleTeambuilderTable[gen] = {};
+			BattleTeambuilderTable[gen].overrideTier = overrideTier;
+			BattleTeambuilderTable[gen].tiers = tiers;
+			BattleTeambuilderTable[gen].items = items;
+			BattleTeambuilderTable[gen].formatSlices = formatSlices;
+		} else if (isGen3Mega) {
+			BattleTeambuilderTable[gen] = {};
+			BattleTeambuilderTable[gen].overrideTier = overrideTier;
+			BattleTeambuilderTable[gen].tiers = tiers;
+			BattleTeambuilderTable[gen].items = items;
+			BattleTeambuilderTable[gen].formatSlices = formatSlices;
+		} else if (isGen3UbersUU) {
+			BattleTeambuilderTable[gen] = {};
+			BattleTeambuilderTable[gen].overrideTier = overrideTier;
+			BattleTeambuilderTable[gen].tiers = tiers;
+			BattleTeambuilderTable[gen].items = items;
+			BattleTeambuilderTable[gen].formatSlices = formatSlices;
+		} else if (isGen3SubZU) {
+			BattleTeambuilderTable[gen] = {};
+			BattleTeambuilderTable[gen].overrideTier = overrideTier;
+			BattleTeambuilderTable[gen].tiers = tiers;
+			BattleTeambuilderTable[gen].items = items;
+			BattleTeambuilderTable[gen].formatSlices = formatSlices;
+		} else if (isGen1RbyPlus) {
+			BattleTeambuilderTable[gen] = {};
+			BattleTeambuilderTable[gen].overrideTier = overrideTier;
+			BattleTeambuilderTable[gen].tiers = tiers;
+			BattleTeambuilderTable[gen].items = items;
+			BattleTeambuilderTable[gen].formatSlices = formatSlices;
+			BattleTeambuilderTable[gen].learnsets = {};
+		} else if (isRSLC) {
+			BattleTeambuilderTable['gen3rslc'] = {};
+			BattleTeambuilderTable['gen3rslc'].tiers = tiers;
+			BattleTeambuilderTable['gen3rslc'].overrideTier = overrideTier;
+			BattleTeambuilderTable['gen3rslc'].formatSlices = formatSlices;
 		} else if (isBW1 || isRS || isFRLG) {
 			BattleTeambuilderTable[gen] = {};
 			BattleTeambuilderTable[gen].overrideTier = overrideTier;
@@ -592,20 +675,31 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			if (isVGC || isGen9BH) {
 				return ["Mythical", "Restricted", "Regular", "NFE", "LC"];
 			}
+			if (isZangOuSe) {
+				return ["Zang", "OU", "NFE"];
+			}
+			if (isGen3UbersUU) {
+				// "Banned" first (the 38 banlist mons; sliced out client-side), then the
+				// full Gen-3 tier order so the legal pool sorts OU → UU → … → NFE → LC.
+				return [
+					"Banned", "AG", "Uber", "(Uber)", "OU", "(OU)", "UUBL", "UU", "RUBL", "RU", "NUBL", "NU", "PUBL", "PU", "ZUBL", "ZU", "SU", "IU", "New", "NFE", "LC", "Unreleased",
+				];
+			}
 			if (isRS) {
-				return ["Regular", "NFE", "LC", "Uber"];
+				return ["Uber", "OU", "UU", "NFE", "LC"];
 			}
 			if (isDoubles && genNum > 4) {
 				return ["DUber", "(DUber)", "DOU", "DBL", "(DOU)", "DUU", "(DUU)", "New", "NFE", "LC"];
 			}
 			return [
-				"CAP", "CAP NFE", "CAP LC", "AG", "(AG)", "Uber", "OU", "(OU)", "UUBL", "UU", "RUBL", "RU", "NUBL", "NU", "PUBL", "PU", "ZUBL", "ZU", "New", "NFE", "LC", "Unreleased",
+				"CAP", "CAP NFE", "CAP LC", "AG", "(AG)", "Uber", "OU", "(OU)", "UUBL", "UU", "RUBL", "RU", "NUBL", "NU", "PUBL", "PU", "ZUBL", "ZU", "SU", "IU", "New", "NFE", "LC", "Unreleased",
 			];
 		})();
 
 		for (const tier of tierOrder) {
 			if (tier in {
-				OU: 1, UUBL: 1, AG: 1, Uber: 1, UU: 1, RU: 1, NU: 1, PU: 1, ZU: 1, NFE: 1, LC: 1, DOU: 1, DUU: 1,
+				OU: 1, "(OU)": 1, UUBL: 1, AG: 1, Uber: 1, UU: 1, RU: 1, NU: 1, PU: 1, ZU: 1,
+				SU: 1, IU: 1, NFE: 1, LC: 1, DOU: 1, DUU: 1,
 				"(DUU)": 1, New: 1, Legal: 1, Regular: 1, Restricted: 1, "CAP LC": 1,
 			}) {
 				let usedTier = tier;
@@ -644,7 +738,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		const unreleasedItems = [];
 		if (genNum === 6) unreleasedItems.push(['header', "Unreleased"]);
 		for (const id of itemList) {
-			const item = Dex.mod(gen).items.get(id);
+			const item = Dex.mod(modId).items.get(id);
 			if (item.gen > genNum) {
 				continue;
 			}
@@ -989,6 +1083,18 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			BattleTeambuilderTable['gen3frlg'].learnsets[id][moveid] = '3';
 		}
 	}
+	const RbyPlusLearnsets = Dex.mod('gen1rbyplus').data.Learnsets;
+	for (const id in RbyPlusLearnsets) {
+		// Only the curated RBY Plus roster (every entry is gen 1); skip inherited
+		// later-gen learnsets that would otherwise be mistagged as gen 1.
+		if (Dex.mod('gen1rbyplus').species.get(id).gen > 1) continue;
+		const learnset = RbyPlusLearnsets[id].learnset;
+		if (!learnset) continue;
+		BattleTeambuilderTable['gen1rbyplus'].learnsets[id] = {};
+		for (const moveid in learnset) {
+			BattleTeambuilderTable['gen1rbyplus'].learnsets[id][moveid] = '1';
+		}
+	}
 	const G5BW1Learnsets = Dex.mod('gen5bw1').data.Learnsets;
 	for (const id in G5BW1Learnsets) {
 		const species = Dex.mod('gen5bw1').species.get(id);
@@ -1174,12 +1280,12 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 
 	// Client relevant data that should be overridden by past gens and mods
 	const overrideSpeciesKeys = [
-		'abilities', 'baseStats', 'cosmeticFormes', 'isNonstandard', 'requiredItems', 'types', 'unreleasedHidden',
+		'abilities', 'baseStats', 'cosmeticFormes', 'gen', 'isNonstandard', 'requiredItems', 'types', 'unreleasedHidden',
 	];
 	const overrideMoveKeys = [
 		'accuracy', 'basePower', 'category', 'desc', 'flags', 'isNonstandard', 'pp', 'priority', 'shortDesc', 'target', 'type',
 	];
-	const overrideAbilityKeys = ['desc', 'flags', 'isNonstandard', 'rating', 'shortDesc'];
+	const overrideAbilityKeys = ['desc', 'flags', 'gen', 'isNonstandard', 'rating', 'shortDesc'];
 	const overrideItemKeys = ['desc', 'fling', 'isNonstandard', 'naturalGift', 'shortDesc'];
 
 	//
@@ -1270,7 +1376,8 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 	//
 
 	for (const mod of [
-		'gen3rs', 'gen3frlg', 'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
+		'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
+		'gen1rbyplus',
 	]) {
 		const modDex = Dex.mod(mod);
 		const modData = modDex.data;
