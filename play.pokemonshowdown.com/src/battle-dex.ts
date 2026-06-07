@@ -285,6 +285,15 @@ export const Dex = new class implements ModdedDex {
 		if (dex.gen === 9 && formatid.includes('champions')) {
 			dex = Dex.mod('champions' as ID);
 		}
+		if (dex.gen === 3 && formatid.includes('pss')) {
+			dex = Dex.mod('gen3pss' as ID);
+		}
+		if (dex.gen === 3 && formatid.includes('mega')) {
+			dex = Dex.mod('gen3mega' as ID);
+		}
+		if (dex.gen === 4 && formatid.includes('nopss')) {
+			dex = Dex.mod('gen4nopss' as ID);
+		}
 		return dex;
 	}
 
@@ -985,11 +994,11 @@ export class ModdedDex {
 			}
 			if (this.modid !== `gen${this.gen}`) {
 				const table = window.BattleTeambuilderTable[this.modid];
-				if (id in table.overrideMoveData) {
+				if (table && id in table.overrideMoveData) {
 					Object.assign(data, table.overrideMoveData[id]);
 				}
 			}
-			if (this.gen <= 3 && data.category !== 'Status') {
+			if (((this.gen <= 3 && this.modid !== 'gen3pss') || this.modid === 'gen4nopss') && data.category !== 'Status') {
 				data.category = Dex.getGen3Category(data.type);
 			}
 
@@ -1018,7 +1027,7 @@ export class ModdedDex {
 			}
 			if (this.modid !== `gen${this.gen}`) {
 				const table = window.BattleTeambuilderTable[this.modid];
-				if (id in table.overrideItemData) {
+				if (table && id in table.overrideItemData) {
 					Object.assign(data, table.overrideItemData[id]);
 				}
 			}
@@ -1048,7 +1057,7 @@ export class ModdedDex {
 			}
 			if (this.modid !== `gen${this.gen}`) {
 				const table = window.BattleTeambuilderTable[this.modid];
-				if (id in table.overrideAbilityData) {
+				if (table && id in table.overrideAbilityData) {
 					Object.assign(data, table.overrideAbilityData[id]);
 				}
 			}
@@ -1081,7 +1090,7 @@ export class ModdedDex {
 			}
 			if (this.modid !== `gen${this.gen}`) {
 				const table = window.BattleTeambuilderTable[this.modid];
-				if (id in table.overrideSpeciesData) {
+				if (table && id in table.overrideSpeciesData) {
 					Object.assign(data, table.overrideSpeciesData[id]);
 				}
 			}
@@ -1089,7 +1098,7 @@ export class ModdedDex {
 				data.abilities = { 0: "No Ability" };
 			}
 
-			const table = window.BattleTeambuilderTable[this.modid];
+			const table = window.BattleTeambuilderTable[this.modid] || window.BattleTeambuilderTable[`gen${this.gen}`];
 			if (id in table.overrideTier) data.tier = table.overrideTier[id];
 			if (!data.tier && id.endsWith('totem')) {
 				data.tier = this.species.get(id.slice(0, -5)).tier;
