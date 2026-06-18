@@ -3365,13 +3365,63 @@ export class Battle {
 		}
 		return { name, siden, slot, pokemonid };
 	}
-	getSwitchedPokemon(pokemonid: string, details: string) {
+	getSwitchedPokemon(pokemonid: string, details: string, condition?: string) {
 		if (pokemonid === '??') throw new Error(`pokemonid not passed`);
 		const { name, siden, slot, pokemonid: parsedPokemonid } = this.parsePokemonId(pokemonid);
 		pokemonid = parsedPokemonid;
 
 		const searchid = `${pokemonid}|${details}`;
 		const side = this.sides[siden];
+
+		// FORK DIVERGENCE (upstream WONTFIX, smogon/pokemon-showdown-client#1274):
+		// In formats without Species Clause (e.g. [Gen 3]/[Gen 9] Anything Goes) multiple
+		// un-nicknamed same-species foe Pokemon share an identical searchid. The plain
+		// first-match loop below would bind every switch-in of that species to the SAME
+		// object and overwrite its HP, merging distinct copies and scrambling their
+		// revealed moves. When an inactive copy with this searchid already exists we
+		// disambiguate by observable public state (HP%, then status, then a revealed
+		// on-switch ability). If no benched copy is consistent with the incoming HP/status
+		// AND the incoming Pokemon is at full HP (so it can only be a never-revealed copy),
+		// we consume a Team Preview placeholder or, in no-Team-Preview gens, mint a new
+		// object. A non-full mismatch is an existing copy whose HP changed unexpectedly
+		// (e.g. Regenerator heals while benched) and is left to the first-match loop, so
+		// single-species play and Regenerator are never regressed. No condition string
+		// (e.g. the 'replace'/Illusion path) makes this a no-op.
+		if (condition && searchid) {
+			const candidates: Pokemon[] = [];
+			for (let i = 0; i < side.pokemon.length; i++) {
+				const pokemon = side.pokemon[i];
+				if (pokemon.fainted) continue;
+				if (side.active.includes(pokemon)) continue;
+				if (pokemon === side.lastPokemon && !side.active[slot]) continue;
+				if (pokemon.searchid === searchid) candidates.push(pokemon);
+			}
+			if (candidates.length) {
+				const matched = this.matchSwitchCandidate(candidates, condition, pokemonid);
+				if (matched) {
+					if (slot >= 0) matched.slot = slot;
+					return matched;
+				}
+				if (this.isFullHP(condition)) {
+					// genuinely distinct copy: prefer a Team Preview placeholder...
+					for (let i = 0; i < side.pokemon.length; i++) {
+						const pokemon = side.pokemon[i];
+						if (!pokemon.searchid && pokemon.checkDetails(details)) {
+							const placeholder = side.addPokemon(name, pokemonid, details, i);
+							if (slot >= 0) placeholder.slot = slot;
+							return placeholder;
+						}
+					}
+					// ...otherwise mint a new object if the roster has room (no Team Preview).
+					if (side.pokemon.length < side.totalPokemon) {
+						const fresh = side.addPokemon(name, pokemonid, details);
+						if (slot >= 0) fresh.slot = slot;
+						return fresh;
+					}
+				}
+				// else fall through to the legacy first-match loop below.
+			}
+		}
 
 		// search inactive revealed pokemon
 		for (let i = 0; i < side.pokemon.length; i++) {
@@ -3399,6 +3449,145 @@ export class Battle {
 		const pokemon = side.addPokemon(name, pokemonid, details);
 		if (slot >= 0) pokemon.slot = slot;
 		return pokemon;
+	}
+	/** FORK (smogon/pokemon-showdown-client#1274): true if `condition` (a switch HP/status
+	 * string like "100/100" or "281/281 par") is at full HP. A never-revealed copy always
+	 * enters at full HP, so this gates whether an HP-inconsistent switch-in is a new copy. */
+	isFullHP(condition: string) {
+		const hp = condition.split(' ')[0];
+		if (hp.indexOf('/') < 0) return false;
+		let [curhp, maxhp] = hp.split('/');
+		const colorchar = maxhp.slice(-1);
+		if (colorchar === 'r' || colorchar === 'y' || colorchar === 'g') maxhp = maxhp.slice(0, -1);
+		const cur = parseFloat(curhp), max = parseFloat(maxhp);
+		return cur > 0 && max > 0 && cur === max;
+	}
+	/**
+	 * FORK (smogon/pokemon-showdown-client#1274). Given 2+ inactive candidates that share a
+	 * searchid (un-nicknamed same-species duplicates) - or 1 candidate we must HP-verify -
+	 * pick the one consistent with the incoming switch `condition` (HP+status), using a
+	 * revealed on-switch ability as a tertiary signal. Returns the chosen Pokemon, or null
+	 * if NO candidate is HP-consistent (caller then splits off / falls through). On a genuine
+	 * tie (multiple equally-consistent candidates) returns the first, matching legacy behavior.
+	 */
+	matchSwitchCandidate(candidates: Pokemon[], condition: string, pokemonid: string) {
+		// Parse the incoming HP fraction and status the same way parseHealth does.
+		let [hp, status] = condition.split(' ');
+		if (!status) status = '';
+		let targetRatio: number | null = null;
+		if (hp === '0' || hp === '0.0' || status === 'fnt') {
+			// Fainted/0-HP switch-in shouldn't happen; treat as no HP signal.
+			targetRatio = null;
+		} else if (hp.indexOf('/') > 0) {
+			let [curhp, maxhp] = hp.split('/');
+			const colorchar = maxhp.slice(-1);
+			if (colorchar === 'r' || colorchar === 'y' || colorchar === 'g') {
+				maxhp = maxhp.slice(0, -1);
+			}
+			if (!isNaN(parseFloat(curhp)) && !isNaN(parseFloat(maxhp)) && parseFloat(maxhp) > 0) {
+				targetRatio = parseFloat(curhp) / parseFloat(maxhp);
+			}
+		} else if (!isNaN(parseFloat(hp))) {
+			targetRatio = parseFloat(hp) / 100;
+		}
+
+		let pool = candidates;
+
+		// Primary: HP fraction gate (EPS absorbs integer-percent rounding on foe side).
+		if (targetRatio !== null) {
+			const ratio = targetRatio;
+			const EPS = 0.005;
+			const hpMatches = pool.filter(
+				pokemon => pokemon.maxhp > 0 && Math.abs(pokemon.hp / pokemon.maxhp - ratio) <= EPS
+			);
+			if (!hpMatches.length) return null; // core fix: no consistent copy -> caller splits off
+			pool = hpMatches;
+		}
+		if (pool.length === 1) return pool[0];
+
+		// Secondary: status.
+		if (status && status !== 'fnt') {
+			const statusMatches = pool.filter(pokemon => pokemon.status === status);
+			if (statusMatches.length) pool = statusMatches;
+		} else {
+			// Incoming has no status: prefer candidates with no status, but don't
+			// exclude everything if all benched copies happen to carry a status.
+			const cleanMatches = pool.filter(pokemon => !pokemon.status);
+			if (cleanMatches.length) pool = cleanMatches;
+		}
+		if (pool.length === 1) return pool[0];
+
+		// Tertiary: on-switch revealed ability via short stepQueue lookahead.
+		const ability = this.peekSwitchInAbility(pokemonid);
+		if (ability) {
+			const prefers = pool.filter(pokemon => (pokemon.ability || pokemon.baseAbility) === ability);
+			if (prefers.length) {
+				pool = prefers;
+			} else {
+				// Exclude candidates whose known ability contradicts the reveal; keep
+				// those with no known ability (e.g. ability not yet revealed).
+				const consistent = pool.filter(pokemon => {
+					const known = pokemon.ability || pokemon.baseAbility;
+					return !known || known === ability;
+				});
+				if (consistent.length) pool = consistent;
+			}
+		}
+
+		// Tie: fall back to first remaining (legacy first-match behavior).
+		return pool[0];
+	}
+	/**
+	 * FORK (smogon/pokemon-showdown-client#1274). One-step-ahead peek into this.stepQueue
+	 * from this.currentStep (which still points at the |switch| line while runMajor handles
+	 * it) for an on-switch-revealed ability belonging to the mon at `pokemonid`. Returns the
+	 * canonical ability name, or null if none is revealed in the immediate minor-action block
+	 * (Trace's copied ability is skipped as unreliable). Pure reads, no mutation; seek-safe.
+	 */
+	peekSwitchInAbility(pokemonid: string): string | null {
+		const target = this.parsePokemonId(pokemonid);
+		const WINDOW = 8;
+		const stop: { [tag: string]: 1 } = {
+			turn: 1, upkeep: 1, switch: 1, drag: 1, replace: 1, move: 1, cant: 1,
+			faint: 1, win: 1, tie: 1, swap: 1, detailschange: 1, start: 1, teampreview: 1, '': 1,
+		};
+		for (let i = this.currentStep + 1; i < this.stepQueue.length && i - this.currentStep <= WINDOW; i++) {
+			const line = this.stepQueue[i];
+			if (!line) continue;
+			const { args, kwArgs } = BattleTextParser.parseBattleLine(line);
+			const tag = args[0];
+			if (stop[tag]) return null;
+			const samePos = (idStr: string | undefined) => {
+				if (!idStr) return false;
+				const pos = this.parsePokemonId(idStr);
+				return pos.siden === target.siden && pos.slot === target.slot;
+			};
+			if (tag === '-ability') {
+				if (kwArgs.from) {
+					// Ability change/grant (incl. Trace's copied ability): unreliable.
+					if (samePos(args[1]) && Dex.getEffect(kwArgs.from).id === 'trace') return null;
+					continue;
+				}
+				if (samePos(args[1])) return Dex.getEffect(args[2]).name;
+			} else if (tag === '-weather') {
+				if (kwArgs.from && !kwArgs.upkeep && kwArgs.from.startsWith('ability:') && samePos(kwArgs.of)) {
+					return Dex.getEffect(kwArgs.from).name;
+				}
+			} else if (tag === '-fieldstart') {
+				if (kwArgs.from && kwArgs.from.startsWith('ability:') && samePos(kwArgs.of)) {
+					return Dex.getEffect(kwArgs.from).name;
+				}
+			} else if (tag === '-activate') {
+				if (args[2] && args[2].startsWith('ability:') && samePos(args[1])) {
+					return Dex.getEffect(args[2]).name;
+				}
+			} else if (tag === '-item') {
+				if (kwArgs.from && kwArgs.from.startsWith('ability:') && samePos(kwArgs.of)) {
+					return Dex.getEffect(kwArgs.from).name;
+				}
+			}
+		}
+		return null;
 	}
 	rememberTeamPreviewPokemon(sideid: string, details: string) {
 		const { siden } = this.parsePokemonId(sideid);
@@ -3749,7 +3938,7 @@ export class Battle {
 		}
 		case 'switch': case 'drag': case 'replace': {
 			this.endLastTurn();
-			let poke = this.getSwitchedPokemon(args[1], args[2]);
+			let poke = this.getSwitchedPokemon(args[1], args[2], args[0] === 'replace' ? undefined : args[3]);
 			let slot = poke.slot;
 			poke.healthParse(args[3]);
 			poke.removeVolatile('itemremoved' as ID);
