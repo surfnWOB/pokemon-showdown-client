@@ -3709,6 +3709,13 @@ export class Battle {
 			if (this.tier.includes(`Champions`)) {
 				this.dex = Dex.mod('champions' as ID);
 			}
+			// Gen 3 Megas / Mega Ubers carry custom Mega-forme type overrides
+			// (e.g. Clefable-Mega = Normal/Flying since Gen 3 has no Fairy type).
+			// Switch the battle dex to the gen3mega mod so the replay/battle viewer
+			// reads our overrideSpeciesData types instead of plain gen3 (Fairy/Flying).
+			if (this.tier.startsWith('[Gen 3]') && this.tier.includes('Mega')) {
+				this.dex = Dex.mod('gen3mega' as ID);
+			}
 			this.log(args);
 			break;
 		}
