@@ -10,6 +10,11 @@
 		<link rel="stylesheet" href="style/sim-types.css" />
 		<link rel="stylesheet" href="style/utilichart.css" />
 		<link rel="stylesheet" href="style/font-awesome.css" />
+		<!-- Showdex (standalone) integration: fonts used by the Showdex UI (Work Sans + Fira Code).
+		     External (Google Fonts); Showdex falls back to system fonts if these are blocked. -->
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" />
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" />
 		<meta name="robots" content="noindex" />
 		<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
 		<script src="https://play.pokemonshowdown.com/config/config.js"></script>
@@ -132,6 +137,21 @@
 			window.onload = () => {
 				window.app = new App();
 			}
+		</script>
+
+		<!-- Showdex (standalone) integration: inject the vendored /showdex/ bundle AFTER the client boots.
+		     This is an ADDITIVE `load` listener — it does NOT replace the client's window.onload above.
+		     Load listeners fire in registration order, so the client constructs `App` first; Showdex then
+		     hooks the live `window.app`. The `if (!window.app)` is a defensive fallback only.
+		     Fully reversible drop-in: to remove Showdex, delete this block, the font <link>s above, and the
+		     /showdex/ directory. No other client source is touched. -->
+		<script>
+			window.addEventListener('load', () => {
+				if (!window.app) { window.app = new App(); }
+				const showdex = document.createElement('script');
+				showdex.src = '/showdex/main.js';
+				document.body.appendChild(showdex);
+			});
 		</script>
 
 	</body>
