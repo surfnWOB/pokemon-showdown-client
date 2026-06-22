@@ -1151,7 +1151,7 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			// Slice at the first legal tier (right after the "Banned" bucket) so the
 			// 38 banlist mons are excluded from the browse pool, leaving Uber → … → LC.
 			tierSet = tierSet.slice(slices.Uber);
-		} else if (this.formatType === 'gen3mega' && format === 'megaubers') {
+		} else if (this.formatType === 'gen3mega' && format === 'megasubers') {
 			// Ubers metagame on the Mega mod: keep the natural Uber → OU → … → LC order
 			// (Uber on top) instead of the OU-first default used by [Gen 3] Megas.
 			// Groudon-Primal stays in the Uber bucket and is enforced as banned server-side.
