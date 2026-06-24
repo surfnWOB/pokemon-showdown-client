@@ -41,6 +41,11 @@ export interface ServerInfo {
 export interface PSConfig {
 	server: ServerInfo;
 	defaultserver: ServerInfo;
+	includes?: {
+		mainmenuHTML?: string,
+		roomlistTopHTML?: string,
+		roomlistAfterFirstHTML?: string,
+	} | null;
 	routes: {
 		root: string,
 		client: string,
@@ -141,9 +146,9 @@ class PSPrefs extends PSStreamModel<string | null> {
 	 */
 	ignore: { [userid: string]: 1 | 0 } | null = null;
 	/**
-	 * hide = hide regular display, notify = notify on new tours, null = notify on joined tours.
+	 * hide = hide regular display, notify = notify on new tours, 'nonotify' | null = notify on joined tours.
 	 */
-	tournaments: 'hide' | 'notify' | null = null;
+	tournaments: 'hide' | 'notify' | 'nonotify' | null = null;
 	/**
 	 * true = one panel, false = two panels, left and right
 	 */
@@ -321,8 +326,8 @@ class PSPrefs extends PSStreamModel<string | null> {
 			let rooms = autojoin[PS.server.id] || '';
 			for (let title of rooms.split(",")) {
 				const id = /[^a-z0-9-]/.test(title) ? toID(title) as any as RoomID : title as RoomID;
-				PS.addRoom({ id, title, connected: true, autofocus: false });
-			};
+				PS.addRoom({ id, title, connected: 'init', autofocus: false });
+			}
 			const cmd = `/autojoin ${rooms}`;
 			if (PS.connection?.queue.includes(cmd)) {
 				// don't jam up the queue with autojoin requests
@@ -826,7 +831,7 @@ class PSUser extends PSStreamModel<PSLoginState | null> {
 
 interface PSGroup {
 	name?: string;
-	type?: 'leadership' | 'staff' | 'punishment';
+	type?: 'leadership' | 'staff' | 'punishment' | 'normal' | 'user';
 	order: number;
 }
 
@@ -905,8 +910,40 @@ class PSServer {
 	defaultGroup: PSGroup = {
 		order: 108,
 	};
+	defaultGroupSymbol = ' ';
 	getGroup(symbol: string | undefined) {
-		return this.groups[(symbol || ' ').charAt(0)] || this.defaultGroup;
+		return this.groups[(symbol || this.defaultGroupSymbol).charAt(0)] || this.defaultGroup;
+	}
+	parseGroups(groupsList: string) {
+		let data: { symbol?: string, name?: string, type?: PSGroup['type'] }[];
+		try {
+			data = JSON.parse(groupsList);
+		} catch {
+			return;
+		}
+		if (!data) return;
+
+		const groups: { [symbol: string]: PSGroup } = {};
+		this.defaultGroup = { order: 10006.5 };
+		this.defaultGroupSymbol = ' ';
+		for (let i = 0; i < data.length; i++) {
+			const entry = data[i];
+			if (!entry) continue;
+
+			const symbol = entry.symbol || ' ';
+			const groupName = entry.name;
+			const groupType = entry.type || 'user';
+
+			if (groupType === 'normal') this.defaultGroup = { order: i + 0.5 };
+			if (!groupName) this.defaultGroupSymbol = symbol;
+
+			groups[symbol] = {
+				name: groupName ? `${groupName} (${symbol})` : undefined,
+				type: groupType,
+				order: i + 1,
+			};
+		}
+		this.groups = groups;
 	}
 }
 
@@ -940,7 +977,7 @@ export interface RoomOptions {
 	parentRoomid?: RoomID | null;
 	/** Opens the popup to the right of its parent, instead of the default above/below (for userlists) */
 	rightPopup?: boolean;
-	connected?: 'autoreconnect' | 'client-only' | 'expired' | boolean;
+	connected?: 'autoreconnect' | 'client-only' | 'expired' | 'init' | boolean;
 	/** @see {PSRoomPanelSubclass#noURL} */
 	noURL?: boolean;
 	args?: Record<string, unknown> | null;
@@ -999,17 +1036,20 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 	closable = true;
 	/**
 	 * Whether the room is connected to the server. This is _eager_,
-	 * we set it to `true` when we send `/join`, not when the server
+	 * we set it to `'init'` when we send `/join`, not when the server
 	 * tells us we're connected. That's because it tracks whether we
 	 * still need to send `/join` or `/leave`.
 	 *
-	 * Only connected to server when `=== true`. String options mean
-	 * the room isn't connected to the game server but to something
-	 * else.
+	 * Set to 'init' during initialization, including while parsing
+	 * the lines after receiveing `'init'` from the server.
+	 *
+	 * Only connected to server when `=== true`. String options other
+	 * than `init` mean the room isn't connected to the game server
+	 * but to something else.
 	 *
 	 * 'client-only' for DMs
 	 */
-	connected: 'autoreconnect' | 'client-only' | 'expired' | boolean = false;
+	connected: 'autoreconnect' | 'client-only' | 'expired' | 'init' | boolean = false;
 	/**
 	 * Can this room even be connected to at all?
 	 * `true` = pass messages from the server to subscribers
@@ -1133,6 +1173,9 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 		}
 		this.isSubtleNotifying = false;
 	}
+	interruptClose(explicit?: boolean, elem?: HTMLElement | null): string | boolean {
+		return false;
+	}
 	connect(): void {
 		throw new Error(`This room is not designed to connect to a server room`);
 	}
@@ -1213,20 +1256,9 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 		},
 		'part,leave,close'(target, cmd, elem) {
 			const roomid = (/[^a-z0-9-]/.test(target) ? toID(target) as any as RoomID : target as RoomID) || this.id;
-			const room = PS.rooms[roomid] as BattleRoom;
-			const battle = room?.battle;
+			const room = PS.rooms[roomid];
 
-			if (room?.type === "battle" && !battle.ended && room.users[PS.user.userid]?.startsWith('☆') && !battle.isReplay) {
-				PS.join("forfeitbattle" as RoomID, { parentElem: elem });
-				return;
-			}
-			if (room?.type === "chat" && room.connected === true && PS.prefs.leavePopupRoom && !target) {
-				PS.join("confirmleaveroom" as RoomID, { parentElem: elem });
-				return;
-			}
-			if (room?.type === "chat" && room.challenging) {
-				room.cancelChallenge();
-			}
+			if (room?.interruptClose(!!target, elem)) return;
 
 			PS.leave(roomid);
 		},
@@ -1498,7 +1530,7 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 				if (curMode === false) curMode = 'NEVER';
 				if (curMode) curMode = curMode.toUpperCase();
 				if (!curMode) curMode = 'DEFAULT (currently ' + (Dex.afdMode ? 'FULL' : 'OFF') + ')';
-				this.add('||AFD is currently set to ' + mode);
+				this.add('||AFD is currently set to ' + curMode);
 				this.send('/help afd');
 			}
 			for (let roomid in PS.rooms) {
@@ -1516,10 +1548,16 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 			this.add("||All PM windows cleared and closed.");
 		},
 		'unpackhidden'() {
+			if (PS.prefs.nounlink) {
+				this.add('||(Already visible.)');
+			}
 			PS.prefs.set('nounlink', true);
-			this.add('||Locked/banned users\' chat messages: ON');
+			this.add('||Locked/banned users\' chat messages: VISIBLE');
 		},
 		'packhidden'() {
+			if (!PS.prefs.nounlink) {
+				this.add('||(Already hidden.)');
+			}
 			PS.prefs.set('nounlink', false);
 			this.add('||Locked/banned users\' chat messages: HIDDEN');
 		},
@@ -2144,7 +2182,7 @@ export const PS = new class extends PSModel {
 					room = this.addRoom({
 						id: roomid2,
 						type,
-						connected: true,
+						connected: 'init',
 						autofocus: roomid !== 'staff' && roomid !== 'upperstaff',
 						// probably the only use for `autoclosePopups: false`.
 						// (the server sometimes sends a popup error message and a new room at the same time)
@@ -2216,6 +2254,7 @@ export const PS = new class extends PSModel {
 			}
 			room?.receiveLine(args);
 		}
+		if (room && isInit) room.connected = true;
 		room?.update(isInit ? [`initdone`] : null);
 	}
 	send(msg: string, roomid?: RoomID) {
@@ -2400,7 +2439,7 @@ export const PS = new class extends PSModel {
 		const rooms = this.leftRoomList.concat(this.rightRoomList);
 		const miniRoom = this.miniRoomList[0] !== 'news' ? this.miniRoomList[0] : null;
 		if (miniRoom) rooms.splice(1, 0, miniRoom);
-		const roomid = (room.location === 'mini-window' && miniRoom) || room.id;
+		const roomid = room.location === 'mini-window' ? (miniRoom || '' as RoomID) : room.id;
 
 		const index = rooms.indexOf(roomid);
 		// index === -1: popup or something
@@ -2408,9 +2447,7 @@ export const PS = new class extends PSModel {
 	}
 	verticalNav(room = this.room) {
 		if (this.leftPanelWidth === null) {
-			const rooms = ['' as RoomID, ...this.miniRoomList, ...this.leftRoomList.slice(1), ...this.rightRoomList];
-			const index = rooms.indexOf(room.id);
-			return { rooms, index };
+			return this.fullNav(room);
 		}
 		if (room.location !== 'mini-window') {
 			return { rooms: [], index: -1 };
@@ -2418,6 +2455,11 @@ export const PS = new class extends PSModel {
 		const rooms = this.miniRoomList;
 		const index = rooms.indexOf(room.id);
 		// index === -1: shouldn't happen
+		return { rooms, index };
+	}
+	fullNav(room = this.room) {
+		const rooms = ['' as RoomID, ...this.miniRoomList, ...this.leftRoomList.slice(1), ...this.rightRoomList];
+		const index = rooms.indexOf(room.id);
 		return { rooms, index };
 	}
 	focusLeftRoom() {
@@ -2457,11 +2499,11 @@ export const PS = new class extends PSModel {
 		return this.focusRoom(rooms[index + 1]);
 	}
 	focusUnreadRoom(direction: 'left' | 'right') {
-		const { rooms, index } = this.horizontalNav();
+		const { rooms, index } = this.fullNav();
 		if (index === -1) return;
 
 		const unreadRooms = rooms.filter((room, i) =>
-			PS.rooms[room]?.isSubtleNotifying &&
+			(PS.rooms[room]?.isSubtleNotifying || PS.rooms[room]?.notifications.length) &&
 			(direction === 'left' ? i < index : i > index)
 		);
 
@@ -2704,6 +2746,7 @@ export const PS = new class extends PSModel {
 			if (location === 'right') this.rightPanel = this.panel = room;
 			if (location === 'mini-window') this.leftPanel = this.panel = this.mainmenu;
 			this.room = room;
+			room.focusNextUpdate = true;
 		}
 	}
 	removeRoom(room: PSRoom) {
@@ -2774,7 +2817,7 @@ export const PS = new class extends PSModel {
 		// and any bugs (opening a popup while leaving a room) could lead to an infinite loop
 		// a for-loop doesn't have that problem
 		for (let i = this.popups.length - 1; i >= 0; i--) {
-			if (room && this.popups[i] === room.id) break;
+			if (this.popups[i] === room?.id) break;
 			this.removeRoom(PS.rooms[this.popups[i]]!);
 		}
 		if (!skipUpdate) this.update();
@@ -2804,8 +2847,8 @@ export const PS = new class extends PSModel {
 		if (!PS.server.registered) return;
 		let autojoins: string[] = [];
 		let autojoinCount = 0;
-		let rooms = this.rightRoomList;
-		for (let roomid of rooms) {
+		const rooms = [...this.miniRoomList, ...this.leftRoomList, ...this.rightRoomList];
+		for (const roomid of rooms) {
 			let room = PS.rooms[roomid] as ChatRoom;
 			if (!room) return;
 			if (room.type !== 'chat' || room.pmTarget) continue;

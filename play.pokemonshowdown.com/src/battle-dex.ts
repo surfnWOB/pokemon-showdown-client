@@ -208,6 +208,7 @@ export interface TeambuilderSpriteData {
 	spriteDir: string;
 	spriteid: string;
 	shiny?: boolean;
+	pixelated?: boolean;
 }
 
 export const Dex = new class implements ModdedDex {
@@ -303,7 +304,9 @@ export const Dex = new class implements ModdedDex {
 		if (avatar.startsWith('#')) {
 			return Dex.resourcePrefix + 'sprites/trainers-custom/' + toID(avatar.substr(1)) + '.png';
 		}
-		if (avatar.includes('.') && window.Config?.server?.registered) {
+		if (avatar.includes('.')) {
+			// previously checked `&& window.Config?.server?.registered`
+			// currently doesn't, bc server registration isn't a thing anymore
 			// custom avatar served by the server
 			const protocol = (Config.server.port === 443) ? 'https' : 'http';
 			const server = `${protocol}://${Config.server.host}:${Config.server.port}`;
@@ -838,7 +841,7 @@ export const Dex = new class implements ModdedDex {
 				spriteid = species.spriteid || id;
 			}
 		}
-		if (species.exists === false) return { spriteDir: 'sprites/gen5', spriteid: '0', x: 10, y: 5 };
+		if (species.exists === false) return { spriteDir: 'sprites/gen5', spriteid: '0', x: 10, y: 5, pixelated: true };
 		if (Dex.afdMode) {
 			return {
 				spriteid,
@@ -895,6 +898,7 @@ export const Dex = new class implements ModdedDex {
 		else if (gen <= 2 && species.gen <= 2) spriteData.spriteDir = 'sprites/gen2';
 		else if (gen <= 3 && species.gen <= 3) spriteData.spriteDir = 'sprites/gen3';
 		else if (gen <= 4 && species.gen <= 4) spriteData.spriteDir = 'sprites/gen4';
+		spriteData.pixelated = true;
 		spriteData.x = 10;
 		spriteData.y = 5;
 		return spriteData;
