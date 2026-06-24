@@ -76,7 +76,7 @@ export class PSRouter {
 
 		if (url.startsWith('view-teams-view-')) {
 			const teamid = url.slice(16);
-			url = `viewteam-${teamid}` as RoomID;
+			url = `viewteam-${teamid}`;
 		}
 		return url as RoomID;
 	}
@@ -303,6 +303,9 @@ export function PSPanelWrapper(props: {
 	onDragEnter?: (ev: DragEvent) => void,
 }) {
 	const room = props.room;
+	const contents = room.caughtError ?
+		<div class="broadcast broadcast-red"><pre>{room.caughtError}</pre></div> :
+		props.children;
 	if (room.location === 'mini-window') {
 		const size = props.fullSize ? ' mini-window-flex' : '';
 		const scrollable = !props.noScroll && !props.fullSize ? ' scrollable' : '';
@@ -311,13 +314,13 @@ export function PSPanelWrapper(props: {
 			class={`mini-window-contents tiny-layout ps-room-light${scrollable}${size}`}
 			onClick={props.focusClick ? PSView.focusIfNoSelection : undefined} onDragEnter={props.onDragEnter}
 		>
-			{props.children}
+			{contents}
 		</div>;
 	}
 	if (PS.isPopup(room)) {
 		const style = PSView.getPopupStyle(room, props.width, props.fullSize);
 		return <div class="ps-popup" id={`room-${room.id}`} style={style} onDragEnter={props.onDragEnter}>
-			{props.children}
+			{contents}
 		</div>;
 	}
 	const style = PSView.posStyle(room) as any;
@@ -328,8 +331,21 @@ export function PSPanelWrapper(props: {
 		id={`room-${room.id}`} role="tabpanel" aria-labelledby={`roomtab-${room.id}`}
 		style={style} onClick={props.focusClick ? PSView.focusIfNoSelection : undefined} onDragEnter={props.onDragEnter}
 	>
-		{room.caughtError ? <div class="broadcast broadcast-red"><pre>{room.caughtError}</pre></div> : props.children}
+		{contents}
 	</div>;
+}
+
+export class PSPanelErrorBoundary extends preact.Component<{ room: PSRoom }> {
+	componentDidCatch(err: Error) {
+		this.props.room.caughtError = err.stack || err.message;
+		this.setState({});
+	}
+	override render() {
+		const room = this.props.room;
+		const RoomType = PS.roomTypes[room.type];
+		const Panel = RoomType && !room.isPlaceholder && !room.caughtError ? RoomType : PSRoomPanel;
+		return <Panel room={room} />;
+	}
 }
 
 export class PSView extends preact.Component {
@@ -408,8 +424,23 @@ export class PSView extends preact.Component {
 		}
 
 		window.onbeforeunload = (ev: Event) => {
-			return PS.prefs.refreshprompt ? "Are you sure you want to leave?" : null;
+			for (const room of Object.values(PS.rooms)) {
+				const interruptClose = room!.interruptClose(true);
+				if (typeof interruptClose === 'string') return interruptClose;
+			}
+			if (PS.prefs.refreshprompt) {
+				return "Are you sure you want to leave?";
+			}
+			return null;
 		};
+
+		window.addEventListener('focus', () => {
+			for (const room of [PS.leftPanel, PS.rightPanel]) {
+				if (room && PS.isVisiblePanel(room)) {
+					room.autoDismissNotifications();
+				}
+			}
+		});
 
 		window.addEventListener('submit', ev => {
 			const elem = ev.target as HTMLFormElement | null;
@@ -566,20 +597,22 @@ export class PSView extends preact.Component {
 			const modifierKey = ev.ctrlKey || ev.altKey || ev.metaKey || ev.shiftKey;
 			const altKey = !ev.ctrlKey && ev.altKey && !ev.metaKey && !ev.shiftKey;
 			const altShiftKey = !ev.ctrlKey && ev.altKey && !ev.metaKey && ev.shiftKey;
-			if (altShiftKey && ev.keyCode === 37 && !isNonEmptyTextInput) { // alt + shift + left
+			const shiftKey = !ev.ctrlKey && !ev.altKey && !ev.metaKey && ev.shiftKey;
+			const kc = ev.keyCode;
+			if (altShiftKey && (kc === 37 || kc === 38)) { // alt + shift + left or up
 				PS.arrowKeysUsed = true;
 				PS.focusUnreadRoom('left');
-			} else if (altShiftKey && ev.keyCode === 39 && !isNonEmptyTextInput) { // alt + shift + right
+			} else if (altShiftKey && (kc === 39 || kc === 40)) { // alt + shift + right or down
 				PS.arrowKeysUsed = true;
 				PS.focusUnreadRoom('right');
 			}
-			if (altKey && ev.keyCode === 38) { // alt + up
+			if (altKey && kc === 38) { // alt + up
 				PS.arrowKeysUsed = true;
 				PS.focusUpRoom();
-			} else if (altKey && ev.keyCode === 40) { // alt + down
+			} else if (altKey && kc === 40) { // alt + down
 				PS.arrowKeysUsed = true;
 				PS.focusDownRoom();
-			} else if (ev.keyCode === 27) { // escape
+			} else if (!modifierKey && kc === 27) { // escape
 				// close popups
 				if (PS.popups.length) {
 					ev.stopImmediatePropagation();
@@ -592,22 +625,111 @@ export class PSView extends preact.Component {
 					PS.hideRightRoom();
 				}
 			}
+
 			if (isNonEmptyTextInput) return;
-			if (altKey && ev.keyCode === 37) { // alt + left
+
+			if (altKey && kc === 37) { // alt + left
 				PS.arrowKeysUsed = true;
 				PS.focusLeftRoom();
-			} else if (altKey && ev.keyCode === 39) { // alt + right
+			} else if (altKey && kc === 39) { // alt + right
 				PS.arrowKeysUsed = true;
 				PS.focusRightRoom();
+			} else if (shiftKey && kc === 37) { // shift + left
+				if (PS.prefs.onepanel === 'vertical') return;
+				const curLoc = PS.room.location;
+				let newLoc = curLoc;
+				let newIndex: number | null = null;
+				switch (curLoc) {
+				case 'right': {
+					newIndex = PS.rightRoomList.indexOf(PS.room.id) - 1;
+					if (newIndex < 0) {
+						newLoc = 'left';
+						newIndex = PS.leftRoomList.length + 1;
+					}
+					break;
+				}
+				case 'left': {
+					newIndex = PS.leftRoomList.indexOf(PS.room.id) - 1;
+					// newIndex <= 0 because MainMenu is always at 0 index
+					if (newIndex <= 0) {
+						newLoc = 'mini-window';
+						newIndex = PS.miniRoomList.length + 1;
+					}
+					break;
+				}
+				case 'mini-window': {
+					newIndex = PS.miniRoomList.indexOf(PS.room.id) - 1;
+					if (newIndex < 0) {
+						newLoc = 'right';
+						newIndex = PS.rightRoomList.length + 1;
+					}
+					break;
+				}
+				}
+				if (newIndex !== null) {
+					PS.moveRoom(PS.room, newLoc, false, newIndex);
+					PS.update();
+				}
+			} else if (shiftKey && kc === 39) { // shift + right
+				if (PS.prefs.onepanel === 'vertical') return;
+				const curLoc = PS.room.location;
+				let newLoc = curLoc;
+				let newIndex: number | null = null;
+				switch (curLoc) {
+				case 'right': {
+					newIndex = PS.rightRoomList.indexOf(PS.room.id) + 1;
+					if (newIndex >= PS.rightRoomList.length - 1) {
+						// newIndex = 1 because NewsPanel is at 0
+						newLoc = 'mini-window';
+						newIndex = 1;
+					}
+					break;
+				}
+				case 'left': {
+					newIndex = PS.leftRoomList.indexOf(PS.room.id) + 1;
+					if (newIndex >= PS.leftRoomList.length) {
+						newLoc = 'right';
+						newIndex = 0;
+					}
+					break;
+				}
+				case 'mini-window': {
+					newIndex = PS.miniRoomList.indexOf(PS.room.id) + 1;
+					if (newIndex >= PS.miniRoomList.length) {
+						newLoc = 'left';
+						// newIndex = 1 because MainMenu is at 0
+						newIndex = 1;
+					}
+					break;
+				}
+				}
+				if (newIndex !== null) {
+					PS.moveRoom(PS.room, newLoc, false, newIndex);
+					PS.update();
+				}
+			} else if (shiftKey && kc === 38) { // shift + up
+				if (PS.prefs.onepanel !== 'vertical') return;
+				let newIndex = PS.rightRoomList.indexOf(PS.room.id) - 1;
+				if (newIndex < 0) newIndex = PS.rightRoomList.length - 1;
+				PS.moveRoom(PS.room, 'right', false, newIndex);
+				PS.update();
+			} else if (shiftKey && kc === 40) { // shift + down
+				if (PS.prefs.onepanel !== 'vertical') return;
+				let newIndex = PS.rightRoomList.indexOf(PS.room.id) + 1;
+				if (newIndex >= PS.rightRoomList.length - 1) newIndex = 0;
+				PS.moveRoom(PS.room, 'right', false, newIndex);
+				PS.update();
 			}
+
 			if (modifierKey) return;
-			if (ev.keyCode === 37) { // left
+
+			if (kc === 37) { // left
 				PS.arrowKeysUsed = true;
 				PS.focusLeftRoom();
-			} else if (ev.keyCode === 39) { // right
+			} else if (kc === 39) { // right
 				PS.arrowKeysUsed = true;
 				PS.focusRightRoom();
-			} else if (ev.keyCode === 191 && !isTextInput && PS.room === PS.mainmenu) { // forward slash
+			} else if (kc === 191 && !isTextInput && PS.room === PS.mainmenu) { // forward slash
 				ev.stopImmediatePropagation();
 				ev.preventDefault();
 				PS.join('dm---' as RoomID);
@@ -702,7 +824,7 @@ export class PSView extends preact.Component {
 		}
 	}
 	static focusIfNoSelection = (ev: MouseEvent) => {
-		const room = PS.getRoom(ev.target as HTMLElement, true);
+		const room = PS.getRoom(ev.target, true);
 		if (!room) return;
 
 		if (window.getSelection?.()?.type === 'Range') return;
@@ -928,19 +1050,12 @@ export class PSView extends preact.Component {
 
 		return style;
 	}
-	renderRoom(room: PSRoom) {
-		const RoomType = PS.roomTypes[room.type];
-		const Panel = RoomType && !room.isPlaceholder && !room.caughtError ? RoomType : PSRoomPanel;
-		return <Panel key={room.id} room={room} />;
-	}
 	renderPopup(room: PSRoom) {
-		const RoomType = PS.roomTypes[room.type];
-		const Panel = RoomType && !room.isPlaceholder && !room.caughtError ? RoomType : PSRoomPanel;
 		if (room.location === 'popup' && room.parentElem) {
-			return <Panel key={room.id} room={room} />;
+			return <PSPanelErrorBoundary key={room.id} room={room} />;
 		}
 		return <div key={room.id} class="ps-overlay" onClick={this.handleClickOverlay} role="dialog">
-			<Panel room={room} />
+			<PSPanelErrorBoundary room={room} />
 		</div>;
 	}
 	render() {
@@ -948,7 +1063,7 @@ export class PSView extends preact.Component {
 		for (const roomid in PS.rooms) {
 			const room = PS.rooms[roomid]!;
 			if (PS.isPanel(room)) {
-				rooms.push(this.renderRoom(room));
+				rooms.push(<PSPanelErrorBoundary key={room.id} room={room} />);
 			}
 		}
 		return <div class="ps-frame" role="none">
@@ -957,6 +1072,22 @@ export class PSView extends preact.Component {
 			{rooms}
 			{PS.popups.map(roomid => this.renderPopup(PS.rooms[roomid]!))}
 		</div>;
+	}
+}
+
+export class ReconnectTimer extends preact.Component {
+	timer: ReturnType<typeof setInterval> | null = null;
+	override componentDidMount() {
+		this.timer = setInterval(() => this.forceUpdate(), 1000);
+	}
+	override componentWillUnmount() {
+		if (this.timer) clearInterval(this.timer);
+	}
+	override render() {
+		const nextRetryTime = PS.connection?.nextRetryTime;
+		if (!nextRetryTime) return null;
+		const secs = Math.ceil((nextRetryTime - Date.now()) / 1000);
+		return <small>{secs > 0 ? `(Autoreconnect in ${secs}s)` : `(Reconnecting...)`}</small>;
 	}
 }
 
