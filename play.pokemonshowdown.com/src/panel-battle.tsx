@@ -628,7 +628,7 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 				</label>}
 				{canTerastallize && <label class={`megaevo${choices.current.tera ? ' cur' : ''}`}>
 					<input type="checkbox" name="tera" checked={choices.current.tera} onChange={this.toggleBoostedMove} /> {}
-					Terastallize<br /><span dangerouslySetInnerHTML={{ __html: Dex.getTypeIcon(canTerastallize) }} />
+					Terastallize<br />{PSIcon({ type: canTerastallize, new: true, tera: true })}
 				</label>}
 			</div>
 		</div>;

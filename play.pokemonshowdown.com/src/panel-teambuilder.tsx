@@ -15,7 +15,10 @@ import preact from "../js/lib/preact";
 import { TeamEditorState } from "./battle-team-editor";
 
 class PSTextarea extends preact.Component<{ initialValue?: string, name?: string }> {
+	cssAutosize = !!window.CSS?.supports?.('field-sizing', 'content');
 	updateSize = () => {
+		if (this.cssAutosize) return;
+
 		const textbox = this.base!.querySelector('textarea')!;
 		const textboxTest = this.base!.querySelector<HTMLTextAreaElement>('textarea.heighttester')!;
 		textboxTest.style.width = `${textbox.offsetWidth}px`;
@@ -39,12 +42,11 @@ class PSTextarea extends preact.Component<{ initialValue?: string, name?: string
 		return <div style="position:relative">
 			<textarea
 				name={this.props.name} class="textbox" onInput={this.updateSize} onKeyUp={this.updateSize}
-				style="box-sizing:border-box;width:100%;resize:none"
 			/>
-			<div><textarea
+			{!this.cssAutosize && <div><textarea
 				class="textbox heighttester"
-				style="box-sizing:border-box;resize:none;height:50px;visibility:hidden;position:absolute;left:-200px"
-			/></div>
+				style="height:50px;visibility:hidden;position:absolute;left:-200px"
+			/></div>}
 		</div>;
 	}
 }

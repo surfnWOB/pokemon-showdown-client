@@ -1057,7 +1057,8 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 	 */
 	readonly canConnect: boolean = false;
 	connectWhenLoggedIn = false;
-	onParentEvent: ((eventId: 'focus' | 'keydown', e?: Event) => false | void) | null = null;
+	onParentFocus: ((e?: Event) => boolean | void) | null = null;
+	onParentKeyDown: ((e?: Event) => boolean | void) | null = null;
 
 	width = 0;
 	height = 0;
@@ -2401,7 +2402,7 @@ export const PS = new class extends PSModel {
 		if (updated) this.update();
 	}
 	setFocus(room: PSRoom) {
-		room.onParentEvent?.('focus');
+		room.onParentFocus?.();
 	}
 	focusRoom(roomid: RoomID) {
 		const room = this.rooms[roomid];

@@ -1062,13 +1062,16 @@ export class ModdedDex {
 	species = {
 		get: (name: string): Species => {
 			let id = toID(name);
+			const originalId = id;
 			if (window.BattleAliases && id in BattleAliases) {
 				name = BattleAliases[id];
 				id = toID(name);
 			}
+			const baseSpecies = Dex.species.get(originalId || name);
+			id = baseSpecies.id;
 			if (this.cache.Species.hasOwnProperty(id)) return this.cache.Species[id];
 
-			let data = { ...Dex.species.get(name) };
+			let data = { ...baseSpecies };
 
 			for (let i = Dex.gen - 1; i >= this.gen; i--) {
 				const table = window.BattleTeambuilderTable[`gen${i}`];

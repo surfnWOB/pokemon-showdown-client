@@ -2944,7 +2944,7 @@ export class BattleStatGuesser {
 		let stats = species.baseStats;
 
 		if (set.moves.length < 1) return '?';
-		let needsFourMoves = !['unown', 'ditto'].includes(species.id);
+		let needsFourMoves = !['Unown', 'Ditto'].includes(species.baseSpecies);
 		let hasFourValidMoves = set.moves.length >= 4 && !set.moves.includes('');
 		let moveids = set.moves.map(toID);
 		if (moveids.includes('lastresort' as ID)) needsFourMoves = false;

@@ -93,7 +93,7 @@ export class PSRouter {
 		if (room.id === '' && PS.leftPanelWidth && PS.rightPanel) {
 			room = PS.rightPanel;
 		}
-		if (room.id === 'rooms') room = PS.leftPanel;
+		if (room.id === 'rooms' && PS.leftPanelWidth) room = PS.leftPanel;
 
 		let roomid = room.id;
 		const panelState = (PS.leftPanelWidth && room === PS.panel ?
@@ -197,9 +197,7 @@ export class PSRoomPanel<T extends PSRoom = PSRoom> extends preact.Component<{ r
 		return subscription;
 	}
 	override componentDidMount() {
-		this.props.room.onParentEvent = (id: string, e?: Event) => {
-			if (id === 'focus') this.focus();
-		};
+		this.props.room.onParentFocus = (e?: Event) => this.focus();
 		this.subscriptions.push(this.props.room.subscribe(args => {
 			if (!args) this.forceUpdate();
 			else this.receiveLine(args);
@@ -242,7 +240,7 @@ export class PSRoomPanel<T extends PSRoom = PSRoom> extends preact.Component<{ r
 		}
 	}
 	override componentWillUnmount() {
-		this.props.room.onParentEvent = null;
+		this.props.room.onParentFocus = null;
 		for (const subscription of this.subscriptions) {
 			subscription.unsubscribe();
 		}
@@ -674,7 +672,7 @@ export class PSView extends preact.Component {
 				}
 			}
 			if (!isNonEmptyTextInput) {
-				if (PS.room.onParentEvent?.('keydown', ev) === false) {
+				if (PS.room.onParentKeyDown?.(ev) === false) {
 					ev.stopImmediatePropagation();
 					ev.preventDefault();
 					return;
@@ -1179,7 +1177,8 @@ export class ReconnectTimer extends preact.Component {
 
 export function PSIcon(
 	props: { pokemon: string | Pokemon | ServerPokemon | Dex.PokemonSet | null } |
-		{ item: string | null } | { type: string, b?: boolean } | { category: string }
+		{ item: string | null } | { type: string, b?: boolean, new?: boolean, tera?: boolean } |
+		{ category: string }
 ) {
 	if ('pokemon' in props) {
 		return <span class="picon" style={Dex.getPokemonIcon(props.pokemon)} />;
@@ -1190,6 +1189,9 @@ export function PSIcon(
 	if ('type' in props) {
 		let type = Dex.types.get(props.type).name;
 		if (!type) type = '???';
+		if (props.new) {
+			return <span class={`typeicon typeicon-${type}${props.tera ? ' tera' : ''}`}>{type}</span>;
+		}
 		let sanitizedType = type.replace(/\?/g, '%3f');
 		return <img
 			src={`${Dex.resourcePrefix}sprites/types/${sanitizedType}.png`} alt={type}

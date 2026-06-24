@@ -1261,7 +1261,7 @@ export class ChatTextEntry extends preact.Component<{
 					rows={1}
 					onInput={this.update}
 					onKeyDown={this.onKeyDown}
-					style={{ resize: 'none', width: '100%', height: '16px', padding: '2px 3px 1px 3px' }}
+					style={{ minHeight: '16px', padding: '2px 3px 1px 3px' }}
 					placeholder={PSView.focusPreview(room)}
 				/> : <ChatTextBox
 					disabled={!connected || !canTalk}

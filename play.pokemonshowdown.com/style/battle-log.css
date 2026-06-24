@@ -414,6 +414,14 @@ select.button {
 	background: #F8FBFD;
 	color: black;
 }
+textarea.textbox {
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
+	resize: none;
+	field-sizing: content;
+	min-height: 3em;
+}
 pre.textbox {
 	white-space: pre-wrap;
 }
@@ -724,6 +732,9 @@ input[type=range]:active::-webkit-slider-thumb {
 	margin-right: -8px;
 	padding-left: 8px;
 	padding-right: 8px;
+}
+.dark .chat.mine {
+	background: rgba(255,255,255,0.05);
 }
 .spoiler {
 	color: #BBBBBB;
