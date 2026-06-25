@@ -246,6 +246,18 @@ export const Dex = new class implements ModdedDex {
 	moddedDexes: { [mod: string]: ModdedDex } = {};
 
 	/**
+	 * [Gen 3] Megas (custom fork): non-canon Mega/Primal formes that have no official sprite
+	 * on the CDN. getSpriteData() swaps these spriteids for the base species' gen5 pixel sprite
+	 * so they render the base form instead of a broken image. Keep-ours on upstream rebase.
+	 */
+	readonly customMegaSpriteFallback: { [spriteid: string]: string } = {
+		'raichu-megax': 'raichu', 'raichu-megay': 'raichu',
+		'clefable-mega': 'clefable', 'starmie-mega': 'starmie',
+		'meganium-mega': 'meganium', 'feraligatr-mega': 'feraligatr',
+		'skarmory-mega': 'skarmory', 'chimecho-mega': 'chimecho',
+	};
+
+	/**
 	 * April Fools' Day setting:
 	 * * `true` = FULL, all jokes on
 	 * * `'sprites'` = SPRITES, only sprites and taunts
@@ -622,6 +634,12 @@ export const Dex = new class implements ModdedDex {
 			shiny: options.shiny,
 		};
 		let name = species.spriteid;
+		// [Gen 3] Megas (custom fork): these non-canon Mega/Primal formes have no official
+		// sprite on the CDN, so the usual gen5 PNG 404s and the client shows a broken image.
+		// Fall back to the base species' gen5 pixel sprite (front/back/shiny all exist there).
+		// Keep-ours on upstream rebase. Regenerate by re-running the gen5/<spriteid>.png CDN
+		// audit over data/mods/gen3mega/pokedex.ts if more custom Megas are added.
+		if (Dex.customMegaSpriteFallback[name]) name = Dex.customMegaSpriteFallback[name];
 		let dir;
 		let facing;
 		if (isFront) {
