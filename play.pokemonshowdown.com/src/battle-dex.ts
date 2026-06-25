@@ -246,15 +246,25 @@ export const Dex = new class implements ModdedDex {
 	moddedDexes: { [mod: string]: ModdedDex } = {};
 
 	/**
-	 * [Gen 3] Megas (custom fork): non-canon Mega/Primal formes that have no official sprite
-	 * on the CDN. getSpriteData() swaps these spriteids for the base species' gen5 pixel sprite
-	 * so they render the base form instead of a broken image. Keep-ours on upstream rebase.
+	 * [Gen 3] Megas (custom fork): non-canon Mega/Primal formes that have NO static gen5 sprite
+	 * on the CDN, but DO have an XY-animated sprite in sprites/ani/ (the same art the Champions
+	 * pet-mod uses). The gen-floor (species.gen 6 -> spriteData.gen 5) otherwise keeps getSpriteData
+	 * on the gen5 static path, which 404s; this table routes them straight to ani/ at the gifs'
+	 * exact native dimensions. Each entry is { front: [w, h], back?: [w, h] }: a `back` entry means
+	 * the full set (front/back/shiny/back-shiny) exists; front-only formes (raichu-megax/-megay,
+	 * chimecho-mega) have only an ani/ front gif on the CDN, so their back/shiny views reuse it.
+	 * Keep-ours on upstream rebase. Re-audit by curling sprites/{ani,ani-back,ani-shiny,
+	 * ani-back-shiny}/<spriteid>.gif for each Mega/Primal forme in data/mods/gen3mega/pokedex.ts.
 	 */
-	readonly customMegaSpriteFallback: { [spriteid: string]: string } = {
-		'raichu-megax': 'raichu', 'raichu-megay': 'raichu',
-		'clefable-mega': 'clefable', 'starmie-mega': 'starmie',
-		'meganium-mega': 'meganium', 'feraligatr-mega': 'feraligatr',
-		'skarmory-mega': 'skarmory', 'chimecho-mega': 'chimecho',
+	readonly customAniMega: { [spriteid: string]: { front: [number, number], back?: [number, number] } } = {
+		'clefable-mega': { front: [188, 101], back: [181, 114] },
+		'starmie-mega': { front: [79, 95], back: [77, 93] },
+		'meganium-mega': { front: [81, 114], back: [91, 107] },
+		'feraligatr-mega': { front: [97, 138], back: [95, 140] },
+		'skarmory-mega': { front: [156, 109], back: [138, 120] },
+		'raichu-megax': { front: [90, 89] },
+		'raichu-megay': { front: [89, 90] },
+		'chimecho-mega': { front: [90, 90] },
 	};
 
 	/**
@@ -634,12 +644,6 @@ export const Dex = new class implements ModdedDex {
 			shiny: options.shiny,
 		};
 		let name = species.spriteid;
-		// [Gen 3] Megas (custom fork): these non-canon Mega/Primal formes have no official
-		// sprite on the CDN, so the usual gen5 PNG 404s and the client shows a broken image.
-		// Fall back to the base species' gen5 pixel sprite (front/back/shiny all exist there).
-		// Keep-ours on upstream rebase. Regenerate by re-running the gen5/<spriteid>.png CDN
-		// audit over data/mods/gen3mega/pokedex.ts if more custom Megas are added.
-		if (Dex.customMegaSpriteFallback[name]) name = Dex.customMegaSpriteFallback[name];
 		let dir;
 		let facing;
 		if (isFront) {
@@ -697,6 +701,27 @@ export const Dex = new class implements ModdedDex {
 		}
 
 		if (options.shiny && mechanicsGen > 1) dir += '-shiny';
+
+		// [Gen 3] Megas (custom fork): route the custom Mega/Primal formes to their XY-animated
+		// sprite in sprites/ani/ (the Champions-meta art). The stock gen-floor would otherwise
+		// 404 on sprites/gen5/<id>.png. We render the animated gif at its exact native size and
+		// skip the gen3 pixel-scaling below (these are full-res, smooth XY sprites, like Champions).
+		// Done unconditionally (ignoring noanim/nogif) because there is no static sprite to fall
+		// back to — a gif beats a broken image. Front-only formes reuse their front gif for the
+		// back/shiny views. See Dex.customAniMega. Keep-ours on upstream rebase.
+		const aniMega = Dex.customAniMega[name];
+		if (aniMega) {
+			const full = !!aniMega.back;
+			const useFacing = (full && facing === 'back') ? 'back' : 'front';
+			let aniDir = 'ani';
+			if (useFacing === 'back') aniDir += '-back';
+			if (full && options.shiny && mechanicsGen > 1) aniDir += '-shiny';
+			spriteData.w = aniMega[useFacing]![0];
+			spriteData.h = aniMega[useFacing]![1];
+			spriteData.pixelated = false;
+			spriteData.url += aniDir + '/' + name + '.gif';
+			return spriteData;
+		}
 
 		// April Fool's 2014
 		if (Dex.afdMode || options.afd) {
