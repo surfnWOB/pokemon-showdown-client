@@ -2384,7 +2384,9 @@
 
 			buf += '<div class="col basestatscol"><div><em>Base</em></div>';
 			for (var i in stats) {
-				buf += '<div><b>' + baseStats[i] + '</b></div>';
+				// Show Tier Shift's boosted base stats (HP is never boosted).
+				var shownBase = i === 'hp' ? baseStats[i] : Math.min(255, baseStats[i] + this.tierShiftBoost(species));
+				buf += '<div><b>' + shownBase + '</b></div>';
 			}
 			buf += '</div>';
 
@@ -3648,6 +3650,17 @@
 
 		// Stat calculator
 
+		tierShiftBoost: function (species) {
+			// Mirrors the server's Tier Shift Mod (data/rulesets.ts `tiershiftmod`): a flat
+			// per-tier boost added to every non-HP base stat, so the builder shows the same
+			// boosted stats the battle uses. OU/UUBL/Uber are unboosted (+0, absent below).
+			if (!this.curTeam || !this.curTeam.format || !this.curTeam.format.includes('tiershift')) return 0;
+			var boosts = {
+				uu: 15, rubl: 15, ru: 20, nubl: 20, nu: 25, publ: 25,
+				pu: 30, zubl: 30, zu: 30, nfe: 30, lc: 30
+			};
+			return boosts[toID(species.tier)] || 0;
+		},
 		getStat: function (stat, set, evOverride, natureOverride) {
 			var usesStatPoints = this.curTeam.format.includes('champions');
 			var supportsEVs = !this.curTeam.format.includes('letsgo') && !usesStatPoints;
@@ -3674,6 +3687,7 @@
 			if (typeof set.ivs[stat] === 'undefined') set.ivs[stat] = 31;
 
 			var baseStat = species.baseStats[stat];
+			if (stat !== 'hp') baseStat = Math.min(255, baseStat + this.tierShiftBoost(species));
 			var iv = (set.ivs[stat] || 0);
 			if (this.curTeam.gen <= 2) iv &= 30;
 			var ev = set.evs[stat];
