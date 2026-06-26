@@ -255,6 +255,16 @@ export class DexSearch {
 		return this.typedSearch?.getTier(species) || '';
 	}
 
+	getStat(species: Dex.Species, stat: Dex.StatName): number {
+		// getStat/getStatBoost (e.g. Tier Shift's boosted base stats) live on
+		// BattlePokemonSearch, so delegate there for pokemon searches — this is how
+		// the teambuilder result rows pick up the boosts they already sort by. Move/
+		// item searches have no getStat; fall back to the unmodified base stat.
+		const ts = this.typedSearch;
+		if (ts && ts.searchType === 'pokemon') return (ts as BattlePokemonSearch).getStat(species, stat);
+		return species.baseStats[stat];
+	}
+
 	textSearch(query: string): SearchRow[] {
 		query = toID(query);
 
@@ -967,6 +977,11 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (this.formatType === 'metronome') {
 			return pokemon.num >= 0 ? String(pokemon.num) : pokemon.tier;
 		}
+		if (this.dex.gen === 3 && this.format === 'tiershift') {
+			// Gen 3 Tier Shift legalizes the whole ladder, so the per-row tier label is
+			// meaningless — show "Regular" to match the single collapsed browse header.
+			return 'Regular';
+		}
 		let table = window.BattleTeambuilderTable;
 		const gen = this.dex.gen;
 		const tableKey = this.formatType === 'doubles' ? `gen${gen}doubles` :
@@ -1189,6 +1204,13 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			// (Uber on top) instead of the OU-first default used by [Gen 3] Megas.
 			// Groudon-Primal stays in the Uber bucket and is enforced as banned server-side.
 			tierSet = tierSet.slice(slices.Uber);
+		} else if (dex.gen === 3 && format === 'tiershift') {
+			// Tier Shift legalizes the whole tier ladder (Ubers included, just unboosted),
+			// so competitive tier headers carry no meaning — collapse the entire pool under
+			// a single "Regular" header instead of splitting by OU/UU/Uber/etc. Every gen3
+			// species is legal here (only combo/ability bans apply server-side), so nothing
+			// is dropped.
+			tierSet = [['header', 'Regular'] as SearchRow, ...tierSet.filter(([type]) => type !== 'header')];
 		} else if (
 			format === 'ubers' || format === 'uber' || format === 'ubersuu' ||
 			format === '4v4doublesuu' || format === 'nationaldexdoubles'
@@ -1365,9 +1387,11 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 	}
 	getStatBoost(species: Dex.Species): number {
 		if (!this.format.includes('tiershift')) return 0;
+		// Mirrors the server's Tier Shift Mod (data/rulesets.ts `tiershiftmod`): a flat
+		// per-tier boost to every non-HP stat. OU/UUBL/Uber are unboosted (+0, absent).
 		const boosts: { [tier: string]: number } = {
-			uu: 10, rubl: 10, ru: 20, nubl: 20, nu: 30, publ: 30,
-			pu: 40, zubl: 40, zu: 40, nfe: 40, lc: 40,
+			uu: 15, rubl: 15, ru: 20, nubl: 20, nu: 25, publ: 25,
+			pu: 30, zubl: 30, zu: 30, nfe: 30, lc: 30,
 		};
 		return boosts[toID(species.tier)] || 0;
 	}

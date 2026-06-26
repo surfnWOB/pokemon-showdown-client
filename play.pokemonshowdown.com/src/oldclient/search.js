@@ -378,22 +378,25 @@
 			buf += '<span class="col abilitycol"></span>';
 		}
 
-		// base stats
+		// base stats — route through the engine so format stat mods (e.g. Tier Shift's
+		// per-tier boosts) show the same boosted base stats the search already sorts by.
 		var stats = pokemon.baseStats;
-		buf += '<span class="col statcol"><em>HP</em><br />' + stats.hp + '</span> ';
-		buf += '<span class="col statcol"><em>Atk</em><br />' + stats.atk + '</span> ';
-		buf += '<span class="col statcol"><em>Def</em><br />' + stats.def + '</span> ';
+		var engine = this.engine;
+		var statOf = function (s) { return engine && engine.getStat ? engine.getStat(pokemon, s) : stats[s]; };
+		buf += '<span class="col statcol"><em>HP</em><br />' + statOf('hp') + '</span> ';
+		buf += '<span class="col statcol"><em>Atk</em><br />' + statOf('atk') + '</span> ';
+		buf += '<span class="col statcol"><em>Def</em><br />' + statOf('def') + '</span> ';
 		if (gen >= 2) {
-			buf += '<span class="col statcol"><em>SpA</em><br />' + stats.spa + '</span> ';
-			buf += '<span class="col statcol"><em>SpD</em><br />' + stats.spd + '</span> ';
+			buf += '<span class="col statcol"><em>SpA</em><br />' + statOf('spa') + '</span> ';
+			buf += '<span class="col statcol"><em>SpD</em><br />' + statOf('spd') + '</span> ';
 		} else {
-			buf += '<span class="col statcol"><em>Spc</em><br />' + stats.spa + '</span> ';
+			buf += '<span class="col statcol"><em>Spc</em><br />' + statOf('spa') + '</span> ';
 		}
-		buf += '<span class="col statcol"><em>Spe</em><br />' + stats.spe + '</span> ';
+		buf += '<span class="col statcol"><em>Spe</em><br />' + statOf('spe') + '</span> ';
 		var bst = 0;
 		for (i in stats) {
 			if (i === 'spd' && gen === 1) continue;
-			bst += stats[i];
+			bst += statOf(i);
 		}
 		buf += '<span class="col bstcol"><em>BST<br />' + bst + '</em></span> ';
 
@@ -452,16 +455,19 @@
 		buf += '</span>';
 		buf += '</span>';
 
-		// base stats
+		// base stats — route through the engine so format stat mods (e.g. Tier Shift's
+		// per-tier boosts) are reflected in the displayed base stats.
+		var engine = this.engine;
+		var statOf = function (s) { return engine && engine.getStat ? engine.getStat(pokemon, s) : pokemon.baseStats[s]; };
 		buf += '<span style="float:left;min-height:26px">';
-		buf += '<span class="col statcol"><em>HP</em><br />' + pokemon.baseStats.hp + '</span> ';
-		buf += '<span class="col statcol"><em>Atk</em><br />' + pokemon.baseStats.atk + '</span> ';
-		buf += '<span class="col statcol"><em>Def</em><br />' + pokemon.baseStats.def + '</span> ';
-		buf += '<span class="col statcol"><em>SpA</em><br />' + pokemon.baseStats.spa + '</span> ';
-		buf += '<span class="col statcol"><em>SpD</em><br />' + pokemon.baseStats.spd + '</span> ';
-		buf += '<span class="col statcol"><em>Spe</em><br />' + pokemon.baseStats.spe + '</span> ';
+		buf += '<span class="col statcol"><em>HP</em><br />' + statOf('hp') + '</span> ';
+		buf += '<span class="col statcol"><em>Atk</em><br />' + statOf('atk') + '</span> ';
+		buf += '<span class="col statcol"><em>Def</em><br />' + statOf('def') + '</span> ';
+		buf += '<span class="col statcol"><em>SpA</em><br />' + statOf('spa') + '</span> ';
+		buf += '<span class="col statcol"><em>SpD</em><br />' + statOf('spd') + '</span> ';
+		buf += '<span class="col statcol"><em>Spe</em><br />' + statOf('spe') + '</span> ';
 		var bst = 0;
-		for (i in pokemon.baseStats) bst += pokemon.baseStats[i];
+		for (i in pokemon.baseStats) bst += statOf(i);
 		buf += '<span class="col bstcol"><em>BST<br />' + bst + '</em></span> ';
 		buf += '</span>';
 
