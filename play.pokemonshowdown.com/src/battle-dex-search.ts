@@ -1858,6 +1858,14 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 	static readonly GOOD_DOUBLES_MOVES = [
 		'allyswitch', 'bulldoze', 'coaching', 'electroweb', 'faketears', 'fling', 'followme', 'healpulse', 'helpinghand', 'junglehealing', 'lifedew', 'lunarblessing', 'muddywater', 'pollenpuff', 'psychup', 'ragepowder', 'safeguard', 'skillswap', 'snipeshot', 'wideguard', 'decorate', 'snarl',
 	] as ID[] as readonly ID[];
+	// Moves [Gen 3] STABmons (config/formats.ts) lists under `restricted:`. The server's
+	// STABmons Move Legality rule refuses to grant these by type-match (ruleTable.isRestricted),
+	// so they're legal only if the Pokemon legitimately learns them. The builder must mirror
+	// this or it offers them to every Normal-/Grass-type. (Acupressure is gen 4 and already
+	// filtered by the move.gen > dex.gen guard, but is listed for parity with the server.)
+	static readonly GEN3_STABMONS_RESTRICTED = [
+		'acupressure', 'bellydrum', 'extremespeed', 'lovelykiss', 'spore',
+	] as ID[] as readonly ID[];
 	getBaseResults() {
 		if (!this.species) return this.getDefaultResults();
 		const dex = this.dex;
@@ -1865,6 +1873,8 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 		const format = this.format;
 		const isHackmons = (format.includes('hackmons') || format.endsWith('bh'));
 		const isSTABmons = (format.includes('stabmons') || format === 'staaabmons');
+		// [Gen 3] STABmons restricts a handful of moves from being granted by STAB (see below).
+		const isGen3STABmons = isSTABmons && dex.gen === 3;
 		const isTradebacks = format.includes('tradebacks');
 		const regionBornLegality = dex.gen >= 6 &&
 			(/^battle(spot|stadium|festival)/.test(format) || format.startsWith('bss') ||
@@ -1970,6 +1980,9 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 				if (moves.includes(move.id)) continue;
 				if (move.gen > dex.gen) continue;
 				if (move.isZ || move.isMax || (move.isNonstandard && move.isNonstandard !== 'Unobtainable')) continue;
+				// Don't STAB-grant moves the format restricts; they only stay if learned legitimately
+				// (already added by the learnset loop above and skipped by the moves.includes guard).
+				if (isGen3STABmons && BattleMoveSearch.GEN3_STABMONS_RESTRICTED.includes(move.id)) continue;
 
 				const speciesTypes: string[] = [];
 				const moveTypes: string[] = [];
