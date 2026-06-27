@@ -1388,11 +1388,18 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 	getStatBoost(species: Dex.Species): number {
 		if (!this.format.includes('tiershift')) return 0;
 		// Mirrors the server's Tier Shift Mod (data/rulesets.ts `tiershiftmod`): a flat
-		// per-tier boost to every non-HP stat. OU/UUBL/Uber are unboosted (+0, absent).
+		// per-tier boost to every non-HP stat. OU/Uber are unboosted (+0, absent).
 		const boosts: { [tier: string]: number } = {
 			uu: 15, rubl: 15, ru: 20, nubl: 20, nu: 25, publ: 25,
 			pu: 30, zubl: 30, zu: 30, nfe: 30, lc: 30,
 		};
+		// gen3 Tier Shift additionally boosts UUBL — and "(OU)" by technicality, which
+		// it treats as UUBL (both id to "ou") — by +5; standard Tier Shift leaves UUBL
+		// unboosted. Mirrors data/mods/gen3/rulesets.ts `tiershiftmod`.
+		if (this.dex.gen === 3) {
+			if (species.tier === '(OU)') return 5;
+			boosts.uubl = 5;
+		}
 		return boosts[toID(species.tier)] || 0;
 	}
 	getStat(species: Dex.Species, stat: Dex.StatName): number {
