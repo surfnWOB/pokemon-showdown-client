@@ -22,6 +22,7 @@ import { PSHeader, PSMiniHeader } from "./panel-topbar";
 
 export const VERTICAL_HEADER_WIDTH = 240;
 export const NARROW_MODE_HEADER_WIDTH = 280;
+export const EXTERNAL_REDIRECTS = /^(appeals?|rooms?suggestions?|suggestions?|adminrequests?|bugs?|bugreports?|rules?|faq|credits?|privacy|contact|dex|insecure)$/;
 
 export class PSRouter {
 	roomid = '' as RoomID;
@@ -71,8 +72,7 @@ export class PSRouter {
 
 		if (!/^[a-z0-9-]*$/.test(url)) return null;
 
-		const redirects = /^(appeals?|rooms?suggestions?|suggestions?|adminrequests?|bugs?|bugreports?|rules?|faq|credits?|privacy|contact|dex|insecure)$/;
-		if (redirects.test(url)) return null;
+		if (EXTERNAL_REDIRECTS.test(url)) return null;
 
 		if (url.startsWith('view-teams-view-')) {
 			const teamid = url.slice(16);
@@ -363,6 +363,8 @@ export class PSView extends preact.Component {
 	/** mode where the tabbar is opened rather than always being there */
 	static narrowMode = false;
 	static verticalHeaderWidth = VERTICAL_HEADER_WIDTH;
+	commandPreviewTextbox: HTMLElement | null = null;
+	commandPreviewPlaceholder: string | null = null;
 	static setTextboxFocused(focused: boolean) {
 		if (!PSView.narrowMode) return;
 		if (!PSView.isChrome && !PSView.isSafari) return;
@@ -412,6 +414,88 @@ export class PSView extends preact.Component {
 
 		return buf;
 	}
+	getHoveredCommand(target: EventTarget | null): { elem: HTMLElement, cmd: string } | null {
+		if (!(target instanceof Element)) return null;
+		const elem = target.closest<HTMLButtonElement>(
+			'[data-cmd], [data-sendraw], [data-cmdpreview], [data-href], button[name=send], button[name=parseCommand], button[name=joinRoom], button[name=closeRoom], a, .username'
+		);
+		if (!elem) return null;
+
+		const cmd = elem.getAttribute('data-cmdpreview') ||
+			elem.getAttribute('data-cmd') || elem.getAttribute('data-sendraw');
+		if (cmd) return { elem, cmd };
+
+		if (elem.name === 'parseCommand' || elem.name === 'send') {
+			return { elem, cmd: elem.value };
+		}
+		if (elem.name === 'closeRoom') {
+			return { elem, cmd: '/close ' + elem.value };
+		}
+		const href = (elem.getAttribute('data-href') || elem.getAttribute('href'))?.replace(/^\//, '');
+		if (href && /^[a-z0-9-]+$/.test(href)) {
+			if (EXTERNAL_REDIRECTS.test(href)) return null;
+			if (href === 'login') return { elem, cmd: '/nick' };
+			if (href === 'formatdropdown' || href === 'teamdropdown') return null;
+			if (href.startsWith('challenge-')) return { elem, cmd: `/challenge ${href.slice(10)}` };
+			return { elem, cmd: '/j ' + href };
+		}
+		if (elem.classList.contains('username')) {
+			return { elem, cmd: '/user ' + toID(elem.getAttribute('data-user') || elem.innerText) };
+		}
+		return null;
+	}
+	getCommandPreviewTextbox(elem: HTMLElement): HTMLElement | null {
+		const rooms = [PS.getRoom(elem), PS.room, PS.panel, PS.leftPanel, PS.rightPanel];
+		for (const room of rooms) {
+			if (!room || !(room.type === 'chat' || room.type === 'battle' || room.type === 'rooms')) {
+				continue;
+			}
+
+			const roomElem = document.getElementById(`room-${room.id}`);
+			if (!roomElem) continue;
+			const textbox = room.type === 'rooms' ?
+				roomElem.querySelector<HTMLElement>('input[name=roomsearch].textbox') :
+				roomElem.querySelector<HTMLElement>('.chat-log-add .textbox');
+			if (!textbox) continue;
+			if (!textbox.getClientRects().length) continue;
+			return textbox;
+		}
+		return null;
+	}
+	setCommandPreview(textbox: HTMLElement, cmd: string) {
+		if (this.commandPreviewTextbox !== textbox) {
+			this.clearCommandPreview();
+			this.commandPreviewTextbox = textbox;
+			this.commandPreviewPlaceholder = textbox.getAttribute('placeholder');
+		}
+		if (textbox.getAttribute('placeholder') !== cmd) textbox.setAttribute('placeholder', cmd);
+	}
+	clearCommandPreview() {
+		if (!this.commandPreviewTextbox) return;
+		if (this.commandPreviewPlaceholder === null) {
+			this.commandPreviewTextbox.removeAttribute('placeholder');
+		} else {
+			this.commandPreviewTextbox.setAttribute('placeholder', this.commandPreviewPlaceholder);
+		}
+		this.commandPreviewTextbox = null;
+		this.commandPreviewPlaceholder = null;
+	}
+	handleCommandPointerOver = (ev: PointerEvent) => {
+		if (ev.pointerType === 'touch') return;
+		const hover = this.getHoveredCommand(ev.target);
+		if (!hover) return;
+		const textbox = this.getCommandPreviewTextbox(hover.elem);
+		if (!textbox) return;
+		this.setCommandPreview(textbox, hover.cmd);
+	};
+	handleCommandPointerOut = (ev: PointerEvent) => {
+		if (ev.pointerType === 'touch') return;
+		const hover = this.getHoveredCommand(ev.target);
+		if (!hover) return;
+		const nextHover = this.getHoveredCommand(ev.relatedTarget);
+		if (nextHover?.elem === hover.elem) return;
+		this.clearCommandPreview();
+	};
 	constructor() {
 		super();
 		PS.subscribe(() => this.forceUpdate());
@@ -463,6 +547,8 @@ export class PSView extends preact.Component {
 			// can't be part of the click event because Safari pretends the pointer is a mouse
 			PSView.hasTapped = ev.pointerType === 'touch' || ev.pointerType === 'pen';
 		});
+		window.addEventListener('pointerover', this.handleCommandPointerOver);
+		window.addEventListener('pointerout', this.handleCommandPointerOut);
 
 		window.addEventListener('click', ev => {
 			let elem = ev.target as HTMLElement | null;
@@ -474,10 +560,10 @@ export class PSView extends preact.Component {
 					elem.className = 'spoiler';
 				}
 
-				if (` ${elem.className} `.includes(' username ')) {
+				if (elem.classList.contains('username')) {
 					const name = elem.getAttribute('data-name') || elem.innerText;
 					const userid = toID(name);
-					const roomid = `${` ${elem.className} `.includes(' no-interact ') ? 'viewuser' : 'user'}-${userid}` as RoomID;
+					const roomid = `${elem.classList.contains('no-interact') ? 'viewuser' : 'user'}-${userid}` as RoomID;
 					PS.join(roomid, {
 						parentElem: elem,
 						rightPopup: elem.className === 'userbutton username',

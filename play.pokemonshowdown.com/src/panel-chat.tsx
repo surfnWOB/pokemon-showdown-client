@@ -1394,7 +1394,10 @@ class ChatPanel extends PSRoomPanel<ChatRoom> {
 				{room.teamSent && <button class="button" disabled>
 					Accepting...
 				</button>}
-				{!room.teamSent && <button type="submit" class={room.challenged.formatName ? `button button-first` : `button`}>
+				{!room.teamSent && <button
+					type="submit" class={room.challenged.formatName ? `button button-first` : `button`}
+					data-cmdpreview="/accept"
+				>
 					<strong>{room.challenged.acceptButtonLabel || 'Accept'}</strong>
 				</button>}
 				{!room.teamSent && room.challenged.formatName && <button
