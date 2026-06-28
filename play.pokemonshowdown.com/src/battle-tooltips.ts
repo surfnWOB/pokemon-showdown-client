@@ -2475,11 +2475,13 @@ export class BattleTooltips {
 			!move.id.startsWith('hiddenpower')
 		) {
 			if (move.type === 'Normal') {
-				value.abilityModify(this.battle.gen > 6 ? 1.2 : 1.3, "Aerilate");
+				// -ate abilities boost by 1.3x ONLY in Gen 6; Gen 7+ (and our custom Gen 3
+				// Megas formats, which re-legalize them at the Gen 7+ value) use 1.2x.
+				value.abilityModify(this.battle.gen === 6 ? 1.3 : 1.2, "Aerilate");
 				value.abilityModify(1.2, "Dragonize");
 				value.abilityModify(1.2, "Galvanize");
-				value.abilityModify(this.battle.gen > 6 ? 1.2 : 1.3, "Pixilate");
-				value.abilityModify(this.battle.gen > 6 ? 1.2 : 1.3, "Refrigerate");
+				value.abilityModify(this.battle.gen === 6 ? 1.3 : 1.2, "Pixilate");
+				value.abilityModify(this.battle.gen === 6 ? 1.3 : 1.2, "Refrigerate");
 			}
 			if (this.battle.gen > 6) {
 				value.abilityModify(1.2, "Normalize");
