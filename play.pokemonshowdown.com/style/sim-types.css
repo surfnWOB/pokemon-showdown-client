@@ -505,6 +505,158 @@
 .typetile-Stellar {
 	background: linear-gradient(90deg, hsl(330, 66%, 58%), hsl(126, 79%, 45%) 40%, hsl(231, 98%, 65%));
 }
+.tint-Normal.tint-Normal {
+	background-color: #d3d7d8;
+	color: #535a58;
+}
+.tint-Fire.tint-Fire {
+	background-color: #ecc4c8;
+	color: #8a2730;
+}
+.tint-Fighting.tint-Fighting {
+	background-color: #f0cfad;
+	color: #8a4f00;
+}
+.tint-Water.tint-Water {
+	background-color: #c1d4f2;
+	color: #1d4f9c;
+}
+.tint-Flying.tint-Flying {
+	background-color: #c9dcf1;
+	color: #38618a;
+}
+.tint-Grass.tint-Grass {
+	background-color: #c4dcbd;
+	color: #2a6b21;
+}
+.tint-Poison.tint-Poison {
+	background-color: #d3c1e6;
+	color: #653090;
+}
+.tint-Electric.tint-Electric {
+	background-color: #ece1ac;
+	color: #735800;
+}
+.tint-Ground.tint-Ground {
+	background-color: #dbc7b7;
+	color: #704016;
+}
+.tint-Psychic.tint-Psychic {
+	background-color: #edc4d6;
+	color: #9b2f58;
+}
+.tint-Rock.tint-Rock {
+	background-color: #d8d4bd;
+	color: #6b633c;
+}
+.tint-Ice.tint-Ice {
+	background-color: #c2e4ed;
+	color: #247083;
+}
+.tint-Bug.tint-Bug {
+	background-color: #d2d9b1;
+	color: #5b6615;
+}
+.tint-Dragon.tint-Dragon {
+	background-color: #c5caee;
+	color: #3544a2;
+}
+.tint-Ghost.tint-Ghost {
+	background-color: #cec2d8;
+	color: #4f2e5f;
+}
+.tint-Dark.tint-Dark {
+	background-color: #cac3c9;
+	color: #49393a;
+}
+.tint-Steel.tint-Steel {
+	background-color: #c5dbe3;
+	color: #2f6b7a;
+}
+.tint-Fairy.tint-Fairy {
+	background-color: #ebc7eb;
+	color: #9a409a;
+}
+.tint-Stellar.tint-Stellar {
+	background-color: #d7d0e8;
+	color: #594b83;
+}
+.dark .tint-Normal.tint-Normal {
+	background-color: #575d5c;
+	color: #e4e8e8;
+}
+.dark .tint-Fire.tint-Fire {
+	background-color: #66383d;
+	color: #ffd6da;
+}
+.dark .tint-Fighting.tint-Fighting {
+	background-color: #674a2f;
+	color: #ffe0bd;
+}
+.dark .tint-Water.tint-Water {
+	background-color: #344f75;
+	color: #d8e6ff;
+}
+.dark .tint-Flying.tint-Flying {
+	background-color: #4d6070;
+	color: #deedff;
+}
+.dark .tint-Grass.tint-Grass {
+	background-color: #365536;
+	color: #dcf0d6;
+}
+.dark .tint-Poison.tint-Poison {
+	background-color: #513d68;
+	color: #eadcff;
+}
+.dark .tint-Electric.tint-Electric {
+	background-color: #615838;
+	color: #fff0b8;
+}
+.dark .tint-Ground.tint-Ground {
+	background-color: #5d4535;
+	color: #f0d8c7;
+}
+.dark .tint-Psychic.tint-Psychic {
+	background-color: #653b50;
+	color: #ffd9e8;
+}
+.dark .tint-Rock.tint-Rock {
+	background-color: #5b5747;
+	color: #eee8cf;
+}
+.dark .tint-Ice.tint-Ice {
+	background-color: #3f6470;
+	color: #d8f5ff;
+}
+.dark .tint-Bug.tint-Bug {
+	background-color: #555a34;
+	color: #eef5c9;
+}
+.dark .tint-Dragon.tint-Dragon {
+	background-color: #3f4771;
+	color: #dce0ff;
+}
+.dark .tint-Ghost.tint-Ghost {
+	background-color: #4c3a59;
+	color: #eadcff;
+}
+.dark .tint-Dark.tint-Dark {
+	background-color: #4a4148;
+	color: #eee2eb;
+}
+.dark .tint-Steel.tint-Steel {
+	background-color: #3f5d66;
+	color: #dceff5;
+}
+.dark .tint-Fairy.tint-Fairy {
+	background-color: #643f64;
+	color: #ffdfff;
+}
+.dark .tint-Stellar.tint-Stellar {
+	background-color: #514b62;
+	color: #e7ddff;
+}
 .typeicon-Normal {
 	background: scroll #9FA19F url(https://play.pokemonshowdown.com/sprites/typeicons/Normal.png) no-repeat 2px center / 16px;
 }

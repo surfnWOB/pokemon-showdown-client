@@ -1178,7 +1178,7 @@ export class ReconnectTimer extends preact.Component {
 export function PSIcon(
 	props: { pokemon: string | Pokemon | ServerPokemon | Dex.PokemonSet | null } |
 		{ item: string | null } | { type: string, b?: boolean, new?: boolean, tera?: boolean } |
-		{ category: string }
+		{ category: string } | { gender: string }
 ) {
 	if ('pokemon' in props) {
 		return <span class="picon" style={Dex.getPokemonIcon(props.pokemon)} />;
@@ -1214,6 +1214,12 @@ export function PSIcon(
 		return <img
 			src={`${Dex.resourcePrefix}sprites/categories/${sanitizedCategory}.png`} alt={sanitizedCategory}
 			height="14" width="32" class="pixelated" style="vertical-align:middle"
+		/>;
+	}
+	if ('gender' in props) {
+		return <img
+			src={`${Dex.resourcePrefix}sprites/misc/gender-${props.gender.toLowerCase()}.png`}
+			width={18} height={18} alt={props.gender} style="margin-top: -1px; filter: grayscale(30%)"
 		/>;
 	}
 	return null!;

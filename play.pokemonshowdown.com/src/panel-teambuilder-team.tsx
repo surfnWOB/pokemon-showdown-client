@@ -9,7 +9,7 @@ import { PS, PSRoom, type RoomOptions, type Team } from "./client-main";
 import { PSPanelWrapper, PSRoomPanel } from "./panels";
 import { toID, type ID } from "./battle-dex";
 import { BattleLog } from "./battle-log";
-import { TeamEditor } from "./battle-team-editor";
+import { TeamEditor, type TeamEditorState } from "./battle-team-editor";
 import { Net, PSLoginServer } from "./client-connection";
 import { Teams } from "./battle-teams";
 import { CopyableURLBox } from "./panel-chat";
@@ -20,6 +20,7 @@ class TeamRoom extends PSRoom {
 	team!: Team;
 	teamDeleted = false;
 	forceReload = false;
+	editor?: TeamEditorState;
 	override clientCommands = this.parseClientCommands({
 		'validate'(target) {
 			if (this.team.format.length <= 4) {
@@ -37,6 +38,9 @@ class TeamRoom extends PSRoom {
 		if (team) this.setFormat(team.format);
 		this.load();
 	}
+	override onParentKeyDown = (e?: Event) => {
+		return this.editor?.handleParentKeyDown?.(e as KeyboardEvent);
+	};
 	getTeam() {
 		const team = PS.teams.byKey[this.id.slice(5)] || null;
 		this.teamDeleted = !team && (!!this.team || this.teamDeleted);
@@ -265,6 +269,7 @@ class TeamPanel extends PSRoomPanel<TeamRoom> {
 			</label>
 			<TeamEditor
 				team={team} onChange={this.save} readOnly={!!team.teamid && !team.uploadedPackedTeam} resources={this.renderResources()}
+				editorRef={(editor: TeamEditorState) => { this.props.room.editor = editor; }}
 			>
 				{!!(team.packedTeam && team.format.length > 4) && <p>
 					<button data-cmd="/validate" class="button"><i class="fa fa-check"></i> Validate</button>
