@@ -16,12 +16,10 @@ import type { Args } from "./battle-text-parser";
 import { BattleTooltips } from "./battle-tooltips";
 import { Net } from "./client-connection";
 import type { PSModel, PSStreamModel, PSSubscription } from "./client-core";
-import { PS, type PSRoom, type RoomID } from "./client-main";
+import { NARROW_MODE_HEADER_WIDTH, PS, type PSRoom, type RoomID, VERTICAL_HEADER_WIDTH } from "./client-main";
 import type { ChatRoom } from "./panel-chat";
 import { PSHeader, PSMiniHeader } from "./panel-topbar";
 
-export const VERTICAL_HEADER_WIDTH = 240;
-export const NARROW_MODE_HEADER_WIDTH = 280;
 export const EXTERNAL_REDIRECTS = /^(appeals?|rooms?suggestions?|suggestions?|adminrequests?|bugs?|bugreports?|rules?|faq|credits?|privacy|contact|dex|insecure)$/;
 
 export class PSRouter {
@@ -70,7 +68,8 @@ export class PSRouter {
 		if (url.startsWith('/')) url = url.slice(1);
 		if (url === '.') url = '';
 
-		if (!/^[a-z0-9-]*$/.test(url)) return null;
+		// (exaggerated sigh) PLEASE STOP PUTTING RANDOM CHARACTERS IN ROOM IDS
+		if (!/^[a-z0-9-]*$/.test(url) && !url.startsWith('view-')) return null;
 
 		if (EXTERNAL_REDIRECTS.test(url)) return null;
 
@@ -807,10 +806,10 @@ export class PSView extends preact.Component {
 
 			if (modifierKey) return;
 
-			if (kc === 37) { // left
+			if (kc === 37 && elem?.type !== 'radio') { // left
 				PS.arrowKeysUsed = true;
 				PS.focusLeftRoom();
-			} else if (kc === 39) { // right
+			} else if (kc === 39 && elem?.type !== 'radio') { // right
 				PS.arrowKeysUsed = true;
 				PS.focusRightRoom();
 			} else if (kc === 191 && !isTextInput && PS.room === PS.mainmenu) { // forward slash

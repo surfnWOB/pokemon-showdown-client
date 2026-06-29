@@ -147,13 +147,15 @@ export class BattleRoom extends ChatRoom {
 	request: BattleRequest | null = null;
 	choices: BattleChoiceBuilder | null = null;
 	autoTimerActivated: boolean | null = null;
+	requireForfeit = false;
 	/** should be false if we joined right after accepting or challenging a battle,
 	  * and true if we refreshed and rejoined a battle.
 		* null = initializing, we don't know yet */
 	rejoining: boolean | null = null;
 
 	override interruptClose(explicit?: boolean, elem?: HTMLElement | null) {
-		if (!this.battle.ended && this.users[PS.user.userid]?.startsWith('☆') && !this.battle.isReplay) {
+		const battle = this.battle;
+		if ((battle && !battle.ended && this.side && !battle.isReplay) || this.requireForfeit) {
 			PS.join('forfeitbattle' as RoomID, { parentElem: elem, parentRoomid: this.id });
 			return `You are still in ${this.title}`;
 		}
@@ -404,6 +406,12 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 	override receiveLine(args: Args) {
 		const room = this.props.room;
 		switch (args[0]) {
+		case 'cantleave':
+			room.requireForfeit = true;
+			return;
+		case 'allowleave':
+			room.requireForfeit = false;
+			return;
 		case 'initdone':
 			if (!PS.prefs.spectatefromstart) room.battle.seekTurn(Infinity);
 			return;
@@ -1095,7 +1103,7 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 			dangerouslySetInnerHTML={{ __html: `#${id} .battle .turn, #${id} .battle-history { display: none !important; }` }}
 		></style> : null;
 
-		if (room.width < 700) {
+		if (room.width <= 700) {
 			return <PSPanelWrapper room={room} focusClick noScroll="hidden">
 				{hardcoreStyle}
 				<BattleDiv room={room} />

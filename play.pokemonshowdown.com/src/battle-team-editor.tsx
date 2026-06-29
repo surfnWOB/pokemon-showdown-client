@@ -2501,7 +2501,7 @@ class TeamWizard extends preact.Component<{
 				<i class="fa fa-undo" aria-hidden></i> Undo delete
 			</button>
 		</p> : null;
-		return <div class="teameditor">
+		return <div class={`teameditor${editor.readonly ? ' readonly' : ''}`}>
 			{editor.sets.map((set, i) => [
 				pasteControls(i),
 				this.renderSet(set, i),
@@ -3156,7 +3156,7 @@ class TeamEditorForm extends TeamWizard {
 	}
 	cur(type: InnerFocusType, setIndex: number, typeIndex = -1) {
 		const focus = this.props.editor.innerFocus;
-		return this.props.editor.readonly || (
+		return (
 			focus?.type === type && focus.setIndex === setIndex && focus.typeIndex === typeIndex
 		) ? ' cur' : '';
 	}
@@ -3233,12 +3233,12 @@ class TeamEditorForm extends TeamWizard {
 						"Copy/Move"
 					}
 				</button> {}
-				<button
+				{!editor.readonly && <button
 					class="option" name="import" onClick={this.clickPanelButton}
 					value={`set-${i}-import`}
 				>
 					<i class="fa fa-upload" aria-hidden></i> Import/Export
-				</button> {}
+				</button>} {}
 				{!(TeamEditorState.clipboard || editor.readonly) && <button
 					class="option" name="delete" onClick={this.deleteSet} value={i}
 				>
@@ -3494,6 +3494,7 @@ class SetImportForm extends preact.Component<{
 				<textarea
 					ref={this.setTextbox} class="textbox set-import-textbox" rows={14}
 					readOnly={editor.readonly} onInput={this.inputText}
+					style="min-height:3em"
 				></textarea>
 				<SetSourceButtons
 					editor={editor} set={this.props.set}
@@ -3753,6 +3754,11 @@ class StatForm extends preact.Component<{
 		const evInput = this.base!.querySelector<HTMLInputElement>(`input[name="${name}"]`);
 		if (evInput) evInput.value = value;
 	}
+	getEVText(statID: Dex.StatName) {
+		const ev = `${this.props.set.evs?.[statID] || ''}`;
+		const plusMinus = this.plus === statID ? '+' : this.minus === statID ? '-' : '';
+		return ev + plusMinus;
+	}
 	update(init?: boolean) {
 		const { set } = this.props;
 		const nature = BattleNatures[set.nature!];
@@ -3766,10 +3772,8 @@ class StatForm extends preact.Component<{
 			this.minus = null;
 		}
 		for (const statID of Dex.statNames) {
-			const ev = `${set.evs?.[statID] || ''}`;
-			const plusMinus = this.plus === statID ? '+' : this.minus === statID ? '-' : '';
 			const iv = this.ivToDv(set.ivs?.[statID]);
-			if (skipID !== `ev-${statID}`) this.setInput(`ev-${statID}`, ev + plusMinus);
+			if (skipID !== `ev-${statID}`) this.setInput(`ev-${statID}`, this.getEVText(statID));
 			if (skipID !== `iv-${statID}`) this.setInput(`iv-${statID}`, iv);
 		}
 	}
@@ -3818,6 +3822,10 @@ class StatForm extends preact.Component<{
 				for (const curEv of Object.values(set.evs || {})) totalEv += curEv;
 				if (totalEv > maxEv && totalEv - value <= maxEv) {
 					set.evs![statID] = usableMaxEv - (totalEv - value);
+					// in mobile, you can drag the slider while the textbox is still focused,
+					// so onChange won't update it, so we manually update it here too
+					const textbox = this.base!.querySelector<HTMLInputElement>(`input.stat-input[name="ev-${statID}"]`);
+					if (textbox) textbox.value = this.getEVText(statID);
 				}
 			}
 		} else {
@@ -3863,10 +3871,40 @@ class StatForm extends preact.Component<{
 		nextInput.select();
 		ev.preventDefault();
 	};
+	changeNatureModifier = (ev: Event) => {
+		const target = ev.currentTarget as HTMLButtonElement;
+		const statID = target.value.slice(0, -1) as Dex.StatNameExceptHP;
+		const modifier = target.value.slice(-1);
+		if (modifier === '+') {
+			this.plus = statID;
+			if (this.minus === statID) this.minus = null;
+		} else {
+			this.minus = statID;
+			if (this.plus === statID) this.plus = null;
+		}
+		this.updateNatureFromPlusMinus();
+		this.props.onChange();
+	};
 	updateNatureFromPlusMinus = () => {
 		const { set } = this.props;
 		set.nature = Teams.getNatureFromPlusMinus(this.plus, this.minus) || undefined;
 	};
+	renderNatureButtons(statID: Dex.StatName) {
+		if (statID === 'hp' || this.props.editor.gen < 3) return null;
+		const statName = BattleStatNames[statID];
+		return <span class="stat-nature-buttons">
+			<button
+				class={`button button-first${this.minus === statID ? ' cur' : ''}`}
+				value={`${statID}-`} onClick={this.changeNatureModifier}
+				tabIndex={-1} aria-label={`Minus ${statName} Nature`}
+			>&ndash;</button>
+			<button
+				class={`button button-last${this.plus === statID ? ' cur' : ''}`}
+				value={`${statID}+`} onClick={this.changeNatureModifier}
+				tabIndex={-1} aria-label={`Plus ${statName} Nature`}
+			>+</button>
+		</span>;
+	}
 	/** Converts DV/IV in a textbox to the value in set. */
 	dvToIv(dvOrIvString?: string): number | null {
 		const dvOrIv = Number(dvOrIvString);
@@ -3941,7 +3979,14 @@ class StatForm extends preact.Component<{
 		const useIVs = editor.gen > 2;
 
 		// label column
-		const statNames = {
+		const statNames = editor.narrow ? {
+			hp: 'HP',
+			atk: 'Atk',
+			def: 'Def',
+			spa: 'SpA',
+			spd: 'SpD',
+			spe: 'Spe',
+		} : {
 			hp: 'HP',
 			atk: 'Attack',
 			def: 'Defense',
@@ -3990,17 +4035,18 @@ class StatForm extends preact.Component<{
 						<td class="setstatbar">{this.renderStatbar(stat, statID)}</td>
 						<td><input
 							name={`ev-${statID}`} placeholder={`${defaultEV || ''}`}
-							type="text" inputMode="numeric" class="textbox default-placeholder stat-input" style="width:40px"
+							type="text" inputMode="numeric" class="textbox default-placeholder stat-input" style="width:40px;vertical-align:middle"
 							onInput={this.changeEV} onChange={this.changeEV} onKeyDown={this.keyDownStatInput}
-						/></td>
+						/>{this.renderNatureButtons(statID)}</td>
 						<td><input
 							name={`evslider-${statID}`} value={set.evs?.[statID] ?? defaultEV} min="0" max={maxEV} step={stepEV}
 							type="range" class="evslider" tabIndex={-1} aria-hidden
 							onInput={this.changeEV} onChange={this.changeEV}
 						/></td>
 						{!editor.isChampions && <td><input
-							name={`iv-${statID}`} min={0} max={useIVs ? 31 : 15} placeholder={`${defaultIVs[statID]}`} style="width:40px"
-							type="number" inputMode="numeric" class="textbox default-placeholder stat-input" onInput={this.changeIV}
+							name={`iv-${statID}`} min={0} max={useIVs ? 31 : 15} placeholder={`${defaultIVs[statID]}`}
+							style={editor.narrow ? "width:22px" : "width:40px"} type={editor.narrow ? 'text' : 'number'} inputMode="numeric"
+							class="textbox default-placeholder stat-input" onInput={this.changeIV}
 							onChange={this.changeIV} onKeyDown={this.keyDownStatInput}
 						/></td>}
 						<td style="text-align:right"><strong>{stat}</strong></td>
@@ -4022,7 +4068,7 @@ class StatForm extends preact.Component<{
 						))}
 					</select>
 				</p>}
-				{editor.gen >= 3 && <p>
+				{editor.gen >= 3 && !editor.narrow && <p>
 					<small><em>Protip:</em> You can also set natures by typing <kbd>+</kbd> and <kbd>-</kbd> in the EV box.</small>
 				</p>}
 				{editor.gen >= 3 && this.renderStatOptimizer()}

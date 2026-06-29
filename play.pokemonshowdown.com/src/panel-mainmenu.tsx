@@ -1082,6 +1082,7 @@ export class TeamForm extends preact.Component<{
 				<textarea
 					name="customrules" class="textbox" rows={3} placeholder="Rules separated by commas or lines"
 					value={this.customRuleText} onInput={this.changeCustomRules}
+					style="min-height:3em"
 				/>
 				<small><a
 					href="https://github.com/smogon/pokemon-showdown/blob/master/config/CUSTOM-RULES.md" target="_blank"

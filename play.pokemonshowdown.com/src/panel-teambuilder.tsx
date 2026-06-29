@@ -42,6 +42,7 @@ class PSTextarea extends preact.Component<{ initialValue?: string, name?: string
 		return <div style="position:relative">
 			<textarea
 				name={this.props.name} class="textbox" onInput={this.updateSize} onKeyUp={this.updateSize}
+				style="min-height:3em"
 			/>
 			{!this.cssAutosize && <div><textarea
 				class="textbox heighttester"
@@ -503,11 +504,26 @@ class TeambuilderPanel extends PSRoomPanel<TeambuilderRoom> {
 		if (this.props.room.exportMode !== true) return alert('Wrong export mode');
 
 		const teams = PSTeambuilder.importTeamBackup(value);
+		const uploadedTeams: { [teamid: number]: Team | undefined } = {};
+		for (const team of PS.teams.list) {
+			if (team.teamid) uploadedTeams[team.teamid] = team;
+		}
+		const notLoadedTeamRegex = /^[^|]*\|\|\|\|\|\|\|\|\|\|\|(?:\][^|]*\|\|\|\|\|\|\|\|\|\|\|)*$/;
 		// const visibleTeams = this.visibleTeams();
 		// alert(`${teams.length} teams imported, ${visibleTeams.length} teams visible now`);
 		PS.teams.list = [];
 		PS.teams.byKey = {};
-		for (const team of teams) PS.teams.push(team);
+		for (const team of teams) {
+			const uploadedTeam = team.teamid ? uploadedTeams[team.teamid] : null;
+			if (uploadedTeam?.uploaded) {
+				team.uploaded = uploadedTeam.uploaded;
+				team.uploaded.notLoaded = notLoadedTeamRegex.test(team.packedTeam);
+			}
+			if (uploadedTeam?.uploadedPackedTeam !== undefined) {
+				team.uploadedPackedTeam = uploadedTeam.uploadedPackedTeam;
+			}
+			PS.teams.push(team);
+		}
 		// TODO: say what changed
 
 		const room = this.props.room;

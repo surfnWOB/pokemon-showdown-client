@@ -1422,7 +1422,7 @@ class ChatPanel extends PSRoomPanel<ChatRoom> {
 
 	override render() {
 		const room = this.props.room;
-		const tinyLayout = room.width < 450;
+		const tinyLayout = room.width < 550;
 		const challengeOpen = room.challengeMenuOpen || room.challenging || room.challenged;
 
 		return <PSPanelWrapper room={room} focusClick noScroll fullSize>

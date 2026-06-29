@@ -11,6 +11,7 @@
 	border-left: 5px solid #d7e3ec;
 	width: 154px;
 	overflow: auto;
+	-webkit-overflow-scrolling: touch;
 	overflow-x: hidden;
 }
 .teampane {
@@ -301,6 +302,7 @@
 	right: -14px;
 	min-height: 150px;
 	overflow: auto;
+	-webkit-overflow-scrolling: touch;
 	max-height: 80vh;
 }
 .searchresults, .team-focus-editor {
@@ -532,6 +534,15 @@
 .evslider {
 	width: 170px;
 }
+.stat-nature-buttons {
+	display: none;
+	margin-left: 2px;
+	white-space: nowrap;
+	vertical-align: middle;
+}
+.tiny-layout .stat-nature-buttons {
+	display: inline-block;
+}
 .tiny-layout .evslider {
 	width: 120px;
 }
@@ -686,6 +697,9 @@ you can't delete it by pressing Backspace */
 .set-form .set-moves .label:hover .button {
 	display: inline-block;
 }
+.readonly.readonly .set-form .set-moves .button {
+	display: none;
+}
 .set-button.set-form .label .textbox {
 	margin-top: 0;
 }
@@ -705,6 +719,16 @@ you can't delete it by pressing Backspace */
 	float: right;
 	margin-top: -12px;
 	margin-right: 2px;
+}
+.readonly .set-button .textbox {
+	border: 1px solid #CCC;
+	box-shadow: none;
+}
+.dark .readonly .set-button .textbox {
+	border: 1px solid #444;
+}
+.readonly .set-button button.textbox {
+	cursor: not-allowed;
 }
 /* .set-button.set-form .set-pokemon .label {
 	text-shadow: #c8d3e9 1px 1px 0, #c8d3e9 1px -1px 0, #c8d3e9 -1px 1px 0, #c8d3e9 -1px -1px 0;
@@ -826,9 +850,16 @@ you can't delete it by pressing Backspace */
 .team-focus-editor .set-button {
 	z-index: 1;
 }
+.team-focus-top {
+	height: 230px;
+	overflow: auto;
+	overflow-x: hidden;
+	-webkit-overflow-scrolling: touch;
+}
 .team-focus-editor .tabbar {
 	/* note to self: make this scrollable later */
 	overflow: auto;
+	-webkit-overflow-scrolling: touch;
 	white-space: nowrap;
 	min-height: 59px;
 }
@@ -857,6 +888,10 @@ you can't delete it by pressing Backspace */
 	margin-left: 0;
 	border-left: 0;
 	padding: 6px 3px;
+}
+.searchboxwrapper {
+	padding-top: 1px;
+	padding-bottom: 0;
 }
 .searchboxwrapper .textbox {
 	width: 100%;

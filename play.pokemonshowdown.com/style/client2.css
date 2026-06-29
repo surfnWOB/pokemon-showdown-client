@@ -1223,12 +1223,6 @@ form.menugroup {
 .debug {
 	display: none;
 }
-.highlighted {
-	background: rgba(255,200,80,0.33);
-}
-.dark .highlighted {
-	background: rgba(120,220,255,0.28);
-}
 .chat.highlighted {
 	margin-left: -8px;
 	margin-right: -8px;
