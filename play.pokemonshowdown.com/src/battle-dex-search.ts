@@ -1363,12 +1363,16 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			uu: 15, rubl: 15, ru: 20, nubl: 20, nu: 25, publ: 25,
 			pu: 30, zubl: 30, zu: 30, nfe: 30, lc: 30,
 		};
-		// gen3 Tier Shift additionally boosts UUBL — and "(OU)" by technicality, which
-		// it treats as UUBL (both id to "ou") — by +5; standard Tier Shift leaves UUBL
-		// unboosted. Mirrors data/mods/gen3/rulesets.ts `tiershiftmod`.
+		// gen3 Tier Shift uses its own ladder — UUBL +5 (and "(OU)" by technicality,
+		// which it treats as UUBL, both id to "ou"), UU/RUBL +10, RU/NUBL +15,
+		// NU/PUBL +20, PU/ZUBL +30, ZU +35, SU/NFE/LC +40. Mirrors
+		// data/mods/gen3/rulesets.ts `tiershiftmod`.
 		if (this.dex.gen === 3) {
 			if (species.tier === '(OU)') return 5;
-			boosts.uubl = 5;
+			return {
+				uubl: 5, uu: 10, rubl: 10, ru: 15, nubl: 15, nu: 20, publ: 20,
+				pu: 30, zubl: 30, zu: 35, su: 40, nfe: 40, lc: 40,
+			}[toID(species.tier)] || 0;
 		}
 		return boosts[toID(species.tier)] || 0;
 	}
