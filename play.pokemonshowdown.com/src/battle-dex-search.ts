@@ -947,11 +947,6 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (this.formatType === 'metronome') {
 			return pokemon.num >= 0 ? String(pokemon.num) : pokemon.tier;
 		}
-		if (this.dex.gen === 3 && this.format === 'tiershift') {
-			// Gen 3 Tier Shift legalizes the whole ladder, so the per-row tier label is
-			// meaningless — show "Regular" to match the single collapsed browse header.
-			return 'Regular';
-		}
 		let table = window.BattleTeambuilderTable;
 		const gen = this.dex.gen;
 		const tableKey = this.formatType === 'doubles' ? `gen${gen}doubles` :
@@ -1175,12 +1170,10 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			// Groudon-Primal stays in the Uber bucket and is enforced as banned server-side.
 			tierSet = tierSet.slice(slices.Uber);
 		} else if (dex.gen === 3 && format === 'tiershift') {
-			// Tier Shift legalizes the whole tier ladder (Ubers included, just unboosted),
-			// so competitive tier headers carry no meaning — collapse the entire pool under
-			// a single "Regular" header instead of splitting by OU/UU/Uber/etc. Every gen3
-			// species is legal here (only combo/ability bans apply server-side), so nothing
-			// is dropped.
-			tierSet = [['header', 'Regular'] as SearchRow, ...tierSet.filter(([type]) => type !== 'header')];
+			// Gen 3 Tier Shift is OU-based (Ubers banned, just like plain OU) — only the
+			// boosted OU-and-below pool is legal, so slice from OU like the `ou` branch
+			// below instead of showing the Uber/AG buckets.
+			tierSet = tierSet.slice(slices.OU);
 		} else if (
 			format === 'ubers' || format === 'uber' || format === 'ubersuu' ||
 			format === '4v4doublesuu' || format === 'nationaldexdoubles'
@@ -1369,10 +1362,11 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 		// data/mods/gen3/rulesets.ts `tiershiftmod`.
 		if (this.dex.gen === 3) {
 			if (species.tier === '(OU)') return 5;
-			return {
+			const gen3Boosts: { [tier: string]: number } = {
 				uubl: 5, uu: 10, rubl: 10, ru: 15, nubl: 15, nu: 20, publ: 20,
 				pu: 30, zubl: 30, zu: 35, su: 40, nfe: 40, lc: 40,
-			}[toID(species.tier)] || 0;
+			};
+			return gen3Boosts[toID(species.tier)] || 0;
 		}
 		return boosts[toID(species.tier)] || 0;
 	}
