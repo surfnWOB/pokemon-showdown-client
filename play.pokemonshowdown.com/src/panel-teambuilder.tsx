@@ -67,6 +67,15 @@ class TeambuilderRoom extends PSRoom {
 	searchTerms: string[] = [];
 	exportMode: boolean | 'partial' = false;
 	exportCode: string | null = null;
+	pendingTeamScrollRestore: { key: string, top: number } | null = null;
+
+	preserveTeamScroll(team: Team | undefined, elem?: HTMLElement | null) {
+		if (!team?.key || !elem) return;
+		this.pendingTeamScrollRestore = {
+			key: team.key,
+			top: elem.getBoundingClientRect().top,
+		};
+	}
 
 	override clientCommands = this.parseClientCommands({
 		'newteam'(target) {
@@ -87,22 +96,25 @@ class TeambuilderRoom extends PSRoom {
 			PS.teams.save();
 			this.update(null);
 		},
-		'copyteam'(target) {
+		'copyteam'(target, cmd, elem) {
 			const team = PS.teams.byKey[target];
 			if (!team) return this.errorReply(`Team not found: ${target}`);
 
+			const teamElem = elem?.closest('li')?.querySelector<HTMLElement>('a.team');
+			this.preserveTeamScroll(team, teamElem);
 			TeamEditorState.copyTeam(team);
 
 			PS.update();
 			this.update(null);
 		},
-		'pasteteamabove,moveteamabove'(target, cmd) {
+		'pasteteamabove,moveteamabove'(target, cmd, elem) {
 			const team = PS.teams.byKey[target];
 			if (target !== '-' && !team) return this.errorReply(`Team not found: ${target}`);
 
 			const index = team ? PS.teams.list.indexOf(team) : PS.teams.list.length;
 			const folder = this.curFolder?.endsWith('/') ? this.curFolder.slice(0, -1) : '';
-			TeamEditorState.pasteTeam(index, cmd === 'moveteamabove', folder);
+			const teams = TeamEditorState.pasteTeam(index, cmd === 'moveteamabove', folder);
+			this.preserveTeamScroll(teams?.[0], elem);
 			PS.teams.save();
 
 			PS.update();
@@ -240,6 +252,24 @@ class TeambuilderPanel extends PSRoomPanel<TeambuilderRoom> {
 	static readonly Model = TeambuilderRoom;
 	static readonly icon = <i class="fa fa-pencil-square-o" aria-hidden></i>;
 	static readonly title = 'Teambuilder';
+	override componentDidUpdate() {
+		super.componentDidUpdate();
+		const room = this.props.room;
+		const restore = room.pendingTeamScrollRestore;
+		if (!restore) return;
+		room.pendingTeamScrollRestore = null;
+
+		const teamElem = this.base!.querySelector<HTMLAnchorElement>(`a.team[href="team-${restore.key}"]`);
+		if (!teamElem) return;
+		const dy = teamElem.getBoundingClientRect().top - restore.top;
+		if (!dy) return;
+		const teamPane = teamElem.closest<HTMLElement>('.teampane');
+		if (teamPane) {
+			teamPane.scrollTop += dy;
+		} else {
+			window.scrollBy(0, dy);
+		}
+	}
 	clickFolder = (e: MouseEvent) => {
 		const room = this.props.room;
 		let elem = e.target as HTMLElement | null;

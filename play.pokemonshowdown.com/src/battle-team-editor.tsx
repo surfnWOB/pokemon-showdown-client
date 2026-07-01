@@ -354,6 +354,7 @@ export class TeamEditorState extends PSModel {
 		}
 		sets.push(...TeamEditorState.clipboard.otherSets || []);
 
+		const insertIndex = index;
 		for (const set of sets) {
 			// not the most efficient way to deepclone but we don't need efficiency here
 			const newSet = JSON.parse(JSON.stringify(set)) as Dex.PokemonSet;
@@ -362,6 +363,7 @@ export class TeamEditorState extends PSModel {
 		}
 		TeamEditorState.clipboard = null;
 		this.save();
+		return insertIndex;
 	}
 	static pasteTeam(index: number, isMove?: boolean, folder = '') {
 		if (!TeamEditorState.clipboard) return;
@@ -429,6 +431,7 @@ export class TeamEditorState extends PSModel {
 		PS.teams.spliceIn(index, teams);
 
 		TeamEditorState.clipboard = null;
+		return teams;
 	}
 	ignoreRows = ['header', 'sortpokemon', 'sortmove', 'html'];
 	downSearchValue() {
@@ -1893,6 +1896,7 @@ class TeamWizard extends preact.Component<{
 	focusAnimationStartLocation: {
 		rect: { left: number, top: number },
 	} | null = null;
+	pendingSetScrollRestore: { index: number, top: number } | null = null;
 	closeInnerFocus = (ev?: Event) => {
 		this.changeFocus(null);
 		ev?.preventDefault();
@@ -1952,10 +1956,44 @@ class TeamWizard extends preact.Component<{
 		this.handleSetChange();
 		ev.preventDefault();
 	};
+	preserveSetScroll(index: number | undefined, elem: HTMLElement | null) {
+		if (index === undefined || elem === null) return;
+		this.pendingSetScrollRestore = {
+			index,
+			top: elem.getBoundingClientRect().top,
+		};
+	}
+	restorePendingSetScroll() {
+		if (!this.base) return;
+		const restore = this.pendingSetScrollRestore;
+		if (!restore) return;
+		this.pendingSetScrollRestore = null;
+
+		const setButton = this.base.querySelector<HTMLElement>(`.set-button[data-set-index="${restore.index}"]`);
+		if (!setButton) return;
+		const dy = setButton.getBoundingClientRect().top - restore.top;
+		if (!dy) return;
+		const scrollParent = this.getSetScrollParent(setButton);
+		if (scrollParent) {
+			scrollParent.scrollTop += dy;
+		} else {
+			window.scrollBy(0, dy);
+		}
+	}
+	getSetScrollParent(elem: HTMLElement) {
+		for (let parent = elem.parentElement; parent; parent = parent.parentElement) {
+			const style = getComputedStyle(parent);
+			if (!/(auto|scroll)/.test(style.overflowY)) continue;
+			if (parent.scrollHeight <= parent.clientHeight) continue;
+			return parent;
+		}
+		return null;
+	}
 	copySet = (ev: Event) => {
 		const target = ev.currentTarget as HTMLButtonElement;
 		const i = parseInt(target.value);
 		const { editor } = this.props;
+		this.preserveSetScroll(i, target.closest<HTMLElement>('.set-button'));
 		editor.copySet(i);
 		editor.innerFocus = null;
 		this.props.onUpdate();
@@ -1980,7 +2018,8 @@ class TeamWizard extends preact.Component<{
 		const target = ev.currentTarget as HTMLButtonElement;
 		const i = parseInt(target.value);
 		const { editor } = this.props;
-		editor.pasteSet(i);
+		const insertIndex = editor.pasteSet(i);
+		this.preserveSetScroll(insertIndex, target);
 		this.handleSetChange();
 		window.PS?.update();
 		ev.preventDefault();
@@ -1989,7 +2028,8 @@ class TeamWizard extends preact.Component<{
 		const target = ev.currentTarget as HTMLButtonElement;
 		const i = parseInt(target.value);
 		const { editor } = this.props;
-		editor.pasteSet(i, true);
+		const insertIndex = editor.pasteSet(i, true);
+		this.preserveSetScroll(insertIndex, target);
 		this.handleSetChange();
 		ev.preventDefault();
 	};
@@ -2020,7 +2060,7 @@ class TeamWizard extends preact.Component<{
 		const sprite = Dex.getTeambuilderSprite(set, editor.dex);
 		const spriteClass = set && Dex.getTeambuilderSpriteData(set, editor.dex).pixelated ? ' pixelated' : '';
 		if (!set) {
-			return <div class="set-button set-wizard">
+			return <div class="set-button set-wizard" data-set-index={i}>
 				<div style="text-align:right">
 					{editor.deletedSet ? (
 						<button onClick={this.undeleteSet} class="option"><i class="fa fa-undo" aria-hidden></i> Undo delete</button>
@@ -2057,7 +2097,7 @@ class TeamWizard extends preact.Component<{
 		);
 		const species = editor.dex.species.get(set.species);
 		const isCur = TeamEditorState.clipboard?.teams?.[editor.team.key]?.sets[i] ? ' cur' : '';
-		return <div class={`set-button set-wizard${isCur}`}>
+		return <div class={`set-button set-wizard${isCur}`} data-set-index={i}>
 			<div style="text-align:right">
 				<button class="option" onClick={this.copySet} value={i}>
 					<i class="fa fa-copy" aria-hidden></i> {
@@ -2406,6 +2446,7 @@ class TeamWizard extends preact.Component<{
 				searchBox.style.paddingLeft = `3px`;
 			}
 		}
+		this.restorePendingSetScroll();
 	}
 	renderInnerFocus() {
 		const { editor } = this.props;
@@ -2643,6 +2684,7 @@ class TeamEditorForm extends TeamWizard {
 				searchBox.style.paddingLeft = `3px`;
 			}
 		}
+		this.restorePendingSetScroll();
 	}
 	getInputValue(setIndex: number, type: InnerFocusType | 'nickname', typeIndex: number) {
 		const set = this.props.editor.sets[setIndex];
@@ -3190,7 +3232,7 @@ class TeamEditorForm extends TeamWizard {
 		const sprite = Dex.getTeambuilderSprite(set, editor.dex);
 		const spriteClass = set && Dex.getTeambuilderSpriteData(set, editor.dex).pixelated ? ' pixelated' : '';
 		if (!set) {
-			return <div class="set-button set-form">
+			return <div class="set-button set-form" data-set-index={i}>
 				<div style="text-align:right">
 					{editor.deletedSet ? (
 						<button onClick={this.undeleteSet} class="option"><i class="fa fa-undo" aria-hidden></i> Undo delete</button>
@@ -3223,7 +3265,7 @@ class TeamEditorForm extends TeamWizard {
 		const tintClass = ` tint-${species.types[0]}`;
 		const isCur = TeamEditorState.clipboard?.teams?.[editor.team.key]?.sets[i] ? ' cur' : '';
 		const overfull = set.moves.length > 5 ? ' overfull' : set.moves.length > 4 ? ' overfull overfull5' : '';
-		return <div class={`set-button set-form${isCur}`}>
+		return <div class={`set-button set-form${isCur}`} data-set-index={i}>
 			<div style="text-align:right">
 				<button class="option" onClick={this.copySet} value={i}>
 					<i class="fa fa-copy" aria-hidden></i> {
@@ -3233,7 +3275,7 @@ class TeamEditorForm extends TeamWizard {
 						"Copy/Move"
 					}
 				</button> {}
-				{!editor.readonly && <button
+				{!(TeamEditorState.clipboard || editor.readonly) && <button
 					class="option" name="import" onClick={this.clickPanelButton}
 					value={`set-${i}-import`}
 				>
