@@ -43,6 +43,7 @@ export class DexSearch {
 
 	results: SearchRow[] | null = null;
 	prependResults: SearchRow[] | null = null;
+	resultIndex = 0;
 	exactMatch = false;
 
 	static typeTable = {

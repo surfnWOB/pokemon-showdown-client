@@ -62,7 +62,6 @@ export class TeamEditorState extends PSModel {
 	} | null = null;
 	search = new DexSearch();
 	format: ID = `gen${this.gen}` as ID;
-	searchIndex = 0;
 	originalSpecies: string | null = null;
 	narrow = false;
 	innerFocus: InnerFocusState | null = null;
@@ -187,13 +186,13 @@ export class TeamEditorState extends PSModel {
 
 		if (type === 'item') (this.search.prependResults ||= []).push(['item', '' as ID]);
 		this.search.find(value || '');
-		this.searchIndex = this.search.results?.[0]?.[0] === 'header' ? 1 : 0;
+		this.search.resultIndex = this.search.results?.[0]?.[0] === 'header' ? 1 : 0;
 	}
 	updateSearchMoves(set: Dex.PokemonSet, typeIndex = -1) {
 		let oldResultsLength = this.search.prependResults?.length || 0;
 		this.search.prependResults = this.getSearchMoves(set, typeIndex);
-		this.searchIndex += this.search.prependResults.length - oldResultsLength;
-		if (this.searchIndex < 0) this.searchIndex = 0;
+		this.search.resultIndex += this.search.prependResults.length - oldResultsLength;
+		if (this.search.resultIndex < 0) this.search.resultIndex = 0;
 		this.search.results = null;
 		if (this.search.query) {
 			this.setSearchValue('');
@@ -212,17 +211,17 @@ export class TeamEditorState extends PSModel {
 	}
 	setSearchValue(value: string) {
 		this.search.find(value);
-		this.searchIndex = this.search.results?.[0]?.[0] === 'header' ? 1 : 0;
+		this.search.resultIndex = this.search.results?.[0]?.[0] === 'header' ? 1 : 0;
 	}
 	selectSearchValue(): string | null {
-		let result = this.search.results?.[this.searchIndex];
+		let result = this.search.results?.[this.search.resultIndex];
 		if (result?.[0] === 'header') {
-			this.searchIndex++;
-			result = this.search.results?.[this.searchIndex];
+			this.search.resultIndex++;
+			result = this.search.results?.[this.search.resultIndex];
 		}
 		if (!result) return null;
 		if (this.search.addFilter(result)) {
-			this.searchIndex = 0;
+			this.search.resultIndex = 0;
 			return null;
 		}
 		return this.getResultValue(result);
@@ -433,30 +432,30 @@ export class TeamEditorState extends PSModel {
 	}
 	ignoreRows = ['header', 'sortpokemon', 'sortmove', 'html'];
 	downSearchValue() {
-		if (!this.search.results || this.searchIndex >= this.search.results.length - 1) return;
+		if (!this.search.results || this.search.resultIndex >= this.search.results.length - 1) return;
 
-		this.searchIndex++;
-		if (this.ignoreRows.includes(this.search.results[this.searchIndex]?.[0])) {
-			if (this.searchIndex >= this.search.results.length - 1) return;
-			this.searchIndex++;
+		this.search.resultIndex++;
+		if (this.ignoreRows.includes(this.search.results[this.search.resultIndex]?.[0])) {
+			if (this.search.resultIndex >= this.search.results.length - 1) return;
+			this.search.resultIndex++;
 		}
-		if (this.ignoreRows.includes(this.search.results[this.searchIndex]?.[0])) {
-			if (this.searchIndex >= this.search.results.length - 1) return;
-			this.searchIndex++;
+		if (this.ignoreRows.includes(this.search.results[this.search.resultIndex]?.[0])) {
+			if (this.search.resultIndex >= this.search.results.length - 1) return;
+			this.search.resultIndex++;
 		}
 	}
 	upSearchValue() {
-		if (!this.search.results || this.searchIndex <= 0) return;
+		if (!this.search.results || this.search.resultIndex <= 0) return;
 
-		if (this.searchIndex <= 1 && this.ignoreRows.includes(this.search.results[0]?.[0])) return;
-		this.searchIndex--;
-		if (this.ignoreRows.includes(this.search.results[this.searchIndex]?.[0])) {
-			if (this.searchIndex <= 0) return;
-			this.searchIndex--;
+		if (this.search.resultIndex <= 1 && this.ignoreRows.includes(this.search.results[0]?.[0])) return;
+		this.search.resultIndex--;
+		if (this.ignoreRows.includes(this.search.results[this.search.resultIndex]?.[0])) {
+			if (this.search.resultIndex <= 0) return;
+			this.search.resultIndex--;
 		}
-		if (this.ignoreRows.includes(this.search.results[this.searchIndex]?.[0])) {
-			if (this.searchIndex <= 0) return;
-			this.searchIndex--;
+		if (this.ignoreRows.includes(this.search.results[this.search.resultIndex]?.[0])) {
+			if (this.search.resultIndex <= 0) return;
+			this.search.resultIndex--;
 		}
 	}
 	getResultValue(result: SearchRow): string {
@@ -1091,7 +1090,6 @@ class TeamTextbox extends preact.Component<{
 	compat = false;
 	/** we changed the set but are delaying updates until the selection form is closed */
 	setDirty = false;
-	windowing = true;
 	selection: {
 		setIndex: number,
 		type: InnerFocusType | null,
@@ -1170,7 +1168,7 @@ class TeamTextbox extends preact.Component<{
 				editor.upSearchValue();
 				const resultsUp = this.base!.querySelector('.searchresults');
 				if (resultsUp) {
-					resultsUp.scrollTop = Math.max(0, editor.searchIndex * 33 - Math.trunc((window.innerHeight - 100) * 0.4));
+					resultsUp.scrollTop = Math.max(0, editor.search.resultIndex * 33 - Math.trunc((window.innerHeight - 100) * 0.4));
 				}
 				this.forceUpdate();
 				ev.preventDefault();
@@ -1181,7 +1179,7 @@ class TeamTextbox extends preact.Component<{
 				editor.downSearchValue();
 				const resultsDown = this.base!.querySelector('.searchresults');
 				if (resultsDown) {
-					resultsDown.scrollTop = Math.max(0, editor.searchIndex * 33 - Math.trunc((window.innerHeight - 100) * 0.4));
+					resultsDown.scrollTop = Math.max(0, editor.search.resultIndex * 33 - Math.trunc((window.innerHeight - 100) * 0.4));
 				}
 				this.forceUpdate();
 				ev.preventDefault();
@@ -1711,24 +1709,9 @@ class TeamTextbox extends preact.Component<{
 			rangeEndChar: '@',
 		});
 	};
-	scrollResults = (ev: Event) => {
-		if (!(ev.currentTarget as HTMLElement).scrollTop) return;
-		this.windowing = false;
-		if (document.documentElement.clientWidth === document.documentElement.scrollWidth) {
-			(ev.currentTarget as any).scrollIntoViewIfNeeded?.();
-		}
-		this.forceUpdate();
-	};
 	resetScroll() {
-		this.windowing = true;
 		const searchResults = this.base!.querySelector('.searchresults');
 		if (searchResults) searchResults.scrollTop = 0;
-	}
-	windowResults() {
-		if (this.windowing) {
-			return Math.ceil(window.innerHeight / 33);
-		}
-		return null;
 	}
 
 	renderDetails(set: Dex.PokemonSet, i: number) {
@@ -1793,6 +1776,9 @@ class TeamTextbox extends preact.Component<{
 	render() {
 		const editor = this.props.editor;
 		const statsDetailsOffset = editor.gen >= 3 ? 18 : -1;
+		const resultsCSS = this.innerFocus && (
+			`top:${(this.setInfo[this.innerFocus.setIndex]?.bottomY ?? this.bottomY() + 50) - 12}px`
+		);
 		return <div>
 			<p>
 				<button class={`button ${this.state.copyButtonUsed ? 'cur' : ''}`} onClick={this.copyAll}>
@@ -1869,25 +1855,30 @@ class TeamTextbox extends preact.Component<{
 					)}
 				</div>
 				{this.innerFocus && (
-					<div
-						class="searchresults"
-						style={`top:${(this.setInfo[this.innerFocus.setIndex]?.bottomY ?? this.bottomY() + 50) - 12}px`}
-						onScroll={this.scrollResults}
-					>
-						<button class="button closesearch" onClick={this.closeMenu}>
-							{!editor.narrow && <kbd>Esc</kbd>} <i class="fa fa-times" aria-hidden></i> Close
-						</button>
-						{this.innerFocus.type === 'stats' ? (
+					this.innerFocus.type === 'stats' ? (
+						<div class="searchresults" style={resultsCSS}>
+							<button class="button closesearch" onClick={this.closeMenu}>
+								{!editor.narrow && <kbd>Esc</kbd>} <i class="fa fa-times" aria-hidden></i> Close
+							</button>
 							<StatForm editor={editor} set={this.editor.sets[this.innerFocus.setIndex]} onChange={this.handleSetChange} />
-						) : this.innerFocus.type === 'details' ? (
+						</div>
+					) : this.innerFocus.type === 'details' ? (
+						<div class="searchresults" style={resultsCSS}>
+							<button class="button closesearch" onClick={this.closeMenu}>
+								{!editor.narrow && <kbd>Esc</kbd>} <i class="fa fa-times" aria-hidden></i> Close
+							</button>
 							<DetailsForm editor={editor} set={this.editor.sets[this.innerFocus.setIndex]} onChange={this.handleSetChange} />
-						) : (
-							<PSSearchResults
-								search={editor.search} resultIndex={editor.searchIndex}
-								windowing={this.windowResults()} onSelect={this.selectResult}
-							/>
-						)}
-					</div>
+						</div>
+					) : (
+						<PSSearchResults
+							class="searchresults" style={resultsCSS}
+							prepend={<button class="button closesearch" onClick={this.closeMenu}>
+								{!editor.narrow && <kbd>Esc</kbd>} <i class="fa fa-times" aria-hidden></i> Close
+							</button>}
+							search={editor.search}
+							onSelect={this.selectResult}
+						/>
+					)
 				)}
 			</div>
 		</div>;
@@ -1902,7 +1893,6 @@ class TeamWizard extends preact.Component<{
 	focusAnimationStartLocation: {
 		rect: { left: number, top: number },
 	} | null = null;
-	windowing = true;
 	closeInnerFocus = (ev?: Event) => {
 		this.changeFocus(null);
 		ev?.preventDefault();
@@ -2345,7 +2335,7 @@ class TeamWizard extends preact.Component<{
 			editor.upSearchValue();
 			const resultsUp = this.base!.querySelector('.wizardsearchresults');
 			if (resultsUp) {
-				resultsUp.scrollTop = Math.max(0, editor.searchIndex * 33 - Math.trunc((window.innerHeight - 300) / 2));
+				resultsUp.scrollTop = Math.max(0, editor.search.resultIndex * 33 - Math.trunc((window.innerHeight - 300) / 2));
 			}
 			this.forceUpdate();
 			ev.preventDefault();
@@ -2354,7 +2344,7 @@ class TeamWizard extends preact.Component<{
 			editor.downSearchValue();
 			const resultsDown = this.base!.querySelector('.wizardsearchresults');
 			if (resultsDown) {
-				resultsDown.scrollTop = Math.max(0, editor.searchIndex * 33 - Math.trunc((window.innerHeight - 300) / 2));
+				resultsDown.scrollTop = Math.max(0, editor.search.resultIndex * 33 - Math.trunc((window.innerHeight - 300) / 2));
 			}
 			this.forceUpdate();
 			ev.preventDefault();
@@ -2392,24 +2382,9 @@ class TeamWizard extends preact.Component<{
 			break;
 		}
 	};
-	scrollResults = (ev: Event) => {
-		if (!(ev.currentTarget as HTMLElement).scrollTop) return;
-		this.windowing = false;
-		if (document.documentElement.clientWidth === document.documentElement.scrollWidth) {
-			(ev.currentTarget as any).scrollIntoViewIfNeeded?.();
-		}
-		this.forceUpdate();
-	};
 	resetScroll() {
-		this.windowing = true;
 		const searchResults = this.base!.querySelector('.wizardsearchresults');
 		if (searchResults) searchResults.scrollTop = 0;
-	}
-	windowResults() {
-		if (this.windowing) {
-			return Math.ceil(window.innerHeight / 33);
-		}
-		return null;
 	}
 
 	override componentDidUpdate() {
@@ -2486,16 +2461,16 @@ class TeamWizard extends preact.Component<{
 					onChange={this.handleSetChange}
 				/>
 			) : (
-				<div class="wizardsearchresults" onScroll={this.scrollResults}>
-					<PSSearchResults
-						search={editor.search} hideFilters resultIndex={editor.searchIndex}
-						onSelect={this.selectResult} windowing={this.windowResults()}
-					/>
+				<PSSearchResults
+					class="wizardsearchresults"
+					search={editor.search} hideFilters
+					onSelect={this.selectResult}
+				>
 					{type === 'ability' && <SetSourceButtons
 						editor={editor} set={set!}
 						onLoadSampleSet={this.handleLoadSampleSet} onLoadUserSet={this.handleLoadUserSet}
 					/>}
-				</div>
+				</PSSearchResults>
 			)}
 		</div>;
 	}
@@ -3065,7 +3040,7 @@ class TeamEditorForm extends TeamWizard {
 	scrollSelectedResult() {
 		const results = this.base!.querySelector('.wizardsearchresults');
 		if (results) {
-			results.scrollTop = Math.max(0, this.props.editor.searchIndex * 33 - Math.trunc((window.innerHeight - 300) / 2));
+			results.scrollTop = Math.max(0, this.props.editor.search.resultIndex * 33 - Math.trunc((window.innerHeight - 300) / 2));
 		}
 	}
 	removeDuplicateMove(name: string) {
