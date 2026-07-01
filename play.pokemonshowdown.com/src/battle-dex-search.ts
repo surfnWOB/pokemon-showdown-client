@@ -1376,9 +1376,12 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			// SU is a fork-only bottom tier that lives in the gen3subzu mod, not the
 			// standard gen3 tier this species carries; consult it so SU mons land on
 			// the su rung (+40) instead of falling through to their coarser gen3 ZU
-			// tier (+35). Mirrors the subzuTier lookup server-side.
-			const subzuTier = Dex.mod('gen3subzu' as ID).species.get(species.id).tier;
-			if (subzuTier === 'SU') return gen3Boosts.su;
+			// tier (+35). Mirrors the subzuTier lookup server-side. Read the tier
+			// straight from the teambuilder table's overrideTier map — NOT
+			// Dex.mod('gen3subzu').species.get(), which reconstructs the species and
+			// throws ("'in' operator ... in undefined") when the gen3subzu table has
+			// no overrideSpeciesData, crashing the entire teambuilder search.
+			if (BattleTeambuilderTable['gen3subzu']?.overrideTier?.[species.id] === 'SU') return gen3Boosts.su;
 			return gen3Boosts[toID(species.tier)] || 0;
 		}
 		return boosts[toID(species.tier)] || 0;
@@ -2203,4 +2206,14 @@ class BattleTypeSearch extends BattleTypedSearch<'type'> {
 	sort(results: SearchRow[], sortCol: string | null, reverseSort?: boolean): SearchRow[] {
 		throw new Error("invalid sortcol");
 	}
+}
+
+declare const require: any;
+declare const global: any;
+
+if (typeof require === 'function') {
+	// in Node (test harness): expose the search classes as globals, mirroring
+	// battle-dex.ts (global.Dex/toID). Lets test/*.js exercise getStatBoost etc.
+	global.BattlePokemonSearch = BattlePokemonSearch;
+	global.BattleTypedSearch = BattleTypedSearch;
 }
