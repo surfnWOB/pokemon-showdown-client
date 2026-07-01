@@ -3665,10 +3665,22 @@
 			// data/mods/gen3/rulesets.ts `tiershiftmod`.
 			if (this.curTeam.gen === 3) {
 				if (species.tier === '(OU)') return 5;
-				return ({
+				var gen3Boosts = {
 					uubl: 5, uu: 10, rubl: 10, ru: 15, nubl: 15, nu: 20, publ: 20,
 					pu: 30, zubl: 30, zu: 35, su: 40, nfe: 40, lc: 40
-				})[toID(species.tier)] || 0;
+				};
+				// Per-species overrides that apply only to this metagame's boost ladder
+				// (Glalie sits at UU/+10 here, not its standard-gen3 NUBL/+15). Mirrors
+				// the tierOverrides map in data/mods/gen3/rulesets.ts `tiershiftmod`.
+				var tierOverrides = {glalie: 'uu'};
+				if (species.id in tierOverrides) return gen3Boosts[tierOverrides[species.id]];
+				// SU is a fork-only bottom tier that lives in the gen3subzu mod, not the
+				// standard gen3 tier this species carries; consult it so SU mons land on
+				// the su rung (+40) instead of falling through to their coarser gen3 ZU
+				// tier (+35). Mirrors the subzuTier lookup server-side.
+				var subzuTier = Dex.mod('gen3subzu').species.get(species.id).tier;
+				if (subzuTier === 'SU') return gen3Boosts.su;
+				return gen3Boosts[toID(species.tier)] || 0;
 			}
 			return boosts[toID(species.tier)] || 0;
 		},
