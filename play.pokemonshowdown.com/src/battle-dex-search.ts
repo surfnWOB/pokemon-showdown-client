@@ -1174,6 +1174,13 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			// UU slice, so slicing there excludes them — matching the server banlist
 			// ['Uber', 'OU', 'UUBL'] ('OU' also covers the "(OU)" technicality Megas).
 			tierSet = tierSet.slice(slices.UU);
+		} else if (this.formatType === 'gen3mega' && format === 'megas') {
+			// [Gen 3] Megas (OU): browse OU → (OU) → straight to UU and below. AG
+			// (M-Salamence) and Uber sit above OU and are banned, so slice them off the
+			// browse list like standard OU — they stay findable by name (greyed as
+			// illegal). This overrides the default reorder that would append the AG/Uber
+			// buckets after (OU).
+			tierSet = tierSet.slice(slices.OU);
 		} else if (dex.gen === 3 && format === 'tiershift') {
 			// Gen 3 Tier Shift is OU-based (Ubers banned, just like plain OU) — only the
 			// boosted OU-and-below pool is legal, so slice from OU like the `ou` branch
