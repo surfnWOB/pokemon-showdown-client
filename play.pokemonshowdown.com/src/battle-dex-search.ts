@@ -1238,6 +1238,11 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			tierSet = tierSet.slice(slices.AG);
 		} else if (isHackmons && (dex.gen < 9 || this.formatType === 'natdex')) {
 			tierSet = tierSet.slice(slices.AG || slices.Uber);
+		} else if (dex.gen === 3 && format === 'monotype') {
+			// [Gen 3] Monotype bans the entire Uber tier, so browse from OU (not from Uber like
+			// modern Monotype, which permits some Ubers). Suicune/Jirachi are additionally
+			// filtered out via table.metagameBans.monotype below.
+			tierSet = tierSet.slice(slices.OU);
 		} else if (format === 'monotype' || format.startsWith('monothreat')) tierSet = tierSet.slice(slices.Uber);
 		else if (format === 'doublesubers') tierSet = tierSet.slice(slices.DUber);
 		else if (format === 'doublesou' && dex.gen > 4) tierSet = tierSet.slice(slices.DOU);
@@ -1313,7 +1318,7 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 				return false;
 			});
 		}
-		if (dex.gen >= 5) {
+		if (dex.gen >= 3) {
 			if (this.formatType !== 'natdex' &&
 				(format === 'monotype' || format.startsWith('monothreat')) && table.metagameBans?.monotype) {
 				tierSet = tierSet.filter(([type, id]) => {
