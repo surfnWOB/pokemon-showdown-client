@@ -482,6 +482,21 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			if (!tierTable[speciesTier]) tierTable[speciesTier] = [];
 			tierTable[speciesTier].push(id);
 
+			// [Gen 3] Monotype (and any other pre-Gen-5 Monotype format) isn't covered by the
+			// Gen-5+ metagame loop below. Generate its species bans — the 'Uber' tier ban plus
+			// explicit bans like Suicune/Jirachi — so the teambuilder greys them out to match the
+			// server banlist. `genIdent === genNum` restricts this to the plain singles table the
+			// Monotype builder reads ('gen3'), so the bans don't leak into the gen3lc / gen3doubles
+			// tables (whose iterations share `gen === 'gen3'`). Gens with no Monotype format leave
+			// metagameBans empty (a no-op).
+			if (genNum < 5 && genIdent === genNum) {
+				const monotype = Dex.formats.get(`${gen}monotype`);
+				if (monotype.exists && Dex.formats.getRuleTable(monotype).isBannedSpecies(species)) {
+					if (!metagameBans['monotype']) metagameBans['monotype'] = {};
+					metagameBans['monotype'][species.id] = 1;
+				}
+			}
+
 			if (genNum >= 5) {
 				for (const meta of (isChampions ? ['4v4doublesuu'] : [
 					'1v1', '2v2doubles', 'lcuu', 'freeforall', 'ubersuu', 'almostanyability', 'balancedhackmons', 'godlygift', 'mixandmega', 'sharedpower', 'stabmons',
@@ -675,7 +690,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			BattleTeambuilderTable[gen].tiers = tiers;
 			BattleTeambuilderTable[gen].items = items;
 			BattleTeambuilderTable[gen].formatSlices = formatSlices;
-			if (genNum >= 5) {
+			if (genNum >= 5 || Object.keys(metagameBans).length) {
 				BattleTeambuilderTable[gen].metagameBans = metagameBans;
 			}
 			if (isSSDLC1 || isPreDLC || isSVDLC1) {
