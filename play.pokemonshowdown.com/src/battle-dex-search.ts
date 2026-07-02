@@ -1199,6 +1199,11 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			// (Uber on top) instead of the OU-first default used by [Gen 3] Megas.
 			// Groudon-Primal stays in the Uber bucket and is enforced as banned server-side.
 			tierSet = tierSet.slice(slices.Uber);
+		} else if (this.formatType === 'gen3mega' && format === 'megasuu') {
+			// [Gen 3] Megas UU: legal pool is UU and below. Uber/OU/(OU)/UUBL sit above the
+			// UU slice, so slicing there excludes them — matching the server banlist
+			// ['Uber', 'OU', 'UUBL'] ('OU' also covers the "(OU)" technicality Megas).
+			tierSet = tierSet.slice(slices.UU);
 		} else if (dex.gen === 3 && format === 'tiershift') {
 			// Gen 3 Tier Shift is OU-based (Ubers banned, just like plain OU) — only the
 			// boosted OU-and-below pool is legal, so slice from OU like the `ou` branch
