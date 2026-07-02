@@ -549,6 +549,11 @@ export class PSView extends preact.Component {
 
 		window.addEventListener('click', ev => {
 			let elem = ev.target as HTMLElement | null;
+			if (BattleTooltips.isLocked) {
+				// only dismiss if clicking outside the tooltip
+				const tooltipWrapper = document.getElementById('tooltipwrapper');
+				if (!tooltipWrapper?.contains(elem)) BattleTooltips.hideTooltip();
+			}
 			const clickedRoom = PS.getRoom(elem);
 			while (elem) {
 				if (elem.className === 'spoiler') {
@@ -696,6 +701,12 @@ export class PSView extends preact.Component {
 				PS.arrowKeysUsed = true;
 				PS.focusDownRoom();
 			} else if (!modifierKey && kc === 27) { // escape
+				if (BattleTooltips.elem) {
+					ev.stopImmediatePropagation();
+					ev.preventDefault();
+					BattleTooltips.hideTooltip();
+					return;
+				}
 				// close popups
 				if (PS.popups.length) {
 					ev.stopImmediatePropagation();
@@ -1028,7 +1039,7 @@ export class PSView extends preact.Component {
 		} else {
 			// both panels visible
 			if (room === PS.leftPanel) return { width: `${PS.leftPanelWidth}px`, right: 'auto' };
-			if (room === PS.rightPanel) return { top: 56, left: PS.leftPanelWidth + 1 };
+			if (room === PS.rightPanel) return { top: `56px`, left: `${PS.leftPanelWidth + 1}px` };
 		}
 
 		return { display: 'none' };

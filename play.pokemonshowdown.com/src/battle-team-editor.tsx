@@ -186,18 +186,17 @@ export class TeamEditorState extends PSModel {
 
 		if (type === 'item') (this.search.prependResults ||= []).push(['item', '' as ID]);
 		this.search.find(value || '');
-		this.search.resultIndex = this.search.results?.[0]?.[0] === 'header' ? 1 : 0;
 	}
 	updateSearchMoves(set: Dex.PokemonSet, typeIndex = -1) {
 		let oldResultsLength = this.search.prependResults?.length || 0;
 		this.search.prependResults = this.getSearchMoves(set, typeIndex);
-		this.search.resultIndex += this.search.prependResults.length - oldResultsLength;
-		if (this.search.resultIndex < 0) this.search.resultIndex = 0;
+		const resultIndex = Math.max(0, this.search.resultIndex + this.search.prependResults.length - oldResultsLength);
 		this.search.results = null;
 		if (this.search.query) {
 			this.setSearchValue('');
 		} else {
 			this.search.find('');
+			this.search.resultIndex = resultIndex;
 		}
 	}
 	getSearchMoves(set: Dex.PokemonSet, typeIndex = -1) {
@@ -211,7 +210,6 @@ export class TeamEditorState extends PSModel {
 	}
 	setSearchValue(value: string) {
 		this.search.find(value);
-		this.search.resultIndex = this.search.results?.[0]?.[0] === 'header' ? 1 : 0;
 	}
 	selectSearchValue(): string | null {
 		let result = this.search.results?.[this.search.resultIndex];
@@ -432,34 +430,6 @@ export class TeamEditorState extends PSModel {
 
 		TeamEditorState.clipboard = null;
 		return teams;
-	}
-	ignoreRows = ['header', 'sortpokemon', 'sortmove', 'html'];
-	downSearchValue() {
-		if (!this.search.results || this.search.resultIndex >= this.search.results.length - 1) return;
-
-		this.search.resultIndex++;
-		if (this.ignoreRows.includes(this.search.results[this.search.resultIndex]?.[0])) {
-			if (this.search.resultIndex >= this.search.results.length - 1) return;
-			this.search.resultIndex++;
-		}
-		if (this.ignoreRows.includes(this.search.results[this.search.resultIndex]?.[0])) {
-			if (this.search.resultIndex >= this.search.results.length - 1) return;
-			this.search.resultIndex++;
-		}
-	}
-	upSearchValue() {
-		if (!this.search.results || this.search.resultIndex <= 0) return;
-
-		if (this.search.resultIndex <= 1 && this.ignoreRows.includes(this.search.results[0]?.[0])) return;
-		this.search.resultIndex--;
-		if (this.ignoreRows.includes(this.search.results[this.search.resultIndex]?.[0])) {
-			if (this.search.resultIndex <= 0) return;
-			this.search.resultIndex--;
-		}
-		if (this.ignoreRows.includes(this.search.results[this.search.resultIndex]?.[0])) {
-			if (this.search.resultIndex <= 0) return;
-			this.search.resultIndex--;
-		}
 	}
 	getResultValue(result: SearchRow): string {
 		switch (result[0]) {
@@ -1168,23 +1138,13 @@ class TeamTextbox extends preact.Component<{
 			break;
 		case 38: // up
 			if (this.innerFocus) {
-				editor.upSearchValue();
-				const resultsUp = this.base!.querySelector('.searchresults');
-				if (resultsUp) {
-					resultsUp.scrollTop = Math.max(0, editor.search.resultIndex * 33 - Math.trunc((window.innerHeight - 100) * 0.4));
-				}
-				this.forceUpdate();
+				editor.search.moveResultIndex(-1);
 				ev.preventDefault();
 			}
 			break;
 		case 40: // down
 			if (this.innerFocus) {
-				editor.downSearchValue();
-				const resultsDown = this.base!.querySelector('.searchresults');
-				if (resultsDown) {
-					resultsDown.scrollTop = Math.max(0, editor.search.resultIndex * 33 - Math.trunc((window.innerHeight - 100) * 0.4));
-				}
-				this.forceUpdate();
+				editor.search.moveResultIndex(1);
 				ev.preventDefault();
 			}
 			break;
@@ -2372,21 +2332,11 @@ class TeamWizard extends preact.Component<{
 			}
 			break;
 		case 38: // up
-			editor.upSearchValue();
-			const resultsUp = this.base!.querySelector('.wizardsearchresults');
-			if (resultsUp) {
-				resultsUp.scrollTop = Math.max(0, editor.search.resultIndex * 33 - Math.trunc((window.innerHeight - 300) / 2));
-			}
-			this.forceUpdate();
+			editor.search.moveResultIndex(-1);
 			ev.preventDefault();
 			break;
 		case 40: // down
-			editor.downSearchValue();
-			const resultsDown = this.base!.querySelector('.wizardsearchresults');
-			if (resultsDown) {
-				resultsDown.scrollTop = Math.max(0, editor.search.resultIndex * 33 - Math.trunc((window.innerHeight - 300) / 2));
-			}
-			this.forceUpdate();
+			editor.search.moveResultIndex(1);
 			ev.preventDefault();
 			break;
 		case 37: // left
@@ -2462,7 +2412,7 @@ class TeamWizard extends preact.Component<{
 			'move': 'Search moves or filter by type or category',
 		};
 		return <div class="team-focus-editor" onKeyDown={editor.handleParentKeyDown}>
-			<div class={isSearchMode ? 'team-focus-top' : ''}>
+			<div class={isSearchMode && (set?.moves.length || 0) > 5 ? 'team-focus-top' : ''}>
 				<ul class="tabbar">
 					<li class="home-li"><button class="button" onClick={this.closeInnerFocus}>
 						<i class="fa fa-chevron-left" aria-hidden></i> Back
@@ -2498,7 +2448,7 @@ class TeamWizard extends preact.Component<{
 				<DetailsForm editor={editor} set={set!} onChange={this.handleSetChange} />
 			) : type === 'import' ? (
 				<SetImportForm
-					editor={editor} set={set!} setIndex={setIndex}
+					editor={editor} set={set} setIndex={setIndex}
 					onChange={this.handleSetChange}
 				/>
 			) : (
@@ -2508,7 +2458,7 @@ class TeamWizard extends preact.Component<{
 					onSelect={this.selectResult}
 				>
 					{type === 'ability' && <SetSourceButtons
-						editor={editor} set={set!}
+						editor={editor} set={set}
 						onLoadSampleSet={this.handleLoadSampleSet} onLoadUserSet={this.handleLoadUserSet}
 					/>}
 				</PSSearchResults>
@@ -2877,15 +2827,11 @@ class TeamEditorForm extends TeamWizard {
 			}
 			break;
 		case 38: // up
-			editor.upSearchValue();
-			this.scrollSelectedResult();
-			this.forceUpdate();
+			editor.search.moveResultIndex(-1);
 			ev.preventDefault();
 			break;
 		case 40: // down
-			editor.downSearchValue();
-			this.scrollSelectedResult();
-			this.forceUpdate();
+			editor.search.moveResultIndex(1);
 			ev.preventDefault();
 			break;
 		case 37: // left
@@ -3079,12 +3025,6 @@ class TeamEditorForm extends TeamWizard {
 		if (focus.setIndex >= this.props.editor.sets.length) return null;
 		return this.base!.querySelectorAll<HTMLElement>('.teameditor > .set-button.set-form')[focus.setIndex] || null;
 	}
-	scrollSelectedResult() {
-		const results = this.base!.querySelector('.wizardsearchresults');
-		if (results) {
-			results.scrollTop = Math.max(0, this.props.editor.search.resultIndex * 33 - Math.trunc((window.innerHeight - 300) / 2));
-		}
-	}
 	removeDuplicateMove(name: string) {
 		const { editor } = this.props;
 		const focus = editor.innerFocus;
@@ -3238,7 +3178,13 @@ class TeamEditorForm extends TeamWizard {
 						<button onClick={this.undeleteSet} class="option"><i class="fa fa-undo" aria-hidden></i> Undo delete</button>
 					) : (
 						<button class="option" style="visibility:hidden"><i class="fa fa-trash" aria-hidden></i> Delete</button>
-					)}
+					)} {}
+					<button
+						class="option" name="import" onClick={this.clickPanelButton}
+						value={`set-${i}-import`}
+					>
+						<i class="fa fa-upload" aria-hidden></i> Import
+					</button>
 				</div>
 				<table class={spriteClass} style={sprite}>
 					<tr>
@@ -3386,11 +3332,12 @@ class TeamEditorForm extends TeamWizard {
 
 function SetSourceButtons(props: {
 	editor: TeamEditorState,
-	set: Dex.PokemonSet,
+	set?: Dex.PokemonSet,
 	onLoadSampleSet: (setName: string) => void,
 	onLoadUserSet: (setName: string) => void,
 }) {
 	const { editor, set } = props;
+	if (!set?.species) return null;
 	const sampleSets = editor.getSampleSets(set);
 	const userSets = editor.getUserSets(set);
 	return <>
@@ -3431,7 +3378,7 @@ function SetSourceButtons(props: {
 
 class SetImportForm extends preact.Component<{
 	editor: TeamEditorState,
-	set: Dex.PokemonSet,
+	set?: Dex.PokemonSet,
 	setIndex: number,
 	onChange: () => void,
 }, {
@@ -3447,6 +3394,7 @@ class SetImportForm extends preact.Component<{
 	textbox: HTMLTextAreaElement | null = null;
 	revertText = '';
 	getExportText() {
+		if (!this.props.set) return '';
 		return Teams.exportSet(this.props.set, this.props.editor.dex, true).trim();
 	}
 	override componentDidMount() {
@@ -3471,15 +3419,25 @@ class SetImportForm extends preact.Component<{
 		this.textbox.select();
 		this.setState({ error: '', copied: false, dirty });
 	}
-	revertTextToLastOpenedSet = () => {
+	revertSetToRevertPoint() {
 		const { editor, setIndex } = this.props;
-		if (editor.readonly || !this.textbox) return;
-		this.textbox.value = this.revertText;
 		const set = Teams.import(this.revertText)[0];
-		if (!set) return;
-		editor.sets[setIndex] = set;
+		if (set) {
+			editor.sets[setIndex] = set;
+		} else if (!this.revertText) {
+			if (editor.sets[setIndex]) editor.sets.splice(setIndex, 1);
+		} else {
+			return false;
+		}
 		editor.save();
 		this.props.onChange();
+		return true;
+	}
+	revertTextToRevertPoint = () => {
+		const { editor } = this.props;
+		if (editor.readonly || !this.textbox) return;
+		this.textbox.value = this.revertText;
+		if (!this.revertSetToRevertPoint()) return;
 		this.textbox.focus();
 		this.textbox.select();
 		this.setState({ error: '', copied: false, dirty: false });
@@ -3508,7 +3466,12 @@ class SetImportForm extends preact.Component<{
 		const dirty = this.textbox.value !== this.revertText;
 		const set = Teams.import(this.textbox.value)[0];
 		if (!set) {
-			this.setState({ error: 'No Pokemon set found.', copied: false, dirty });
+			this.revertSetToRevertPoint();
+			if (!this.textbox.value.trim() && !this.revertText) {
+				this.setState({ error: '', copied: false, dirty: false });
+			} else {
+				this.setState({ error: 'No Pokemon set found.', copied: false, dirty });
+			}
 			return;
 		}
 		editor.sets[setIndex] = set;
@@ -3527,7 +3490,7 @@ class SetImportForm extends preact.Component<{
 						{this.state.copied ? 'Copied!' : 'Copy'}
 					</button> {}
 					{this.state.dirty && <button
-						class="button" onClick={this.revertTextToLastOpenedSet} disabled={editor.readonly}
+						class="button" onClick={this.revertTextToRevertPoint} disabled={editor.readonly}
 					>
 						<i class="fa fa-undo" aria-hidden></i> Revert
 					</button>}
@@ -3536,7 +3499,7 @@ class SetImportForm extends preact.Component<{
 				<textarea
 					ref={this.setTextbox} class="textbox set-import-textbox" rows={14}
 					readOnly={editor.readonly} onInput={this.inputText}
-					style="min-height:3em"
+					style="min-height:6em"
 				></textarea>
 				<SetSourceButtons
 					editor={editor} set={this.props.set}

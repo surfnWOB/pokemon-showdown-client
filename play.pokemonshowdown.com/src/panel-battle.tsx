@@ -155,7 +155,7 @@ export class BattleRoom extends ChatRoom {
 
 	override interruptClose(explicit?: boolean, elem?: HTMLElement | null) {
 		const battle = this.battle;
-		if ((battle && !battle.ended && this.side && !battle.isReplay) || this.requireForfeit) {
+		if ((battle && !battle.ended && this.connected !== 'expired' && this.side && !battle.isReplay) || this.requireForfeit) {
 			PS.join('forfeitbattle' as RoomID, { parentElem: elem, parentRoomid: this.id });
 			return `You are still in ${this.title}`;
 		}
@@ -199,7 +199,7 @@ class BattleDiv extends preact.Component<{ room: BattleRoom }> {
 	}
 }
 
-class TimerButton extends preact.Component<{ room: BattleRoom }> {
+class TimerButton extends preact.Component<{ room: BattleRoom, top: number }> {
 	timerInterval: number | null = null;
 	override componentWillUnmount() {
 		if (this.timerInterval) {
@@ -251,7 +251,8 @@ class TimerButton extends preact.Component<{ room: BattleRoom }> {
 		}
 
 		return <button
-			style={{ position: "absolute", right: '10px' }} data-href="battletimer" class={`button${timerTicking}`} role="timer"
+			style={{ position: "absolute", right: '10px', top: `${this.props.top}px` }}
+			data-href="battletimer" class={`button${timerTicking}`} role="timer"
 		>
 			<i class="fa fa-hourglass-start" aria-hidden></i> {time}
 		</button>;
@@ -387,8 +388,9 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 	updateLayout() {
 		if (!this.base) return;
 		const room = this.props.room;
-		const width = this.base.offsetWidth;
-		if (width && width < 640) {
+		const width = room.width;
+		if (!width) return;
+		if (width < 640) {
 			const scale = (width / 640);
 			room.battle?.scene.$frame!.css('transform', `scale(${scale})`);
 			this.battleHeight = Math.round(360 * scale);
@@ -895,14 +897,15 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 						buf.push(` at ${ally} ${target.name}`);
 					}
 				}
+				buf.push(`.`);
 			} else if (choice.choiceType === 'switch') {
 				const target = request.side.pokemon[choice.targetPokemon - 1];
-				buf.push(`${pokemon.name} will switch to `, <strong>{target.name}</strong>);
+				buf.push(`${pokemon.name} will switch to `, <strong>{target.name}</strong>, `.`);
 			} else if (choice.choiceType === 'shift') {
-				buf.push(`${pokemon.name} will `, <strong>shift</strong>, ` to the center`);
+				buf.push(`${pokemon.name} will `, <strong>shift</strong>, ` to the center.`);
 			} else if (choice.choiceType === 'team') {
 				const target = request.side.pokemon[choice.targetPokemon - 1];
-				buf.push(`You picked `, <strong>{target.name}</strong>);
+				buf.push(`You picked `, <strong>{target.name}</strong>, `.`);
 			}
 			buf.push(<br />);
 		}
@@ -990,7 +993,7 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 			return <div class="controls">
 				<div class="whatdo">
 					{this.renderOldChoices(request, choices)}
-					What will <strong>{pokemon.name}</strong> do?
+					Who will replace <strong>{pokemon.name}</strong>?
 				</div>
 				<div class="switchcontrols">
 					<h3 class="switchselect">Switch</h3>
@@ -1096,8 +1099,8 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 	};
 
 	override render() {
-		const room = this.props.room;
 		this.updateLayout();
+		const room = this.props.room;
 		const id = `room-${room.id}`;
 		const hardcoreStyle = room.battle?.hardcoreMode ? <style
 			dangerouslySetInnerHTML={{ __html: `#${id} .battle .turn, #${id} .battle-history { display: none !important; }` }}
@@ -1116,14 +1119,8 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 				</ChatLog>
 				<ChatTextEntry room={room} onMessage={this.send} onKey={this.onKey} left={0} />
 				<ChatUserList room={room} top={this.battleHeight} minimized />
-				<button
-					data-href="battleoptions" class="button"
-					style={{ position: 'absolute', right: '10px', top: this.battleHeight + 2 }}
-				>
-					Battle options
-				</button>
 				{(room.battle && !room.battle.ended && room.request && room.battle.mySide.id === PS.user.userid) &&
-					<TimerButton room={room} />}
+					<TimerButton room={room} top={this.battleHeight + 7} />}
 				<div class="battle-controls-container"></div>
 			</PSPanelWrapper>;
 		}
@@ -1138,16 +1135,10 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 			</ChatLog>
 			<ChatTextEntry room={room} onMessage={this.send} onKey={this.onKey} left={640} />
 			<ChatUserList room={room} left={640} minimized />
-			<button
-				data-href="battleoptions" class="button"
-				style={{ position: 'absolute', right: '10px', top: '2px' }}
-			>
-				Battle options
-			</button>
 			<div class="battle-controls-container">
 				<div class="battle-controls" role="complementary" aria-label="Battle Controls" style="top: 370px;">
 					{(room.battle && !room.battle.ended && room.request && room.battle.mySide.id === PS.user.userid) &&
-						<TimerButton room={room} />}
+						<TimerButton room={room} top={0} />}
 					{this.renderControls()}
 				</div>
 			</div>

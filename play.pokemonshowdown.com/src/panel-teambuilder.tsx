@@ -52,6 +52,9 @@ class PSTextarea extends preact.Component<{ initialValue?: string, name?: string
 	}
 }
 
+const ADD_FORMAT_FOLDER_VALUE = '+';
+const ADD_FOLDER_VALUE = '++';
+
 class TeambuilderRoom extends PSRoom {
 	readonly DEFAULT_FORMAT = Dex.modid;
 
@@ -129,16 +132,25 @@ class TeambuilderRoom extends PSRoom {
 			this.setExportMode(!this.exportMode);
 			this.update(null);
 		},
-		'createfolder'(name) {
+		'createfolder'(name, cmd, elem) {
+			if (!name) {
+				PS.prompt("Folder name?", { parentElem: elem, okButton: "Create" }).then(newName => {
+					newName = (newName || '').trim();
+					if (!newName) return;
+
+					this.send(`/createfolder ${newName}`, elem);
+				});
+				return;
+			}
+
 			if (name.includes('/') || name.includes('\\')) {
-				PS.alert("Names can't contain slashes, since they're used as a folder separator.");
+				this.errorReply("Names can't contain slashes, since they're used as a folder separator.");
 				name = name.replace(/[\\/]/g, '');
 			}
 			if (name.includes('|')) {
-				PS.alert("Names can't contain the character |, since they're used for storing teams.");
+				this.errorReply("Names can't contain the character |, since they're used for storing teams.");
 				name = name.replace(/\|/g, '');
 			}
-			if (!name) return this.errorReply('Name required');
 
 			this.curFolderKeep = `${name}/`;
 			this.curFolder = `${name}/`;
@@ -252,6 +264,7 @@ class TeambuilderPanel extends PSRoomPanel<TeambuilderRoom> {
 	static readonly Model = TeambuilderRoom;
 	static readonly icon = <i class="fa fa-pencil-square-o" aria-hidden></i>;
 	static readonly title = 'Teambuilder';
+	mobileFormatFolderButton: HTMLButtonElement | null = null;
 	override componentDidUpdate() {
 		super.componentDidUpdate();
 		const room = this.props.room;
@@ -290,13 +303,8 @@ class TeambuilderPanel extends PSRoomPanel<TeambuilderRoom> {
 		if (folder === null) return;
 		e.preventDefault();
 		e.stopImmediatePropagation();
-		if (folder === '++') {
-			PS.prompt("Folder name?", { parentElem: elem, okButton: "Create" }).then(name => {
-				name = (name || '').trim();
-				if (!name) return;
-
-				room.send(`/createfolder ${name}`, elem);
-			});
+		if (folder === ADD_FOLDER_VALUE) {
+			room.send(`/createfolder`, elem);
 			return;
 		}
 		room.curFolder = folder;
@@ -306,9 +314,33 @@ class TeambuilderPanel extends PSRoomPanel<TeambuilderRoom> {
 		const room = this.props.room;
 		const button = ev.currentTarget as HTMLButtonElement;
 		const folder = toID(button.value);
+		if (!folder) return;
 		room.curFolderKeep = folder;
 		room.curFolder = folder;
 		button.value = '';
+		this.forceUpdate();
+	};
+	changeMobileFolder = (ev: Event) => {
+		const room = this.props.room;
+		const select = ev.currentTarget as HTMLSelectElement;
+		const value = select.value;
+		if (value === ADD_FOLDER_VALUE) {
+			select.value = room.curFolder;
+			setTimeout(() => {
+				room.send(`/createfolder`, select);
+			});
+			return;
+		}
+		if (value === ADD_FORMAT_FOLDER_VALUE) {
+			select.value = room.curFolder;
+			const button = this.mobileFormatFolderButton;
+			if (!button) return;
+			setTimeout(() => {
+				PS.join('formatdropdown' as RoomID, { parentElem: button });
+			});
+			return;
+		}
+		room.curFolder = value;
 		this.forceUpdate();
 	};
 	/** undefined: not dragging, null: dragging a new team */
@@ -588,7 +620,7 @@ class TeambuilderPanel extends PSRoomPanel<TeambuilderRoom> {
 			if (result) room.send(`/deletefolder`, elem);
 		});
 	};
-	renderFolderList() {
+	getFolderList() {
 		const room = this.props.room;
 		// The folder list isn't actually saved anywhere:
 		// it's regenerated anew from the team list every time.
@@ -635,6 +667,10 @@ class TeambuilderPanel extends PSRoomPanel<TeambuilderRoom> {
 			folder,
 		]);
 
+		return folders;
+	}
+	renderFolderList() {
+		const folders = this.getFolderList();
 		let renderedFormatFolders = [
 			<div class="foldersep"></div>,
 			<div class="folder"><button
@@ -676,6 +712,49 @@ class TeambuilderPanel extends PSRoomPanel<TeambuilderRoom> {
 
 			<div class="folderlistafter"></div>
 		</div>;
+	}
+	renderMobileFolderSelect() {
+		const room = this.props.room;
+		const renderedFolders: preact.ComponentChild[] = [];
+		const formatGroups: { [gen: number]: preact.ComponentChild[] | undefined } = {};
+		const gens: number[] = [];
+
+		for (const folder of this.getFolderList()) {
+			if (folder.endsWith('/')) {
+				renderedFolders.push(
+					<option value={folder}>{folder.slice(0, -1) || 'Teams not in any folders'}</option>
+				);
+			} else {
+				const gen = parseInt(folder.charAt(3), 10);
+				const group = formatGroups[gen] || (formatGroups[gen] = []);
+				if (!group.length) gens.push(gen);
+				group.push(
+					<option value={folder}>
+						{BattleLog.formatName(folder)}{folder.length <= 4 ? ' (uncategorized)' : ''}
+					</option>
+				);
+			}
+		}
+
+		return <>
+			<select class="button teambuilder-folder-select" value={room.curFolder} onChange={this.changeMobileFolder}>
+				<option value="">All teams</option>
+				{gens.map(gen => (
+					<optgroup label={`Gen ${gen}`}>
+						{formatGroups[gen]}
+					</optgroup>
+				))}
+				<option value={ADD_FORMAT_FOLDER_VALUE}>(add format folder)</option>
+				{renderedFolders.length ? <optgroup label="Folders">{renderedFolders}</optgroup> : null}
+				<option value={ADD_FOLDER_VALUE}>(add folder)</option>
+			</select>
+			<button
+				name="format" value="" data-selecttype="teambuilder"
+				class="teambuilder-format-folder-source" data-href="/formatdropdown" onChange={this.addFormatFolder}
+				tabIndex={-1} aria-hidden
+				ref={el => { this.mobileFormatFolderButton = el; }}
+			></button>
+		</>;
 	}
 	visibleTeams(teams?: Team[]): Team[];
 	visibleTeams(teams: (Team | null)[]): (Team | null)[];
@@ -753,11 +832,18 @@ class TeambuilderPanel extends PSRoomPanel<TeambuilderRoom> {
 
 		const clipboard = window.TeamEditorState ? TeamEditorState.clipboard : null;
 		const clipboardTeams = clipboard?.teams;
+		const narrow = window.innerWidth < 650;
 		return <div class="teampane">
 			{window.TeamEditorState && TeamEditorState.renderClipboard(this.cancelClipboard)}
 			{filterFolder ? (
 				<h2>
-					<i class="fa fa-folder-open" aria-hidden></i> {filterFolder} <small>({filteredTeamCount})</small>
+					{narrow ? (
+						this.renderMobileFolderSelect()
+					) : (
+						<span class="teambuilder-folder-title">
+							<i class="fa fa-folder-open" aria-hidden></i> {filterFolder} <small>({filteredTeamCount})</small>
+						</span>
+					)}
 					<button class="button small" style="margin-left:5px" onClick={this.renameFolder}>
 						<i class="fa fa-pencil" aria-hidden></i> Rename
 					</button> {}
@@ -766,11 +852,33 @@ class TeambuilderPanel extends PSRoomPanel<TeambuilderRoom> {
 					</button>
 				</h2>
 			) : filterFolder === '' ? (
-				<h2><i class="fa fa-folder-open-o" aria-hidden></i> Teams not in any folders</h2>
+				<h2>
+					{narrow ? (
+						this.renderMobileFolderSelect()
+					) : (
+						<span class="teambuilder-folder-title">
+							<i class="fa fa-folder-open-o" aria-hidden></i> Teams not in any folders
+						</span>
+					)}
+				</h2>
 			) : filterFormat ? (
-				<h2><i class="fa fa-folder-open-o" aria-hidden></i> {filterFormat} <small>({filteredTeamCount})</small></h2>
+				<h2>
+					{narrow ? (
+						this.renderMobileFolderSelect()
+					) : (
+						<span class="teambuilder-folder-title">
+							<i class="fa fa-folder-open-o" aria-hidden></i> {filterFormat} <small>({filteredTeamCount})</small>
+						</span>
+					)}
+				</h2>
 			) : (
-				<h2>All Teams <small>({teams.length})</small></h2>
+				<h2>
+					{narrow ? (
+						this.renderMobileFolderSelect()
+					) : (
+						<span class="teambuilder-folder-title">All Teams <small>({teams.length})</small></span>
+					)}
+				</h2>
 			)}
 			<p>
 				<button data-cmd="/newteam" class="button big">

@@ -417,6 +417,23 @@ export class PSSearchResults extends preact.Component<{
 		}
 	};
 
+	handleMouseDown = (ev: MouseEvent) => {
+		// bypass blur handlers, so the buttons don't get re-rendered before the click
+		// handler can run
+		let target = ev.target as HTMLElement | null;
+		while (target && target.className !== 'dexlist') {
+			if (target.tagName === 'A') {
+				ev.preventDefault();
+				return;
+			}
+			if (target.tagName === 'BUTTON' && (target.hasAttribute('data-filter') || target.hasAttribute('data-sort'))) {
+				ev.preventDefault();
+				return;
+			}
+			target = target.parentElement;
+		}
+	};
+
 	handleScroll = () => {
 		if (this.base?.scrollTop && document.documentElement.clientWidth === document.documentElement.scrollWidth) {
 			(this.base as any).scrollIntoViewIfNeeded?.();
@@ -449,6 +466,15 @@ export class PSSearchResults extends preact.Component<{
 		if (!list) return;
 		list.querySelector('.hover')?.classList.remove('hover');
 		list.querySelector(`li.result[value="${this.props.search.resultIndex}"] > a`)?.classList.add('hover');
+	}
+
+	scrollSelectedResult() {
+		if (!this.base) return;
+		this.base.scrollTop = Math.max(
+			0,
+			this.props.search.resultIndex * RESULT_ROW_HEIGHT - Math.trunc(this.base.clientHeight * 2 / 5)
+		);
+		this.updateDOM(true);
 	}
 
 	updateDOM(force = true) {
@@ -495,11 +521,13 @@ export class PSSearchResults extends preact.Component<{
 
 	override componentDidMount() {
 		this.base?.addEventListener('scroll', this.handleScroll);
+		this.props.search.resultsComponent = this;
 		this.updateDOM(true);
 	}
 
 	override componentWillUnmount() {
 		this.base?.removeEventListener('scroll', this.handleScroll);
+		this.props.search.resultsComponent = null;
 		if (this.scrollFrame) cancelAnimationFrame(this.scrollFrame);
 	}
 
@@ -507,7 +535,7 @@ export class PSSearchResults extends preact.Component<{
 		// the <ul> contents are uncontrolled
 		return <div class={this.props.class} style={this.props.style}>
 			{this.props.prepend}
-			<ul class="dexlist" onClick={this.handleClick}></ul>
+			<ul class="dexlist" onMouseDown={this.handleMouseDown} onClick={this.handleClick}></ul>
 			{this.props.children}
 		</div>;
 	}

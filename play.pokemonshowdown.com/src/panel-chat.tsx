@@ -1462,6 +1462,11 @@ export class ChatUserList extends preact.Component<{
 					<button class="button button-middle" data-cmd="/challenge">Challenge</button>
 					<button class="button button-middle" data-href={`useroptions-${pmTargetid}`}>{'\u2026'}</button>
 				</>
+			) : room.battle ? (
+				<>
+					<button data-href="userlist" class="button button-middle">{room.userCount} users</button>
+					<button data-href="battleoptions" class="button button-middle">Battle options</button>
+				</>
 			) : (
 				<button data-href="userlist" class="button button-middle">{room.userCount} users</button>
 			)}

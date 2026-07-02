@@ -1234,7 +1234,7 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 		}
 	}
 	errorReply(message: string, element = this.currentElement) {
-		if (element?.tagName === 'BUTTON') {
+		if (element?.tagName === 'BUTTON' || element?.tagName === 'SELECT') {
 			PS.alert(message, { parentElem: element });
 		} else {
 			this.add(`|error|${message}`);
@@ -2237,6 +2237,15 @@ export const PS = new class extends PSModel {
 				continue;
 			} case 'noinit': {
 				room = PS.rooms[roomid2];
+				if (!room && roomid2.startsWith('battle-') && args[1] === 'nonexistent') {
+					// possible replay; init a battle room for it
+					room = this.addRoom({
+						id: roomid2,
+						type: 'battle',
+						connected: false,
+					});
+					(room as BattleRoom).rejoining = false;
+				}
 				if (room) {
 					room.connected = false;
 					if (args[1] === 'namerequired') {
