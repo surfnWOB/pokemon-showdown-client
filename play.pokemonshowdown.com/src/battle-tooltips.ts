@@ -202,7 +202,7 @@ export class BattleTooltips {
 
 	listen(elem: HTMLElement | JQuery) {
 		const $elem = $(elem);
-		$elem.on('mouseover', '.has-tooltip', this.showTooltipEvent);
+		$elem.on('mouseover', '.has-tooltip', this.mouseOverEvent);
 		$elem.on('click', '.has-tooltip', this.clickTooltipEvent);
 		$elem.on('focus', '.has-tooltip', this.showTooltipEvent);
 		$elem.on('mouseout', '.has-tooltip', BattleTooltips.unshowTooltip);
@@ -261,6 +261,12 @@ export class BattleTooltips {
 
 	showTooltipEvent = (e: Event) => {
 		if (BattleTooltips.isLocked) return;
+		this.showTooltip(e.currentTarget as HTMLElement);
+	};
+
+	mouseOverEvent = (e: Event) => {
+		// 2026-07-06 Firefox bug: can trigger mouseover after tapping a completely different button
+		if (BattleTooltips.isLocked || (e as any).originalEvent?.mozInputSource === 5) return;
 		this.showTooltip(e.currentTarget as HTMLElement);
 	};
 
@@ -1982,7 +1988,13 @@ export class BattleTooltips {
 		}
 
 		// status immunities
-		if (target.status && inflictsStatus) return 0;
+		if (target.status && inflictsStatus) {
+			if (dex.gen === 1 && inflictsStatus === 'slp' && target.volatiles['mustrecharge']) {
+				// unfortunately gen 1 can actually override status here
+			} else {
+				return 0;
+			}
+		}
 		if (targetAbility === "Comatose" && inflictsStatus) return 0;
 		if (targetAbility === "Purifying Salt" && inflictsStatus) return 0;
 		if (targetAbility === "Shields Down" && target.speciesForme === 'Minior-Meteor' && inflictsStatus) return 0;
@@ -2004,7 +2016,10 @@ export class BattleTooltips {
 		].includes(move.id)) return 0;
 
 		if (category === 'Status') {
-			if (!move.flags['bypasssub'] && target.volatiles['substitute'] && sourceAbility !== 'Infiltrator') return 0;
+			if (target.volatiles['substitute'] && !move.flags['bypasssub'] && sourceAbility !== 'Infiltrator') {
+				if (dex.gen !== 1) return 0;
+				if (inflictsStatus !== 'par' && inflictsStatus !== 'slp' && inflictsEffect !== 'confusion') return 0;
+			}
 			if (move.id === 'thunderwave') return factor * otherFactor === 0 ? 0 : null;
 			return otherFactor === 0 ? 0 : null;
 		}

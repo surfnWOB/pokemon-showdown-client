@@ -132,7 +132,7 @@ export class PSRouter {
 				currentRoomid = possibleRoomid as RoomID;
 			}
 			if (currentRoomid !== null) {
-				if (currentRoomid === PS.room.id) return;
+				if (currentRoomid === this.roomid) return;
 				this.roomid = currentRoomid;
 				PS.join(currentRoomid);
 			}
@@ -261,6 +261,10 @@ export class PSRoomPanel<T extends PSRoom = PSRoom> extends preact.Component<{ r
 	chooseParentValue(value: string) {
 		const dropdownButton = this.props.room.parentElem as HTMLButtonElement;
 		dropdownButton.value = value;
+		if (dropdownButton.name === 'format' && dropdownButton.getAttribute('data-href') !== '/formatdropdown') {
+			// button was made by |html| rather than <FormatDropdown>
+			dropdownButton.innerText = value;
+		}
 		const changeEvent = new Event('change');
 		dropdownButton.dispatchEvent(changeEvent);
 		PS.closePopup();
@@ -531,7 +535,10 @@ export class PSView extends preact.Component {
 				for (const [name, value] of Object.entries(inputs)) {
 					cmd = cmd.replace(`{${name}}`, value === true ? 'on' : value === false ? 'off' : value);
 				}
-				cmd = cmd.replace(/\{[a-z0-9-]+\}/g, '');
+				cmd = cmd.replace(
+					/\{([a-z0-9-]+)\}/g,
+					(_, match) => elem.querySelector<HTMLButtonElement>(`button[name="${match}"]`)?.value || ''
+				);
 				const room = PS.getRoom(elem) || PS.mainmenu;
 				room.sendDirect(cmd);
 
@@ -634,7 +641,11 @@ export class PSView extends preact.Component {
 						// the spec says that buttons with no `type` attribute should be
 						// submit buttons, but this is a bad default so we're going
 						// to just assume they're not
-						elem.setAttribute('type', 'button');
+
+						// elem.setAttribute('type', 'button');
+
+						// on second thought, a lot of code depends on this default. so
+						// we'll leave it alone
 
 						// don't return, to allow <a><button> to make links that look
 						// like buttons
@@ -948,6 +959,11 @@ export class PSView extends preact.Component {
 				parentElem: elem,
 			});
 			return true;
+		case 'format':
+			PS.join('formatdropdown' as RoomID, {
+				parentElem: elem,
+			});
+			return true;
 		case 'register':
 			PS.join('register' as RoomID, {
 				parentElem: elem,
@@ -1061,12 +1077,15 @@ export class PSView extends preact.Component {
 		}
 		if (!room.width || !room.height) {
 			room.focusNextUpdate = true;
+			// dimensions unknown; render hidden at top-left so width/height can be grabbed
+			// next render will be able to calculate position
 			return {
 				position: 'absolute',
 				visibility: 'hidden',
 				margin: 0,
 				top: 0,
 				left: 0,
+				...(width ? { maxWidth: typeof width === 'number' ? width - 2 : width } : {}),
 			};
 		}
 		// nonmodal popup: should be positioned near source element

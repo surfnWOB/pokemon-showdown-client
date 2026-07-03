@@ -19,7 +19,7 @@ import { Net } from "./client-connection";
 import { PSIcon } from "./panels";
 
 type InnerFocusType = 'pokemon' | 'ability' | 'item' | 'move' | 'stats' | 'details' | 'import';
-type TeamEditorMode = 'wizard' | 'form' | 'import';
+type TeamEditorMode = 'form' | 'import';
 
 interface FocusState {
 	setIndex: number;
@@ -147,6 +147,50 @@ export class TeamEditorState extends PSModel {
 			typeIndex: match[3] ? parseInt(match[3]) : -1,
 		};
 	}
+	getField({ setIndex, type, typeIndex }: FocusState) {
+		const set = this.sets[setIndex];
+		if (!set) return '';
+		switch (type) {
+		case 'pokemon':
+			return set.species || '';
+		case 'item':
+			return set.item || '';
+		case 'ability':
+			return set.ability || '';
+		case 'move':
+			return set.moves[typeIndex] || '';
+		case 'nickname':
+			return set.name || '';
+		default:
+			return '';
+		}
+	}
+	normalizeField(type: InnerFocusType, value: string): string | null {
+		if (!value.trim()) return '';
+
+		switch (type) {
+		case 'pokemon': {
+			const species = this.dex.species.get(value);
+			return species.exists ? species.name : null;
+		}
+		case 'item': {
+			if (toID(value) === 'noitem') return '';
+			const item = this.dex.items.get(value);
+			return item.exists ? item.name : null;
+		}
+		case 'ability': {
+			if (toID(value) === 'noability') return '';
+			const ability = this.dex.abilities.get(value);
+			return ability.exists ? ability.name : null;
+		}
+		case 'move': {
+			const move = this.dex.moves.get(value);
+			return move.exists ? move.name : null;
+		}
+		default:
+			return value;
+		}
+	}
 	setSearchType(type: SearchType, i: number, value?: string, typeIndex = -1) {
 		const set = this.sets[i];
 		this.search.setType(type, this.format, set);
@@ -190,13 +234,13 @@ export class TeamEditorState extends PSModel {
 	updateSearchMoves(set: Dex.PokemonSet, typeIndex = -1) {
 		let oldResultsLength = this.search.prependResults?.length || 0;
 		this.search.prependResults = this.getSearchMoves(set, typeIndex);
-		const resultIndex = Math.max(0, this.search.resultIndex + this.search.prependResults.length - oldResultsLength);
+		const selection = Math.max(0, this.search.selection + this.search.prependResults.length - oldResultsLength);
 		this.search.results = null;
 		if (this.search.query) {
 			this.setSearchValue('');
 		} else {
 			this.search.find('');
-			this.search.resultIndex = resultIndex;
+			this.search.selection = selection;
 		}
 	}
 	getSearchMoves(set: Dex.PokemonSet, typeIndex = -1) {
@@ -210,19 +254,6 @@ export class TeamEditorState extends PSModel {
 	}
 	setSearchValue(value: string) {
 		this.search.find(value);
-	}
-	selectSearchValue(): string | null {
-		let result = this.search.results?.[this.search.resultIndex];
-		if (result?.[0] === 'header') {
-			this.search.resultIndex++;
-			result = this.search.results?.[this.search.resultIndex];
-		}
-		if (!result) return null;
-		if (this.search.addFilter(result)) {
-			this.search.resultIndex = 0;
-			return null;
-		}
-		return this.getResultValue(result);
 	}
 	changeSpecies(set: Dex.PokemonSet, speciesName: string) {
 		const species = this.dex.species.get(speciesName);
@@ -431,29 +462,14 @@ export class TeamEditorState extends PSModel {
 		TeamEditorState.clipboard = null;
 		return teams;
 	}
-	getResultValue(result: SearchRow): string {
-		switch (result[0]) {
-		case 'pokemon':
-			return this.dex.species.get(result[1]).name;
-		case 'item':
-			return this.dex.items.get(result[1]).name;
-		case 'ability':
-			return this.dex.abilities.get(result[1]).name;
-		case 'move':
-			if (result[1].startsWith('_')) {
-				const [slot, moveid] = result[1].slice(1).split('_');
-				return this.dex.moves.get(moveid).name + '|' + slot;
-			}
-			return this.dex.moves.get(result[1]).name;
-		case 'html':
-		case 'header':
-			return '';
-		default:
-			return result[1];
-		}
-	}
 	canAdd(): boolean {
 		return this.sets.length < 6 || this.team.isBox;
+	}
+	showItem(set: Dex.PokemonSet) {
+		return !!(this.gen > 1 && !this.isLetsGo || set.item);
+	}
+	showAbility(set: Dex.PokemonSet) {
+		return !!(this.gen > 2 && !this.isLetsGo || set.ability);
 	}
 	getHPType(set: Dex.PokemonSet): Dex.TypeName {
 		if (set.hpType) return set.hpType as Dex.TypeName;
@@ -1017,17 +1033,12 @@ export class TeamEditor extends preact.Component<{
 				<li><button onClick={this.setTab} value="form" class={`button${this.mode === 'form' ? ' cur' : ''}`}>
 					Form
 				</button></li>
-				{/* <li><button onClick={this.setTab} value="wizard" class={`button${this.mode === 'wizard' ? ' cur' : ''}`}>
-					Wizard
-				</button></li> */}
 				<li><button onClick={this.setTab} value="import" class={`button${this.mode === 'import' ? ' cur' : ''}`}>
 					Import/Export
 				</button></li>
 			</ul>
 			{TeamEditorState.renderClipboard(this.cancelClipboard)}
-			{this.mode === 'wizard' ? (
-				<TeamWizard editor={editor} onChange={this.props.onChange} onUpdate={this.update} />
-			) : this.mode === 'form' ? (
+			{this.mode === 'form' ? (
 				<TeamEditorForm editor={editor} onChange={this.props.onChange} onUpdate={this.update} />
 			) : (
 				<TeamTextbox editor={editor} onChange={this.props.onChange} onUpdate={this.update} />
@@ -1138,13 +1149,13 @@ class TeamTextbox extends preact.Component<{
 			break;
 		case 38: // up
 			if (this.innerFocus) {
-				editor.search.moveResultIndex(-1);
+				editor.search.moveSelection(-1);
 				ev.preventDefault();
 			}
 			break;
 		case 40: // down
 			if (this.innerFocus) {
-				editor.search.moveResultIndex(1);
+				editor.search.moveSelection(1);
 				ev.preventDefault();
 			}
 			break;
@@ -1166,13 +1177,13 @@ class TeamTextbox extends preact.Component<{
 				ev.stopImmediatePropagation();
 				ev.preventDefault();
 			} else {
-				const result = this.editor.selectSearchValue();
+				const result = editor.search.selectResult();
 				if (result !== null) {
-					const [name, moveSlot] = result.split('|');
+					const [name, moveSlot] = editor.search.getResultName(result).split('|');
 					this.selectResult(this.innerFocus.type, name, moveSlot);
 				} else {
 					this.replaceNoFocus('', this.innerFocus.range[0], this.innerFocus.range[1]);
-					this.editor.setSearchValue('');
+					editor.setSearchValue('');
 					this.forceUpdate();
 				}
 				this.resetScroll();
@@ -1848,22 +1859,23 @@ class TeamTextbox extends preact.Component<{
 	}
 }
 
-class TeamWizard extends preact.Component<{
+class TeamEditorForm extends preact.Component<{
 	editor: TeamEditorState, onChange?: () => void, onUpdate: () => void,
 }> {
-	readonly isForm: boolean = false;
-	setSearchBox: string | null = null;
 	focusAnimationStartLocation: {
 		rect: { left: number, top: number },
 	} | null = null;
 	pendingSetScrollRestore: { index: number, top: number } | null = null;
-	closeInnerFocus = (ev?: Event) => {
-		this.changeFocus(null);
-		ev?.preventDefault();
-	};
+	/** where to focus after next render */
+	pendingFocus: TeamEditorState['innerFocus'] = null;
+	pendingFocusValue: string | null = null;
+	pendingFocusSelection: [number | null, number | null, 'forward' | 'backward' | 'none' | undefined] | null = null;
+	/** whether to focus the details/stats button or their panel contents */
+	pendingFocusButton = false;
+	mouseDownTextbox: HTMLInputElement | null = null;
 	startFocusAnimation(source: Element | null) {
 		if (this.props.editor.innerFocus) return;
-		const setButton = source?.closest('.set-button');
+		const setButton = source?.closest('.set-form');
 		if (!setButton) return;
 		const rect = setButton.getBoundingClientRect();
 		this.focusAnimationStartLocation = {
@@ -1875,7 +1887,7 @@ class TeamWizard extends preact.Component<{
 		if (!start) return;
 		this.focusAnimationStartLocation = null;
 		if (window.PS?.prefs.noanim || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-		const setButton = this.base!.querySelector<HTMLElement>('.team-focus-editor .set-button');
+		const setButton = this.base!.querySelector<HTMLElement>('.team-focus-editor .set-form');
 		if (!setButton) return;
 		const rect = setButton.getBoundingClientRect();
 		const dx = start.rect.left - rect.left;
@@ -1929,7 +1941,7 @@ class TeamWizard extends preact.Component<{
 		if (!restore) return;
 		this.pendingSetScrollRestore = null;
 
-		const setButton = this.base.querySelector<HTMLElement>(`.set-button[data-set-index="${restore.index}"]`);
+		const setButton = this.base.querySelector<HTMLElement>(`.set-form[data-set-index="${restore.index}"]`);
 		if (!setButton) return;
 		const dy = setButton.getBoundingClientRect().top - restore.top;
 		if (!dy) return;
@@ -1953,7 +1965,7 @@ class TeamWizard extends preact.Component<{
 		const target = ev.currentTarget as HTMLButtonElement;
 		const i = parseInt(target.value);
 		const { editor } = this.props;
-		this.preserveSetScroll(i, target.closest<HTMLElement>('.set-button'));
+		this.preserveSetScroll(i, target.closest<HTMLElement>('.set-form'));
 		editor.copySet(i);
 		editor.innerFocus = null;
 		this.props.onUpdate();
@@ -1993,243 +2005,10 @@ class TeamWizard extends preact.Component<{
 		this.handleSetChange();
 		ev.preventDefault();
 	};
-	changeFocus(focus: TeamEditorState['innerFocus']) {
-		const { editor } = this.props;
-		editor.innerFocus = focus;
-		if (!focus) {
-			this.props.onUpdate();
-			return;
-		}
-
-		const set = editor.sets[focus.setIndex];
-		if (focus.type === 'details') {
-			this.setSearchBox = set.name || '';
-		} else if (focus.type !== 'stats' && focus.type !== 'import') {
-			let value;
-			if (focus.type === 'pokemon') value = set?.species || '';
-			else if (focus.type === 'item') value = set.item;
-			else if (focus.type === 'ability') value = set.ability;
-			editor.setSearchType(focus.type, focus.setIndex, value, focus.typeIndex);
-			this.resetScroll();
-			this.setSearchBox = value || '';
-		}
-		this.props.onUpdate();
-	}
-	renderSet(set: Dex.PokemonSet | undefined, i: number) {
-		const { editor } = this.props;
-		const sprite = Dex.getTeambuilderSprite(set, editor.dex);
-		const spriteClass = set && Dex.getTeambuilderSpriteData(set, editor.dex).pixelated ? ' pixelated' : '';
-		if (!set) {
-			return <div class="set-button set-wizard" data-set-index={i}>
-				<div style="text-align:right">
-					{editor.deletedSet ? (
-						<button onClick={this.undeleteSet} class="option"><i class="fa fa-undo" aria-hidden></i> Undo delete</button>
-					) : (
-						<button class="option" style="visibility:hidden"><i class="fa fa-trash" aria-hidden></i> Delete</button>
-					)}
-				</div>
-				<table>
-					<tr>
-						<td rowSpan={2} class="set-pokemon"><div class="border-collapse">
-							<button class="button button-first cur" onClick={this.setFocus} value={`set-${i}-pokemon`}>
-								<span class={`sprite${spriteClass}`} style={sprite}><span class="sprite-inner">
-									<strong class="label">Pokemon</strong> {}
-									<em>(choose species)</em>
-								</span></span>
-							</button>
-						</div></td>
-						<td colSpan={2} class="set-details"></td>
-						<td rowSpan={2} class="set-moves"></td>
-						<td rowSpan={2} class="set-stats"></td>
-					</tr>
-					<tr>
-						<td class="set-ability"></td>
-						<td class="set-item"></td>
-					</tr>
-				</table>
-			</div>;
-		}
-		while (set.moves.length < 4) set.moves.push('');
-		const overfull = set.moves.length > 4 ? ' overfull' : '';
-
-		const cur = (t: InnerFocusType) => (
-			editor.readonly || (editor.innerFocus?.type === t && editor.innerFocus.setIndex === i) ? ' cur' : ''
-		);
-		const species = editor.dex.species.get(set.species);
-		const isCur = TeamEditorState.clipboard?.teams?.[editor.team.key]?.sets[i] ? ' cur' : '';
-		return <div class={`set-button set-wizard${isCur}`} data-set-index={i}>
-			<div style="text-align:right">
-				<button class="option" onClick={this.copySet} value={i}>
-					<i class="fa fa-copy" aria-hidden></i> {
-						isCur ? "Deselect" :
-						TeamEditorState.clipboard ? "Add to clipboard" :
-						editor.readonly ? "Copy" :
-						"Copy/Move"
-					}
-				</button> {}
-				{!(TeamEditorState.clipboard || editor.readonly) && <button class="option" onClick={this.deleteSet} value={i}>
-					<i class="fa fa-trash" aria-hidden></i> Delete
-				</button>}
-			</div>
-			<table>
-				<tr>
-					<td rowSpan={2} class="set-pokemon"><div class="border-collapse">
-						<button class={`button button-first${cur('pokemon')}`} onClick={this.setFocus} value={`set-${i}-pokemon`}>
-							<span class={`sprite${spriteClass}`} style={sprite}><span class="sprite-inner">
-								<strong class="label">Pokemon</strong> {}
-								{set.species}
-							</span></span>
-						</button>
-					</div></td>
-					<td colSpan={2} class="set-details"><div class="border-collapse">
-						<button class={`button button-middle${cur('details')}`} onClick={this.setFocus} value={`set-${i}-details`}>
-							<span class="detailcell">
-								<strong class="label">Types</strong> {}
-								{species.types.map(type => <div><PSIcon type={type} /></div>)}
-							</span>
-							<span class="detailcell">
-								<strong class="label">Level</strong> {}
-								{set.level || editor.defaultLevel}
-								{editor.narrow && set.shiny && <><br />
-									<img src={`${Dex.resourcePrefix}sprites/misc/shiny.png`} width={22} height={22} alt="Shiny" />
-								</>}
-								{!editor.narrow && set.gender && set.gender !== 'N' && <>
-									<br /><img
-										src={`${Dex.fxPrefix}gender-${set.gender.toLowerCase()}.png`} alt={set.gender} width="7" height="10" class="pixelated"
-									/>
-								</>}
-							</span>
-							{!!(!editor.narrow && (set.shiny || editor.gen >= 2)) && <span class="detailcell">
-								<strong class="label">Shiny</strong> {}
-								{set.shiny ? <img src={`${Dex.resourcePrefix}sprites/misc/shiny.png`} width={22} height={22} alt="Yes" /> : '\u2014'}
-							</span>}
-							{editor.gen === 9 && !editor.isChampions && <span class="detailcell">
-								<strong class="label">Tera</strong> {}
-								<PSIcon type={set.teraType || species.requiredTeraType || species.types[0]} />
-							</span>}
-							{editor.hpTypeMatters(set) && <span class="detailcell">
-								<strong class="label">H.P.</strong> {}
-								<PSIcon type={editor.getHPType(set)} />
-							</span>}
-						</button>
-					</div></td>
-					<td rowSpan={2} class="set-moves"><div class="border-collapse">
-						<button
-							class={`button button-middle${cur('move')}${overfull}`} onClick={this.setFocus}
-							value={`set-${i}-move`}
-						>
-							<strong class="label">Moves</strong> {}
-							{set.moves.map((move, mi) => <div>
-								{!editor.narrow && <small class="gray">&bull;</small>}
-								{mi >= 4 ? <span class="message-error">{move || (editor.narrow && '-') || ''}</span> : move || (editor.narrow && '-')}
-							</div>)}
-							{!set.moves.length && <em>(no moves)</em>}
-						</button>
-					</div></td>
-					<td rowSpan={2} class="set-stats"><div class="border-collapse">
-						<button
-							class={`button button-last${cur('stats')}`} onClick={this.setFocus}
-							value={`set-${i}-stats`}
-						>
-							{StatForm.renderStatGraph(set, this.props.editor, true)}
-						</button>
-					</div></td>
-				</tr>
-				<tr>
-					<td class="set-ability"><div class="border-collapse">
-						<button
-							class={`button button-middle${cur('ability')}`} onClick={this.setFocus}
-							value={`set-${i}-ability`}
-						>
-							{(editor.gen >= 3 || set.ability) && <>
-								<strong class="label">Ability</strong> {}
-								{(set.ability !== 'No Ability' && set.ability) ||
-									(!set.ability ? <em>(choose ability)</em> : <em>(no ability)</em>)}
-							</>}
-						</button>
-					</div></td>
-					<td class="set-item"><div class="border-collapse">
-						<button
-							class={`button button-middle${cur('item')}`} onClick={this.setFocus}
-							value={`set-${i}-item`}
-						>
-							{(editor.gen >= 2 || set.item) && <>
-								{set.item && <PSIcon item={set.item} />}
-								<strong class="label">Item</strong> {}
-								{set.item || <em>(no item)</em>}
-							</>}
-						</button>
-					</div></td>
-				</tr>
-			</table>
-			<button
-				class={`button set-nickname${cur('details')}`} onClick={this.setFocus}
-				value={`set-${i}-details`}
-			>
-				<strong class="label">Nickname</strong> {}
-				{editor.getNickname(set)}
-			</button>
-		</div>;
-	}
 	handleSetChange = () => {
 		this.props.editor.save();
 		this.props.onChange?.();
 		this.forceUpdate();
-	};
-	clearSearchBox() {
-		const searchBox = this.base!.querySelector<HTMLInputElement>('input[name=value]');
-		if (searchBox) {
-			searchBox.value = '';
-			if (!TeamEditor.probablyMobile()) searchBox.focus();
-		}
-	}
-	selectResult = (type: string | null, name: string, slot?: string, reverse?: boolean) => {
-		const { editor } = this.props;
-		this.clearSearchBox();
-		if (type === null) {
-			this.resetScroll();
-			this.forceUpdate();
-		} if (!type) {
-			editor.setSearchValue('');
-			this.resetScroll();
-			this.forceUpdate();
-		} else {
-			const setIndex = editor.innerFocus!.setIndex;
-			const set = (editor.sets[setIndex] ||= { species: '', moves: [] });
-			switch (type) {
-			case 'pokemon':
-				editor.changeSpecies(set, name);
-				this.changeFocus({
-					setIndex,
-					type: reverse ? 'details' : 'ability',
-					typeIndex: -1,
-				});
-				break;
-			case 'ability':
-				if (name === 'No Ability' && editor.gen <= 2) name = '';
-				set.ability = name;
-				this.changeFocus({
-					setIndex,
-					type: reverse ? 'pokemon' : 'item',
-					typeIndex: -1,
-				});
-				break;
-			case 'item':
-				set.item = name;
-				this.changeFocus({
-					setIndex,
-					type: reverse ? 'ability' : 'move',
-					typeIndex: -1,
-				});
-				break;
-			case 'move':
-				this.selectMoveResult(name, slot, reverse);
-				break;
-			}
-			editor.save();
-			this.props.onChange?.();
-			this.forceUpdate();
-		}
 	};
 	selectMoveResult(name: string, slot?: string, reverse?: boolean) {
 		const { editor } = this.props;
@@ -2261,13 +2040,7 @@ class TeamWizard extends preact.Component<{
 				}
 			}
 		}
-		if (set.moves.length === 4 && set.moves.every(Boolean) && !this.isForm) {
-			this.changeFocus({
-				setIndex,
-				type: reverse ? 'item' : 'stats',
-				typeIndex: -1,
-			});
-		} else if (reverse) {
+		if (reverse) {
 			this.changeFocus({
 				setIndex,
 				type: 'item',
@@ -2319,84 +2092,9 @@ class TeamWizard extends preact.Component<{
 			target = target.parentElement;
 		}
 	};
-	keyDownSearch = (ev: KeyboardEvent) => {
-		const searchBox = ev.currentTarget as HTMLInputElement;
-		const { editor } = this.props;
-		switch (ev.keyCode) {
-		case 8: // backspace
-			if (searchBox.selectionStart === 0 && searchBox.selectionEnd === 0) {
-				editor.search.removeFilter();
-				editor.setSearchValue(searchBox.value);
-				this.resetScroll();
-				this.forceUpdate();
-			}
-			break;
-		case 38: // up
-			editor.search.moveResultIndex(-1);
-			ev.preventDefault();
-			break;
-		case 40: // down
-			editor.search.moveResultIndex(1);
-			ev.preventDefault();
-			break;
-		case 37: // left
-			// prevent jumping to other rooms
-			ev.stopImmediatePropagation();
-			break;
-		case 39: // right
-			// prevent jumping to other rooms
-			ev.stopImmediatePropagation();
-			break;
-		case 13: // enter
-		case 9: // tab
-			const value = editor.selectSearchValue();
-			if (editor.innerFocus?.type !== 'move') searchBox.value = value || '';
-			if (value !== null) {
-				if (ev.keyCode === 9 && editor.innerFocus?.type === 'move') {
-					this.changeFocus({
-						setIndex: editor.innerFocus.setIndex,
-						type: ev.shiftKey ? 'item' : 'stats',
-						typeIndex: -1,
-					});
-				} else {
-					const [name, moveSlot] = value.split('|');
-					this.selectResult(editor.innerFocus?.type || '', name, moveSlot, ev.keyCode === 9 && ev.shiftKey);
-				}
-			} else {
-				this.clearSearchBox();
-				editor.setSearchValue('');
-				this.resetScroll();
-				this.forceUpdate();
-			}
-			ev.preventDefault();
-			break;
-		}
-	};
 	resetScroll() {
-		const searchResults = this.base!.querySelector('.wizardsearchresults');
+		const searchResults = this.base!.querySelector('.set-searchresults');
 		if (searchResults) searchResults.scrollTop = 0;
-	}
-
-	override componentDidUpdate() {
-		this.finishFocusAnimation();
-		const searchBox = this.base!.querySelector<HTMLInputElement>('input[name=value], input[name=nickname]');
-		if (this.setSearchBox !== null) {
-			if (searchBox) {
-				searchBox.value = this.setSearchBox;
-				if (!TeamEditor.probablyMobile()) searchBox.select();
-			}
-			this.setSearchBox = null;
-		}
-		const filters = this.base!.querySelector('.dexlist-filters');
-		if (searchBox?.name === 'value') {
-			if (filters) {
-				const { width } = filters.getBoundingClientRect();
-				searchBox.style.paddingLeft = `${width + 5}px`;
-			} else {
-				searchBox.style.paddingLeft = `3px`;
-			}
-		}
-		this.restorePendingSetScroll();
 	}
 	renderInnerFocus() {
 		const { editor } = this.props;
@@ -2453,7 +2151,7 @@ class TeamWizard extends preact.Component<{
 				/>
 			) : (
 				<PSSearchResults
-					class="wizardsearchresults"
+					class="set-searchresults"
 					search={editor.search} hideFilters
 					onSelect={this.selectResult}
 				>
@@ -2506,17 +2204,6 @@ class TeamWizard extends preact.Component<{
 			</button></p>}
 		</div>;
 	}
-}
-
-class TeamEditorForm extends TeamWizard {
-	override readonly isForm = true;
-	/** where to focus after next render */
-	pendingFocus: TeamEditorState['innerFocus'] = null;
-	pendingFocusValue: string | null = null;
-	pendingFocusSelection: [number | null, number | null, 'forward' | 'backward' | 'none' | undefined] | null = null;
-	/** whether to focus the details/stats button or their panel contents */
-	pendingFocusButton = false;
-	mouseDownTextbox: HTMLInputElement | null = null;
 	openFocusTextbox(target: HTMLInputElement) {
 		const { editor } = this.props;
 		if (editor.readonly) return;
@@ -2555,7 +2242,7 @@ class TeamEditorForm extends TeamWizard {
 		if (!target || ev.target !== target) return;
 		this.openFocusTextbox(target);
 	};
-	override changeFocus(focus: TeamEditorState['innerFocus'], focusButton = false) {
+	changeFocus(focus: TeamEditorState['innerFocus'], focusButton = false) {
 		const { editor } = this.props;
 		editor.innerFocus = focus;
 		this.pendingFocus = focus;
@@ -2603,8 +2290,7 @@ class TeamEditorForm extends TeamWizard {
 					focus.type !== 'details' && focus.type !== 'stats' &&
 					focus.type !== 'import' && !(focus.type === 'move' && focus.typeIndex === -1)
 				) {
-					input.value = this.pendingFocusValue ??
-						this.getInputValue(focus.setIndex, focus.type, focus.typeIndex);
+					input.value = this.pendingFocusValue ?? editor.getField(focus);
 					input.classList.remove('incomplete');
 				}
 				input.focus();
@@ -2622,7 +2308,7 @@ class TeamEditorForm extends TeamWizard {
 		for (const input of this.base!.querySelectorAll<HTMLInputElement>('input.set-field')) {
 			if (input === activeElement) continue;
 			const curFocus = editor.parseFocus(input.getAttribute('data-focus')!);
-			input.value = this.getInputValue(curFocus.setIndex, curFocus.type, curFocus.typeIndex);
+			input.value = editor.getField(curFocus);
 		}
 		const searchBox = this.base!.querySelector<HTMLInputElement>('input[name=value]');
 		const filters = this.base!.querySelector('.dexlist-filters');
@@ -2635,51 +2321,6 @@ class TeamEditorForm extends TeamWizard {
 			}
 		}
 		this.restorePendingSetScroll();
-	}
-	getInputValue(setIndex: number, type: InnerFocusType | 'nickname', typeIndex: number) {
-		const set = this.props.editor.sets[setIndex];
-		if (!set) return '';
-		switch (type) {
-		case 'pokemon':
-			return set.species || '';
-		case 'item':
-			return set.item || '';
-		case 'ability':
-			return set.ability || '';
-		case 'move':
-			return set.moves[typeIndex] || '';
-		case 'nickname':
-			return set.name || '';
-		default:
-			return '';
-		}
-	}
-	canonicalValue(type: InnerFocusType, value: string): string | null {
-		const { editor } = this.props;
-		if (!value.trim()) return '';
-
-		switch (type) {
-		case 'pokemon': {
-			const species = editor.dex.species.get(value);
-			return species.exists ? species.name : null;
-		}
-		case 'item': {
-			if (toID(value) === 'noitem') return '';
-			const item = editor.dex.items.get(value);
-			return item.exists ? item.name : null;
-		}
-		case 'ability': {
-			if (toID(value) === 'noability') return '';
-			const ability = editor.dex.abilities.get(value);
-			return ability.exists ? ability.name : null;
-		}
-		case 'move': {
-			const move = editor.dex.moves.get(value);
-			return move.exists ? move.name : null;
-		}
-		default:
-			return value;
-		}
 	}
 	commitField(target: HTMLInputElement, selectNext?: boolean, reverse?: boolean) {
 		const { editor } = this.props;
@@ -2701,7 +2342,7 @@ class TeamEditorForm extends TeamWizard {
 			return true;
 		}
 
-		let canonical = this.canonicalValue(focus.type, target.value);
+		let canonical = editor.normalizeField(focus.type, target.value);
 		if (canonical === null) {
 			target.classList.add('incomplete');
 			canonical = target.value;
@@ -2788,7 +2429,7 @@ class TeamEditorForm extends TeamWizard {
 		if (!input) return false;
 		const focus = this.props.editor.parseFocus(input.getAttribute('data-focus'));
 		if (!focus) return false;
-		input.value = this.getInputValue(focus.setIndex, focus.type, focus.typeIndex);
+		input.value = this.props.editor.getField(focus);
 		input.classList.remove('incomplete');
 		input.focus();
 		input.select();
@@ -2827,11 +2468,11 @@ class TeamEditorForm extends TeamWizard {
 			}
 			break;
 		case 38: // up
-			editor.search.moveResultIndex(-1);
+			editor.search.moveSelection(-1);
 			ev.preventDefault();
 			break;
 		case 40: // down
-			editor.search.moveResultIndex(1);
+			editor.search.moveSelection(1);
 			ev.preventDefault();
 			break;
 		case 37: // left
@@ -2846,7 +2487,8 @@ class TeamEditorForm extends TeamWizard {
 				ev.preventDefault();
 				return;
 			}
-			const value = editor.selectSearchValue();
+			const result = editor.search.selectResult();
+			const value = result && editor.search.getResultName(result);
 			if (value === '' && input.value) {
 				// value not found
 				this.commitField(input, true);
@@ -2867,7 +2509,7 @@ class TeamEditorForm extends TeamWizard {
 				} else {
 					// restore focused input
 					const focus = editor.parseFocus(input.getAttribute('data-focus'));
-					if (focus) input.value = this.getInputValue(focus.setIndex, focus.type, focus.typeIndex);
+					if (focus) input.value = editor.getField(focus);
 					input.classList.remove('incomplete');
 
 					// clear and focus search box
@@ -2928,7 +2570,7 @@ class TeamEditorForm extends TeamWizard {
 			ev.preventDefault();
 		}
 	};
-	override keyDownSearch = (ev: KeyboardEvent) => {
+	keyDownSearch = (ev: KeyboardEvent) => {
 		this.keyDownSearchInput(ev, true);
 	};
 	clickPanelButton = (ev: Event) => {
@@ -2953,11 +2595,11 @@ class TeamEditorForm extends TeamWizard {
 		this.focusAdjacentField(focus, ev.shiftKey);
 		ev.preventDefault();
 	};
-	override closeInnerFocus = (ev?: Event) => {
+	closeInnerFocus = (ev?: Event) => {
 		const focus = this.props.editor.innerFocus;
 		if (!focus) return;
 		const expectedTop = this.base!.querySelector<HTMLElement>(
-			'.team-focus-editor .set-button'
+			'.team-focus-editor .set-form'
 		)?.getBoundingClientRect().top ?? null;
 		const restoreNickname = document.activeElement?.getAttribute('name') === 'nickname';
 		this.props.editor.innerFocus = null;
@@ -2982,7 +2624,7 @@ class TeamEditorForm extends TeamWizard {
 	};
 	restoreOuterSetScroll(target: HTMLElement | null, expectedTop: number | null) {
 		if (!target || expectedTop === null) return;
-		const setButton = target.closest<HTMLElement>('.set-button') || target;
+		const setButton = target.closest<HTMLElement>('.set-form') || target;
 		const dy = setButton.getBoundingClientRect().top - expectedTop;
 		if (!dy) return;
 		const scrollParent = this.getScrollParent(setButton);
@@ -3023,7 +2665,7 @@ class TeamEditorForm extends TeamWizard {
 	}
 	getOuterSetButton(focus: NonNullable<TeamEditorState['innerFocus']>) {
 		if (focus.setIndex >= this.props.editor.sets.length) return null;
-		return this.base!.querySelectorAll<HTMLElement>('.teameditor > .set-button.set-form')[focus.setIndex] || null;
+		return this.base!.querySelectorAll<HTMLElement>('.teameditor > .set-form')[focus.setIndex] || null;
 	}
 	removeDuplicateMove(name: string) {
 		const { editor } = this.props;
@@ -3066,7 +2708,7 @@ class TeamEditorForm extends TeamWizard {
 		this.props.onChange?.();
 		this.forceUpdate();
 	}
-	override selectResult = (type: string | null, name: string, slot?: string, reverse?: boolean) => {
+	selectResult = (type: string | null, name: string, slot?: string, reverse?: boolean) => {
 		if (type === null) {
 			this.resetScroll();
 			this.forceUpdate();
@@ -3090,8 +2732,8 @@ class TeamEditorForm extends TeamWizard {
 		const curField = `${focus.type}${focus.typeIndex === -1 ? '' : focus.typeIndex}`;
 		const fields: string[] = ['pokemon'];
 		if (set) {
-			if (this.showAbility(set)) fields.push('ability');
-			if (this.showItem(set)) fields.push('item');
+			if (this.props.editor.showAbility(set)) fields.push('ability');
+			if (this.props.editor.showItem(set)) fields.push('item');
 			for (let i = 0; i < Math.max(4, set.moves.length); i++) fields.push(`move${i}`);
 			fields.push('stats');
 			fields.push('details');
@@ -3103,11 +2745,11 @@ class TeamEditorForm extends TeamWizard {
 		const next = fields[fieldIndex + (reverse ? -1 : 1)];
 		if (!next && reverse && focus.type === 'pokemon') {
 			const prevButton = this.base!.querySelector<HTMLButtonElement>(
-				`.team-focus-editor .set-button.set-form button[name=delete][value="${focus.setIndex}"]`
+				`.team-focus-editor .set-form button[name=delete][value="${focus.setIndex}"]`
 			) || this.base!.querySelector<HTMLButtonElement>(
 				`.team-focus-editor .tabbar button[name=addpokemon]`
 			) || this.base!.querySelector<HTMLButtonElement>(
-				`.teameditor > .set-button.set-form button[name=delete][value="${focus.setIndex}"]`
+				`.teameditor > .set-form button[name=delete][value="${focus.setIndex}"]`
 			) || this.base!.querySelector<HTMLButtonElement>(
 				`.teameditor button[name=addpokemon]`
 			);
@@ -3127,14 +2769,6 @@ class TeamEditorForm extends TeamWizard {
 		const nextTypeIndex = parseInt(next.slice(nextType.length) || '-1');
 		this.changeFocus({ setIndex: focus.setIndex, type: nextType, typeIndex: nextTypeIndex }, true);
 		return true;
-	}
-	showItem(set: Dex.PokemonSet) {
-		const { editor } = this.props;
-		return !!(editor.gen > 1 && !editor.isLetsGo || set.item);
-	}
-	showAbility(set: Dex.PokemonSet) {
-		const { editor } = this.props;
-		return !!(editor.gen > 2 && !editor.isLetsGo || set.ability);
 	}
 	cur(type: InnerFocusType, setIndex: number, typeIndex = -1) {
 		const focus = this.props.editor.innerFocus;
@@ -3167,12 +2801,12 @@ class TeamEditorForm extends TeamWizard {
 			onInput={this.inputField} onChange={this.inputField} onKeyDown={this.keyDownNickname} autocomplete="off"
 		/>;
 	}
-	override renderSet(set: Dex.PokemonSet | undefined, i: number) {
+	renderSet(set: Dex.PokemonSet | undefined, i: number) {
 		const { editor } = this.props;
 		const sprite = Dex.getTeambuilderSprite(set, editor.dex);
 		const spriteClass = set && Dex.getTeambuilderSpriteData(set, editor.dex).pixelated ? ' pixelated' : '';
 		if (!set) {
-			return <div class="set-button set-form" data-set-index={i}>
+			return <div class="set-form" data-set-index={i}>
 				<div style="text-align:right">
 					{editor.deletedSet ? (
 						<button onClick={this.undeleteSet} class="option"><i class="fa fa-undo" aria-hidden></i> Undo delete</button>
@@ -3211,7 +2845,7 @@ class TeamEditorForm extends TeamWizard {
 		const tintClass = ` tint-${species.types[0]}`;
 		const isCur = TeamEditorState.clipboard?.teams?.[editor.team.key]?.sets[i] ? ' cur' : '';
 		const overfull = set.moves.length > 5 ? ' overfull' : set.moves.length > 4 ? ' overfull overfull5' : '';
-		return <div class={`set-button set-form${isCur}`} data-set-index={i}>
+		return <div class={`set-form${isCur}`} data-set-index={i}>
 			<div style="text-align:right">
 				<button class="option" onClick={this.copySet} value={i}>
 					<i class="fa fa-copy" aria-hidden></i> {
@@ -3304,13 +2938,13 @@ class TeamEditorForm extends TeamWizard {
 				</tr>
 				<tr>
 					<td class="set-ability"><div class="border-collapse">
-						{this.showAbility(set) && <label class="label">
+						{editor.showAbility(set) && <label class="label">
 							Ability {}
 							{this.renderInput(i, 'ability', set.ability, -1, editor.gen <= 2 ? '(no ability)' : '(choose ability)')}
 						</label>}
 					</div></td>
 					<td class="set-item"><div class="border-collapse">
-						{this.showItem(set) && <>
+						{editor.showItem(set) && <>
 							{set.item && <PSIcon item={set.item} />}
 							<label class="label">
 								Item {}
