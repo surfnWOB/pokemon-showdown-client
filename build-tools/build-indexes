@@ -367,12 +367,16 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 				}
 				if (isNFE) {
 					let tier = species.tier;
-					if (!species.nfe) tier = 'Illegal';
 					const format = Dex.formats.get(gen + 'nfe');
 					const banlist = Dex.formats.getRuleTable(format);
 					if (banlist.isBannedSpecies(species)) {
 						tier = 'Uber';
 					}
+					// A non-NFE species is never legal here, so keep it Illegal (hidden) even
+					// when the format's banlist also tier-bans it. [Gen 3] NFE inherits [Gen 3]
+					// NU's tier bans (Uber/OU/UU/…), which would otherwise bucket every
+					// fully-evolved mon as "Uber" and dump them into the browsable pool.
+					if (!species.nfe) tier = 'Illegal';
 					return tier;
 				}
 				if (isLC) {
