@@ -268,7 +268,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 	const CHAMPIONS = [9.67, 9.68];
 	const OTHER = [
 		9.9, 9.6, 9.411, 9.41, 9.401, 9.4, 9.33, 9.2, -9.4, -9.401,
-		8.6, 8.4, 8.2, -8.4, -8.6,
+		8.6, 8.41, 8.4, 8.2, -8.4, -8.6,
 		7.1,
 		5.1,
 		3.1, 3.11, 3.02, 3.03, 3.05, 3.06, 3.17,
@@ -283,6 +283,9 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		const isNFE = ('' + genIdent).endsWith('.3');
 		const isLC = ('' + genIdent).endsWith('.7');
 		const isSSDLC1 = (genIdent === 8.4 || genIdent === -8.4);
+		// [Gen 8 DLC 1] National Dex: gen8dlc1 mod data (Isle of Armor, pre-Crown Tundra)
+		// tiered as National Dex. Emits its own gen8dlc1natdex table.
+		const isSSDLC1NatDex = (genIdent === 8.41);
 		const isPreDLC = (genIdent === 9.4 || genIdent === 9.41 || genIdent === -9.4);
 		const isSVDLC1 = (genIdent === 9.401 || genIdent === 9.411 || genIdent === -9.401);
 		const isNatDex = ('' + genIdent).endsWith('.1') && genIdent > 8;
@@ -306,6 +309,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		const gen = (() => {
 			let genStr = 'gen' + genNum;
 			if (isSSDLC1) genStr += 'dlc1';
+			if (isSSDLC1NatDex) genStr += 'dlc1natdex';
 			if (isLetsGo) genStr += 'letsgo';
 			if (isBDSP) genStr += 'bdsp';
 			if (isPreDLC) genStr += 'predlc';
@@ -329,7 +333,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		// compressed ADV-200 ladder. The output table key stays 'gen3rs' (see table assignment
 		// and battle-dex-search routing) so learnsets, items, and routing are byte-identical to
 		// upstream gen3rs — only the tier labels (and thus the browsable slices) change.
-		const modId = isGen3UbersUU ? 'gen3' : isRSLC ? 'gen3rs' : isRS ? 'gen3adv200' : gen;
+		const modId = isGen3UbersUU ? 'gen3' : isRSLC ? 'gen3rs' : isRS ? 'gen3adv200' : isSSDLC1NatDex ? 'gen8dlc1' : gen;
 		// process.stdout.write("" + gen + (isDoubles ? " doubles" : "") + "... ");
 		const pokemon = Object.keys(Dex.data.Pokedex);
 		pokemon.sort();
@@ -462,7 +466,12 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 				if (isDoubles && genNum > 4) {
 					return species.doublesTier;
 				}
-				if (isNatDex || (isPreDLC && genNum === 9.41) || (isSVDLC1 && genNum === 9.411)) {
+				if (isNatDex || isSSDLC1NatDex || (isPreDLC && genNum === 9.41) || (isSVDLC1 && genNum === 9.411)) {
+					// [Gen 8 DLC 1] National Dex: Crown Tundra (DLC2) additions are 'Unreleased'
+					// in the gen8dlc1 data. Hide them from the builder the way the server rejects
+					// them ("does not exist in the National Dex") by treating them as Illegal —
+					// otherwise the trailing 'Unreleased' bucket leaks into the AG-and-below slice.
+					if (isSSDLC1NatDex && species.natDexTier === 'Unreleased') return 'Illegal';
 					return species.natDexTier;
 				}
 				if (isNDChampions) {
@@ -553,8 +562,8 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		}
 
 		nonstandardMoves.push(...Object.keys(Dex.data.Moves).filter(id => {
-			const move = Dex.mod(isSSDLC1 ? 'gen8dlc1' : isPreDLC ? 'gen9predlc' : 'gen9dlc1').moves.get(id);
-			const bMove = Dex.mod(isSSDLC1 ? 'gen8' : 'gen9').moves.get(id);
+			const move = Dex.mod(isSSDLC1 || isSSDLC1NatDex ? 'gen8dlc1' : isPreDLC ? 'gen9predlc' : 'gen9dlc1').moves.get(id);
+			const bMove = Dex.mod(isSSDLC1 || isSSDLC1NatDex ? 'gen8' : 'gen9').moves.get(id);
 			return bMove.isNonstandard !== move.isNonstandard;
 		}));
 
@@ -562,7 +571,17 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		const items = [];
 		const formatSlices = {};
 
-		if (isNatDex || (isPreDLC && genNum === 9.41) || (isSVDLC1 && genNum === 9.411)) {
+		if (isSSDLC1NatDex) {
+			BattleTeambuilderTable['gen8dlc1natdex'] = {};
+			BattleTeambuilderTable['gen8dlc1natdex'].tiers = tiers;
+			BattleTeambuilderTable['gen8dlc1natdex'].overrideTier = overrideTier;
+			BattleTeambuilderTable['gen8dlc1natdex'].items = items;
+			BattleTeambuilderTable['gen8dlc1natdex'].metagameBans = metagameBans;
+			BattleTeambuilderTable['gen8dlc1natdex'].formatSlices = formatSlices;
+			// Learnsets are not emitted here: the move search reuses the gen8dlc1 learnset
+			// table (formatType startsWith 'ssdlc1' in battle-dex-search.ts), which already
+			// encodes the DLC1 (pre–Crown Tundra) movepools.
+		} else if (isNatDex || (isPreDLC && genNum === 9.41) || (isSVDLC1 && genNum === 9.411)) {
 			BattleTeambuilderTable['gen' + genNum + 'natdex'] = {};
 			BattleTeambuilderTable['gen' + genNum + 'natdex'].tiers = tiers;
 			BattleTeambuilderTable['gen' + genNum + 'natdex'].overrideTier = overrideTier;
@@ -775,7 +794,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 				continue;
 			}
 			if (item.isNonstandard && !isMetBattle) {
-				if (isNatDex || isNDChampions) {
+				if (isNatDex || isSSDLC1NatDex || isNDChampions) {
 					let curItem = item;
 					let curGen = genNum;
 					while (curItem.isNonstandard && curGen >= 7) {
