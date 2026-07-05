@@ -621,7 +621,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 	set: Dex.PokemonSet | null = null;
 
 	protected formatType: 'doubles' | 'bdsp' | 'bdspdoubles' | 'rs' | 'rslc' | 'frlg' | 'bw1' | 'letsgo' | 'metronome' |
-		'natdex' | 'nfe' | 'ssdlc1' | 'ssdlc1doubles' | 'predlc' | 'predlcdoubles' | 'predlcnatdex' | 'svdlc1' | 'svdlc1doubles' |
+		'natdex' | 'nfe' | 'ssdlc1' | 'ssdlc1doubles' | 'ssdlc1natdex' | 'predlc' | 'predlcdoubles' | 'predlcnatdex' | 'svdlc1' | 'svdlc1doubles' |
 		'svdlc1natdex' | 'stadium' | 'lc' | 'champions' | 'natdexchampions' | 'zangouse' | 'gen3mega' | 'gen3ubersuu' |
 		'gen3subzu' | 'gen1rbyplus' | null = null;
 	isDoubles = false;
@@ -739,7 +739,9 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (format.includes('nationaldex') || format.startsWith('nd') || format.includes('natdex')) {
 			format = (format.startsWith('nd') ? format.slice(2) :
 				format.includes('natdex') ? format.slice(6) : format.slice(11)) as ID;
-			this.formatType = 'natdex';
+			// A gen-8 DLC1 format already set 'ssdlc1' above; upgrade it to the DLC1
+			// National Dex variant instead of clobbering it back to plain 'natdex'.
+			this.formatType = this.formatType === 'ssdlc1' ? 'ssdlc1natdex' : 'natdex';
 			if (!format) format = 'ou' as ID;
 			this.isDoubles = format.includes('doubles');
 		}
@@ -990,6 +992,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType === 'nfe' ? `gen${gen}nfe` :
 			this.formatType === 'lc' ? `gen${gen}lc` :
 			this.formatType === 'ssdlc1' ? 'gen8dlc1' :
+			this.formatType === 'ssdlc1natdex' ? 'gen8dlc1natdex' :
 			this.formatType === 'ssdlc1doubles' ? 'gen8dlc1doubles' :
 			this.formatType === 'predlc' ? 'gen9predlc' :
 			this.formatType === 'predlcdoubles' ? 'gen9predlcdoubles' :
@@ -1148,6 +1151,8 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 		} else if (this.formatType?.startsWith('ssdlc1')) {
 			if (this.formatType.includes('doubles')) {
 				table = table['gen8dlc1doubles'];
+			} else if (this.formatType.includes('natdex')) {
+				table = table['gen8dlc1natdex'];
 			} else {
 				table = table['gen8dlc1'];
 			}
