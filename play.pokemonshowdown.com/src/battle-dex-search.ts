@@ -12,6 +12,7 @@
  */
 
 import { Dex, type ModdedDex, toID, type ID } from "./battle-dex";
+import type { PSSearchResults } from "./battle-searchresults";
 
 export type SearchType = (
 	'pokemon' | 'type' | 'tier' | 'move' | 'item' | 'ability' | 'egggroup' | 'category' | 'article'
@@ -43,6 +44,12 @@ export class DexSearch {
 
 	results: SearchRow[] | null = null;
 	prependResults: SearchRow[] | null = null;
+	resultsComponent: PSSearchResults | null = null;
+	/**
+	 * Not used by DexSearch itself, but useful as state for most DexSearch
+	 * consumers.
+	 */
+	resultIndex = 0;
 	exactMatch = false;
 
 	static typeTable = {
@@ -67,6 +74,7 @@ export class DexSearch {
 		category: 'Category',
 		article: 'Article',
 	};
+	static unselectableResultTypes = ['header', 'html', 'sortpokemon', 'sortmove'];
 	firstPokemonColumn: 'Tier' | 'Number' = 'Number';
 
 	/**
@@ -114,6 +122,28 @@ export class DexSearch {
 		} else {
 			this.results = this.textSearch(query);
 		}
+		this.resultIndex = this.getFirstResultIndex();
+		return true;
+	}
+
+	getFirstResultIndex() {
+		if (!this.results) return 0;
+		for (let i = 0; i < this.results.length; i++) {
+			if (!DexSearch.unselectableResultTypes.includes(this.results[i][0])) return i;
+		}
+		return 0;
+	}
+
+	moveResultIndex(offset: 1 | -1) {
+		if (!this.results?.length) return false;
+		let index = this.resultIndex;
+		do {
+			index += offset;
+		} while (this.results[index] && DexSearch.unselectableResultTypes.includes(this.results[index][0]));
+		if (!this.results[index]) return false;
+		this.resultIndex = index;
+		this.resultsComponent?.scrollSelectedResult();
+		this.resultsComponent?.updateHover();
 		return true;
 	}
 

@@ -23,6 +23,9 @@ import type preact from '../js/lib/preact';
 declare const BattleTextAFD: any;
 declare const BattleTextNotAFD: any;
 
+export const VERTICAL_HEADER_WIDTH = 240;
+export const NARROW_MODE_HEADER_WIDTH = 280;
+
 /**********************************************************************
  * Config
  *********************************************************************/
@@ -1057,7 +1060,8 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 	 */
 	readonly canConnect: boolean = false;
 	connectWhenLoggedIn = false;
-	onParentEvent: ((eventId: 'focus' | 'keydown', e?: Event) => false | void) | null = null;
+	onParentFocus: ((e?: Event) => boolean | void) | null = null;
+	onParentKeyDown: ((e?: Event) => boolean | void) | null = null;
 
 	width = 0;
 	height = 0;
@@ -1230,7 +1234,7 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 		}
 	}
 	errorReply(message: string, element = this.currentElement) {
-		if (element?.tagName === 'BUTTON') {
+		if (element?.tagName === 'BUTTON' || element?.tagName === 'SELECT') {
 			PS.alert(message, { parentElem: element });
 		} else {
 			this.add(`|error|${message}`);
@@ -1965,11 +1969,18 @@ export const PS = new class extends PSModel {
 	/**
 	 * * 0 = only one panel visible
 	 * * null = vertical nav layout
-	 * n.b. PS will only update if the left room width changes. Resizes
-	 * that don't change the left room width will not trigger an update.
+	 * n.b. Resizes only trigger a re-render if the panel layout or a
+	 * width-dependent layout breakpoint changes.
 	 */
 	leftPanelWidth: number | null = 0;
 	mainmenu: MainMenuRoom = null!;
+	layoutViewportWidth = 0;
+
+	roomWidthBreakpointPassed(oldWidth: number, newWidth: number) {
+		return (oldWidth < 550) !== (newWidth < 550) || // chat-room userlists, teambuilder
+			(oldWidth < 620) !== (newWidth < 620) || // main menu and teambuilder tiny-layout class
+			(oldWidth <= 700) !== (newWidth <= 700); // battle tiny-layout
+	}
 
 	/**
 	 * The drag-and-drop API is incredibly dumb and doesn't let us know
@@ -2100,27 +2111,37 @@ export const PS = new class extends PSModel {
 	/** @returns changed */
 	updateLayout(): boolean {
 		const leftPanelWidth = this.calculateLeftPanelWidth();
+		const viewportWidth = document.documentElement.clientWidth;
 		const totalWidth = document.body.offsetWidth;
 		const totalHeight = document.body.offsetHeight;
 		const roomHeight = totalHeight - 56;
+		let needsUpdate = this.leftPanelWidth !== leftPanelWidth;
 		if (leftPanelWidth === null) {
-			this.panel.width = totalWidth - 200;
-			this.panel.height = totalHeight;
+			const headerWidth = viewportWidth <= 700 ?
+				NARROW_MODE_HEADER_WIDTH : VERTICAL_HEADER_WIDTH;
+			const roomWidth = totalWidth + 1 - headerWidth;
+			needsUpdate ||= this.roomWidthBreakpointPassed(this.panel.width, roomWidth);
+			this.panel.width = roomWidth;
+			this.panel.height = totalHeight - 30;
 		} else if (leftPanelWidth) {
+			const rightPanelWidth = totalWidth + 1 - leftPanelWidth;
+			needsUpdate ||= this.roomWidthBreakpointPassed(this.leftPanel.width, leftPanelWidth);
+			needsUpdate ||= this.roomWidthBreakpointPassed(this.rightPanel!.width, rightPanelWidth);
 			this.leftPanel.width = leftPanelWidth;
 			this.leftPanel.height = roomHeight;
-			this.rightPanel!.width = totalWidth + 1 - leftPanelWidth;
+			this.rightPanel!.width = rightPanelWidth;
 			this.rightPanel!.height = roomHeight;
 		} else {
+			needsUpdate ||= this.roomWidthBreakpointPassed(this.panel.width, totalWidth);
 			this.panel.width = totalWidth;
 			this.panel.height = roomHeight;
 		}
 
 		if (this.leftPanelWidth !== leftPanelWidth) {
 			this.leftPanelWidth = leftPanelWidth;
-			return true;
 		}
-		return false;
+		this.layoutViewportWidth = viewportWidth;
+		return needsUpdate;
 	}
 	getRoom(elem: HTMLElement | EventTarget | null | undefined, skipClickable?: boolean): PSRoom | null {
 		let curElem: HTMLElement | null = elem as HTMLElement;
@@ -2216,6 +2237,15 @@ export const PS = new class extends PSModel {
 				continue;
 			} case 'noinit': {
 				room = PS.rooms[roomid2];
+				if (!room && roomid2.startsWith('battle-') && args[1] === 'nonexistent') {
+					// possible replay; init a battle room for it
+					room = this.addRoom({
+						id: roomid2,
+						type: 'battle',
+						connected: false,
+					});
+					(room as BattleRoom).rejoining = false;
+				}
 				if (room) {
 					room.connected = false;
 					if (args[1] === 'namerequired') {
@@ -2285,6 +2315,9 @@ export const PS = new class extends PSModel {
 			return room === this.rightPanel || room === this.leftPanel || room === this.room;
 		}
 	}
+	/**
+	 * @see {@link leftPanelWidth} for return value meaning
+	 */
 	calculateLeftPanelWidth() {
 		const available = document.body.offsetWidth;
 		if (document.documentElement.clientWidth < 800 || this.prefs.onepanel === 'vertical') {
@@ -2327,12 +2360,26 @@ export const PS = new class extends PSModel {
 	}
 	createRoom(options: RoomOptions) {
 		options.location ||= this.getRouteLocation(options.id);
+		options.location = this.normalizeRoomLocation(options.location);
 		options.type ||= this.getRoute(options.id) || '';
 		const RoomType = this.roomTypes[options.type];
 		options.noURL ??= RoomType?.noURL;
 		if (RoomType?.title) options.title = RoomType.title;
 		const Model = RoomType ? (RoomType.Model || PSRoom) : PlaceholderRoom;
-		return new Model(options);
+		const room = new Model(options);
+		room.location = this.normalizeRoomLocation(room.location);
+		return room;
+	}
+	normalizeRoomLocation(location: string): PSRoomLocation;
+	normalizeRoomLocation(location: string | undefined): PSRoomLocation | undefined;
+	normalizeRoomLocation(location: any): any {
+		if (!location) return location;
+		switch (location) {
+		case 'left': case 'right': case 'popup': case 'mini-window': case 'modal-popup':
+			return location;
+		default:
+			return 'modal-popup';
+		}
 	}
 	getRouteInfo(roomid: RoomID) {
 		if (this.routes[roomid]) return this.routes[roomid];
@@ -2352,8 +2399,10 @@ export const PS = new class extends PSModel {
 		}
 		const routeInfo = this.getRouteInfo(roomid);
 		if (!routeInfo) return 'left';
-		if (routeInfo.startsWith('*')) return routeInfo.slice(1) as PSRoomLocation;
-		return PS.roomTypes[routeInfo]!.location || 'left';
+		if (routeInfo.startsWith('*')) {
+			return this.normalizeRoomLocation(routeInfo.slice(1));
+		}
+		return this.normalizeRoomLocation(PS.roomTypes[routeInfo]!.location) || 'left';
 	}
 	getRoute(roomid: RoomID) {
 		const routeInfo = this.getRouteInfo(roomid);
@@ -2401,7 +2450,7 @@ export const PS = new class extends PSModel {
 		if (updated) this.update();
 	}
 	setFocus(room: PSRoom) {
-		room.onParentEvent?.('focus');
+		room.onParentFocus?.();
 	}
 	focusRoom(roomid: RoomID) {
 		const room = this.rooms[roomid];
@@ -2670,6 +2719,7 @@ export const PS = new class extends PSModel {
 		return room.location === 'left' || room.location === 'right';
 	}
 	moveRoom(room: PSRoom, location: PSRoomLocation, background?: boolean, index?: number) {
+		location = this.normalizeRoomLocation(location);
 		if (room.location === location && index === undefined) {
 			if (background === true) {
 				if (room === this.leftPanel) {
