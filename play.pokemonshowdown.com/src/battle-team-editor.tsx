@@ -70,6 +70,7 @@ export class TeamEditorState extends PSModel {
 	isNatDex = false;
 	isBDSP = false;
 	isChampions = false;
+	isBadNBoosted = false;
 	formeLegality: 'normal' | 'hackmons' | 'custom' = 'normal';
 	abilityLegality: 'normal' | 'hackmons' = 'normal';
 	defaultLevel = 100;
@@ -104,6 +105,7 @@ export class TeamEditorState extends PSModel {
 		this.isNatDex = formatid.includes('nationaldex') || formatid.includes('natdex');
 		this.isBDSP = formatid.includes('bdsp');
 		this.isChampions = formatid.includes('champions');
+		this.isBadNBoosted = formatid.includes('badnboosted');
 		if (formatid.includes('almostanyability') || formatid.includes('aaa')) {
 			this.abilityLegality = 'hackmons';
 		} else {
@@ -677,6 +679,13 @@ export class TeamEditorState extends PSModel {
 			return null;
 		}
 	}
+	getBaseStat(species: Dex.Species, stat: StatName) {
+		// Mirrors the server's Bad 'n Boosted Mod (data/rulesets.ts `badnboostedmod`):
+		// every base stat of 70 or less is doubled (HP included).
+		const base = species.baseStats[stat];
+		if (this.isBadNBoosted && base <= 70) return Math.min(255, base * 2);
+		return base;
+	}
 	getStat(stat: StatName, set: Dex.PokemonSet, ivOverride: number, evOverride?: number, natureOverride?: number) {
 		// do this after setting set.evs because it's assumed to exist
 		// after getStat is run
@@ -685,7 +694,7 @@ export class TeamEditorState extends PSModel {
 
 		const level = set.level || this.defaultLevel;
 
-		const baseStat = species.baseStats[stat];
+		const baseStat = this.getBaseStat(species, stat);
 		const iv = ivOverride;
 		let ev = evOverride ?? set.evs?.[stat] ?? (this.gen > 2 ? 0 : 252);
 		if (this.isChampions) ev *= 8;
@@ -3724,8 +3733,6 @@ class StatForm extends preact.Component<{
 		const narrow = editor.narrowStats;
 		const species = editor.dex.species.get(set.species);
 
-		const baseStats = species.baseStats;
-
 		const useEVs = !editor.isLetsGo && !editor.isChampions;
 		// const useAVs = editor.isLetsGo && team.format.endsWith('norestrictions');
 		const maxEV = editor.isChampions ? 32 : useEVs ? 252 : 200;
@@ -3772,7 +3779,7 @@ class StatForm extends preact.Component<{
 					</tr>
 					{stats.map(([statID, statName, stat]) => <tr>
 						<th style="text-align:right;font-weight:normal">{statName}</th>
-						<td style="text-align:right"><strong>{baseStats[statID]}</strong></td>
+						<td style="text-align:right"><strong>{editor.getBaseStat(species, statID)}</strong></td>
 						<td class="setstatbar">{this.renderStatbar(stat, statID)}</td>
 						<td><input
 							name={`ev-${statID}`} placeholder={`${defaultEV || ''}`}
