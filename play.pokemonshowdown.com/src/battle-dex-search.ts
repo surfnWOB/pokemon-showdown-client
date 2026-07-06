@@ -623,7 +623,8 @@ abstract class BattleTypedSearch<T extends SearchType> {
 	protected formatType: 'doubles' | 'bdsp' | 'bdspdoubles' | 'rs' | 'rslc' | 'frlg' | 'bw1' | 'letsgo' | 'metronome' |
 		'natdex' | 'nfe' | 'ssdlc1' | 'ssdlc1doubles' | 'predlc' | 'predlcdoubles' | 'predlcnatdex' | 'svdlc1' | 'svdlc1doubles' |
 		'svdlc1natdex' | 'stadium' | 'lc' | 'champions' | 'natdexchampions' | 'zangouse' | 'gen3mega' | 'gen3ubersuu' |
-		'gen3subzu' | 'gen1rbyplus' | null = null;
+		'gen3subzu' | 'gen1rbyplus' | 'gen3advplus' | 'gen3tradebacks' | 'gen3hoennification' | 'gen3frlgindigo' |
+		'gen3shadowcolosseum' | null = null;
 	isDoubles = false;
 
 	/**
@@ -725,10 +726,18 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType = format.endsWith('lc') ? 'rslc' : 'rs';
 			this.dex = Dex.mod('gen3rs' as ID);
 		}
-		if (format.includes('frlg')) {
+		if (format.includes('frlg') && !format.includes('frlgindigo')) {
 			this.formatType = 'frlg';
 			this.dex = Dex.mod('gen3frlg' as ID);
 			format = format.slice(4) as ID;
+		}
+		if (format.includes('frlgindigo')) {
+			// No pokedex overrides (species/types/stats are vanilla gen3) — only its own
+			// tier list (single OU-or-Illegal band) and restricted movepool differ, both
+			// of which come from its own BattleTeambuilderTable/learnsets entry.
+			this.formatType = 'gen3frlgindigo';
+			this.dex = Dex.mod('gen3frlgindigo' as ID);
+			format = format.slice(10) as ID; // strip 'frlgindigo', leaving 'ou'
 		}
 		if (format === 'partnersincrime') this.formatType = 'doubles';
 		if (format.startsWith('ffa') || format === 'freeforall') this.formatType = 'doubles';
@@ -788,6 +797,23 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (this.dex.gen === 1 && format.includes('rbyplus')) {
 			this.formatType = 'gen1rbyplus';
 			this.dex = Dex.mod('gen1rbyplus' as ID);
+		}
+		if (this.dex.gen === 3 && format.includes('advplus')) {
+			this.formatType = 'gen3advplus';
+			this.dex = Dex.mod('gen3advplus' as ID);
+		}
+		if (this.dex.gen === 3 && format.includes('tradebacks')) {
+			this.formatType = 'gen3tradebacks';
+			this.dex = Dex.mod('gen3tradebacks' as ID);
+		}
+		if (this.dex.gen === 3 && format.includes('hoennification')) {
+			this.formatType = 'gen3hoennification';
+			this.dex = Dex.mod('gen3hoennification' as ID);
+			format = format.slice(14) as ID; // strip 'hoennification', leaving 'ou'/'ubers'
+		}
+		if (this.dex.gen === 3 && format.includes('shadowcolosseum')) {
+			this.formatType = 'gen3shadowcolosseum';
+			this.dex = Dex.mod('gen3shadowcolosseum' as ID);
 		}
 		this.format = format;
 
@@ -888,6 +914,10 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (this.formatType === 'champions') table = table['champions'];
 		if (this.formatType === 'natdexchampions') table = table['natdexchampions'];
 		if (this.formatType === 'gen1rbyplus') table = table['gen1rbyplus'];
+		if (this.formatType === 'gen3advplus') table = table['gen3advplus'];
+		if (this.formatType === 'gen3tradebacks') table = table['gen3tradebacks'];
+		if (this.formatType === 'gen3hoennification') table = table['gen3hoennification'];
+		if (this.formatType === 'gen3frlgindigo') table = table['gen3frlgindigo'];
 		if (speciesid in table.learnsets) return speciesid;
 		const species = this.dex.species.get(speciesid);
 		if (!species.exists) return '' as ID;
@@ -961,6 +991,10 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			if (this.formatType === 'champions') table = table['champions'];
 			if (this.formatType === 'natdexchampions') table = table['natdexchampions'];
 			if (this.formatType === 'gen1rbyplus') table = table['gen1rbyplus'];
+			if (this.formatType === 'gen3advplus') table = table['gen3advplus'];
+			if (this.formatType === 'gen3tradebacks') table = table['gen3tradebacks'];
+			if (this.formatType === 'gen3hoennification') table = table['gen3hoennification'];
+			if (this.formatType === 'gen3frlgindigo') table = table['gen3frlgindigo'];
 			let learnset = table.learnsets[learnsetid];
 			const eggMovesOnly = this.eggMovesOnly(learnsetid, speciesid);
 			if (learnset && (moveid in learnset) && (!this.format.startsWith('tradebacks') ? learnset[moveid].includes(genChar) :
@@ -1004,6 +1038,11 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType === 'gen3ubersuu' ? `gen3ubersuu` :
 			this.formatType === 'gen3subzu' ? `gen3subzu` :
 			this.formatType === 'gen1rbyplus' ? `gen1rbyplus` :
+			this.formatType === 'gen3advplus' ? `gen3advplus` :
+			this.formatType === 'gen3tradebacks' ? `gen3tradebacks` :
+			this.formatType === 'gen3hoennification' ? `gen3hoennification` :
+			this.formatType === 'gen3frlgindigo' ? `gen3frlgindigo` :
+			this.formatType === 'gen3shadowcolosseum' ? `gen3shadowcolosseum` :
 			`gen${gen}`;
 		if (table?.[tableKey]) {
 			table = table[tableKey];
@@ -1179,6 +1218,16 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			table = table['gen3subzu'];
 		} else if (this.formatType === 'gen1rbyplus') {
 			table = table['gen1rbyplus'];
+		} else if (this.formatType === 'gen3advplus') {
+			table = table['gen3advplus'];
+		} else if (this.formatType === 'gen3tradebacks') {
+			table = table['gen3tradebacks'];
+		} else if (this.formatType === 'gen3hoennification') {
+			table = table['gen3hoennification'];
+		} else if (this.formatType === 'gen3frlgindigo') {
+			table = table['gen3frlgindigo'];
+		} else if (this.formatType === 'gen3shadowcolosseum') {
+			table = table['gen3shadowcolosseum'];
 		}
 
 		if (!table.tierSet) {
@@ -1288,6 +1337,9 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			tierSet = tierSet.slice(slices.Regular);
 		} else if (this.formatType === 'zangouse') {
 			// keep tier order as-is: Zang, OU, NFE
+		} else if (this.formatType === 'gen3advplus' || this.formatType === 'gen3tradebacks') {
+			// Single OU-based ladder (Uber banned, no separate UU/RU/... sub-formats to browse).
+			tierSet = tierSet.slice(slices.OU);
 		} else if (!isDoublesOrBS) {
 			tierSet = [
 				...tierSet.slice(slices.OU, slices.UU),
@@ -1989,6 +2041,10 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 		if (this.formatType?.startsWith('predlc')) lsetTable = lsetTable['gen9predlc'];
 		if (this.formatType?.startsWith('svdlc1')) lsetTable = lsetTable['gen9dlc1'];
 		if (this.formatType === 'gen1rbyplus') lsetTable = lsetTable['gen1rbyplus'];
+		if (this.formatType === 'gen3advplus') lsetTable = lsetTable['gen3advplus'];
+		if (this.formatType === 'gen3tradebacks') lsetTable = lsetTable['gen3tradebacks'];
+		if (this.formatType === 'gen3hoennification') lsetTable = lsetTable['gen3hoennification'];
+		if (this.formatType === 'gen3frlgindigo') lsetTable = lsetTable['gen3frlgindigo'];
 		while (learnsetid) {
 			let learnset = lsetTable.learnsets[learnsetid];
 			if (learnset) {
