@@ -316,6 +316,24 @@ export const Dex = new class implements ModdedDex {
 		if (dex.gen === 4 && formatid.includes('nopss')) {
 			dex = Dex.mod('gen4nopss' as ID);
 		}
+		if (dex.gen === 5 && formatid.includes('bw1')) {
+			dex = Dex.mod('gen5bw1' as ID);
+		}
+		// ADV 200 and RSLC are ladder/tier variants of RS — species data (types, stats,
+		// learnsets) is byte-identical to gen3rs, only the tier table differs (see
+		// battle-dex-search.ts's identical rs/rslc handling and build-indexes' modId comment).
+		if (dex.gen === 3 && formatid.includes('adv200')) {
+			dex = Dex.mod('gen3rs' as ID);
+		}
+		if (dex.gen === 3 && formatid.includes('frlg')) {
+			dex = Dex.mod('gen3frlg' as ID);
+		}
+		if (dex.gen === 3 && formatid.includes('zangouse')) {
+			dex = Dex.mod('gen3zangouse' as ID);
+		}
+		if (dex.gen === 1 && formatid.includes('rbyplus')) {
+			dex = Dex.mod('gen1rbyplus' as ID);
+		}
 		return dex;
 	}
 
