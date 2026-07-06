@@ -334,6 +334,23 @@ export const Dex = new class implements ModdedDex {
 		if (dex.gen === 1 && formatid.includes('rbyplus')) {
 			dex = Dex.mod('gen1rbyplus' as ID);
 		}
+		if (dex.gen === 3 && formatid.includes('advplus')) {
+			dex = Dex.mod('gen3advplus' as ID);
+		}
+		if (dex.gen === 3 && formatid.includes('tradebacks')) {
+			dex = Dex.mod('gen3tradebacks' as ID);
+		}
+		if (dex.gen === 3 && formatid.includes('hoennification')) {
+			dex = Dex.mod('gen3hoennification' as ID);
+		}
+		// Checked after the generic 'frlg' branch above (which would otherwise route
+		// FRLG Indigo to plain gen3frlg, since 'frlgindigo' contains 'frlg').
+		if (dex.gen === 3 && formatid.includes('frlgindigo')) {
+			dex = Dex.mod('gen3frlgindigo' as ID);
+		}
+		if (dex.gen === 3 && formatid.includes('shadowcolosseum')) {
+			dex = Dex.mod('gen3shadowcolosseum' as ID);
+		}
 		return dex;
 	}
 
