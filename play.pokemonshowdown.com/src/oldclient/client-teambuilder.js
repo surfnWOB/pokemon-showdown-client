@@ -23,16 +23,7 @@
 			if (this.curTeam) {
 				this.curTeam.iconCache = '!';
 				this.curTeam.gen = this.getGen(this.curTeam.format);
-				this.curTeam.dex = Dex.forGen(this.curTeam.gen);
-				if (this.curTeam.format.includes('letsgo')) {
-					this.curTeam.dex = Dex.mod('gen7letsgo');
-				}
-				if (this.curTeam.format.includes('bdsp')) {
-					this.curTeam.dex = Dex.mod('gen8bdsp');
-				}
-				if (this.curTeam.format.includes('champions')) {
-					this.curTeam.dex = Dex.mod('champions');
-				}
+				this.curTeam.dex = Dex.forFormat(this.curTeam.format);
 				Storage.activeSetList = this.curSetList;
 			}
 		},
@@ -751,16 +742,7 @@
 			this.curTeam = teams[i];
 			this.curTeam.iconCache = '!';
 			this.curTeam.gen = this.getGen(this.curTeam.format);
-			this.curTeam.dex = Dex.forGen(this.curTeam.gen);
-			if (this.curTeam.format.includes('letsgo')) {
-				this.curTeam.dex = Dex.mod('gen7letsgo');
-			}
-			if (this.curTeam.format.includes('bdsp')) {
-				this.curTeam.dex = Dex.mod('gen8bdsp');
-			}
-			if (this.curTeam.format.includes('champions')) {
-				this.curTeam.dex = Dex.mod('champions');
-			}
+			this.curTeam.dex = Dex.forFormat(this.curTeam.format);
 			Storage.activeSetList = this.curSetList = Storage.unpackTeam(this.curTeam.team);
 			this.curTeamIndex = i;
 			this.update();
@@ -1620,16 +1602,7 @@
 		changeFormat: function (format) {
 			this.curTeam.format = format;
 			this.curTeam.gen = this.getGen(this.curTeam.format);
-			this.curTeam.dex = Dex.forGen(this.curTeam.gen);
-			if (this.curTeam.format.includes('letsgo')) {
-				this.curTeam.dex = Dex.mod('gen7letsgo');
-			}
-			if (this.curTeam.format.includes('bdsp')) {
-				this.curTeam.dex = Dex.mod('gen8bdsp');
-			}
-			if (this.curTeam.format.includes('champions')) {
-				this.curTeam.dex = Dex.mod('champions');
-			}
+			this.curTeam.dex = Dex.forFormat(this.curTeam.format);
 			this.save();
 			if (this.curTeam.gen === 5 && !Dex.loadedSpriteData['bw']) Dex.loadSpriteData('bw');
 			this.update();
@@ -2314,8 +2287,6 @@
 			var set = this.curSet;
 			var species = this.curTeam.dex.species.get(this.curSet.species);
 
-			var baseStats = species.baseStats;
-
 			buf += '<div class="resultheader"><h3>EVs</h3></div>';
 			buf += '<div class="statform">';
 			var guess = new BattleStatGuesser(this.curTeam.format).guess(set);
@@ -2384,8 +2355,7 @@
 
 			buf += '<div class="col basestatscol"><div><em>Base</em></div>';
 			for (var i in stats) {
-				// Show Tier Shift's boosted base stats (HP is never boosted).
-				var shownBase = i === 'hp' ? baseStats[i] : Math.min(255, baseStats[i] + this.tierShiftBoost(species));
+				var shownBase = this.getShownBaseStat(species, i);
 				buf += '<div><b>' + shownBase + '</b></div>';
 			}
 			buf += '</div>';
@@ -3692,6 +3662,18 @@
 			}
 			return boosts[toID(species.tier)] || 0;
 		},
+		// Shown/effective base stat after metagame-wide stat mods. Mirrors the
+		// server's Bad 'n Boosted Mod (data/rulesets.ts `badnboostedmod`): every
+		// base stat of 70 or less is doubled, HP included. Mutually exclusive with
+		// Tier Shift's per-tier boost (HP exempt there).
+		getShownBaseStat: function (species, stat) {
+			var baseStat = species.baseStats[stat];
+			if (this.curTeam.format.includes('badnboosted')) {
+				return baseStat <= 70 ? Math.min(255, baseStat * 2) : baseStat;
+			}
+			if (stat !== 'hp') return Math.min(255, baseStat + this.tierShiftBoost(species));
+			return baseStat;
+		},
 		getStat: function (stat, set, evOverride, natureOverride) {
 			var usesStatPoints = this.curTeam.format.includes('champions');
 			var supportsEVs = !this.curTeam.format.includes('letsgo') && !usesStatPoints;
@@ -3717,8 +3699,7 @@
 			if (!set.level) set.level = 100;
 			if (typeof set.ivs[stat] === 'undefined') set.ivs[stat] = 31;
 
-			var baseStat = species.baseStats[stat];
-			if (stat !== 'hp') baseStat = Math.min(255, baseStat + this.tierShiftBoost(species));
+			var baseStat = this.getShownBaseStat(species, stat);
 			var iv = (set.ivs[stat] || 0);
 			if (this.curTeam.gen <= 2) iv &= 30;
 			var ev = set.evs[stat];
