@@ -401,6 +401,21 @@ export class ChatRoom extends PSRoom {
 			this.log?.reset();
 			this.update(null);
 		},
+		'scrollsnapdebug'(target) {
+			const targetID = toID(target);
+			if (targetID === 'off') {
+				PSView.setSnapDebug(false);
+				this.add('||Scroll-snap debug: OFF');
+				return;
+			}
+			if (!target || targetID === 'on') {
+				PSView.setSnapDebug(true);
+				this.add('||Scroll-snap debug: ON');
+				return;
+			}
+			this.add(`||Scroll-snap debug is currently ${PSView.snapDebug ? 'ON' : 'OFF'}.`);
+			this.add('||Usage: /scrollsnapdebug [on|off]');
+		},
 		'togglemessages'(target) {
 			if (this.pmTarget ||
 				this.type !== 'chat') return this.errorReply('This command can only be used in proper chat rooms.');
@@ -887,7 +902,7 @@ export class ChatTextEntry extends preact.Component<{
 	left?: number, tinyLayout?: boolean,
 }> {
 	subscription: PSSubscription | null = null;
-	textbox: HTMLTextAreaElement = null!;
+	textbox: HTMLTextAreaElement | null = null;
 	miniedit: MiniEdit | null = null;
 	history: string[] = [];
 	historyIndex = 0;
@@ -903,20 +918,23 @@ export class ChatTextEntry extends preact.Component<{
 		this.subscription = PS.user.subscribe(() => {
 			this.forceUpdate();
 		});
-		const textbox = this.base!.children[0].children[1] as HTMLElement;
-		if (textbox.tagName === 'TEXTAREA') this.textbox = textbox as HTMLTextAreaElement;
-		this.miniedit = new MiniEdit(textbox, {
-			setContent: text => {
-				textbox.innerHTML = formatText(text, false, false, true) + '\n';
-				textbox.classList?.toggle('textbox-empty', !text);
-			},
-			onKeyDown: this.onKeyDown,
-		});
+		const textbox = this.base!.querySelector<HTMLElement>('textarea[name=message], pre')!;
+		if (textbox.tagName === 'TEXTAREA') {
+			this.textbox = textbox as HTMLTextAreaElement;
+		} else {
+			this.miniedit = new MiniEdit(textbox, {
+				setContent: text => {
+					textbox.innerHTML = formatText(text, false, false, true) + '\n';
+					textbox.classList?.toggle('textbox-empty', !text);
+				},
+				onKeyDown: this.onKeyDown,
+			});
+		}
 		if (this.props.room.args?.initialSlash) {
 			this.props.room.args.initialSlash = false;
 			this.setValue('/', 1);
 		}
-		if (this.base) this.update();
+		(this.props.room as any).__textentry = this;
 	}
 	override componentWillUnmount() {
 		if (this.subscription) {
@@ -924,26 +942,17 @@ export class ChatTextEntry extends preact.Component<{
 			this.subscription = null;
 		}
 	}
-	update = () => {
-		if (!this.miniedit) {
-			const textbox = this.textbox;
-			textbox.style.height = `12px`;
-			const newHeight = Math.min(Math.max(textbox.scrollHeight - 2, 16), 600);
-			textbox.style.height = `${newHeight}px`;
-		}
-	};
 	focusIfNoSelection = (e: Event) => {
 		if ((e.target as HTMLElement).tagName === 'TEXTAREA') return;
 		const selection = window.getSelection()!;
 		if (selection.type === 'Range') return;
 		const elem = this.base!.children[0].children[1] as HTMLTextAreaElement;
-		elem.focus();
+		PSView.politeFocus(elem);
 	};
 	submit() {
-		this.props.onMessage(this.getValue(), this.miniedit?.element || this.textbox);
+		this.props.onMessage(this.getValue(), this.miniedit?.element || this.textbox!);
 		this.historyPush(this.getValue());
 		this.setValue('', 0);
-		this.update();
 		return true;
 	}
 	onKeyDown = (e: KeyboardEvent) => {
@@ -955,28 +964,28 @@ export class ChatTextEntry extends preact.Component<{
 
 	// Direct manipulation functions
 	getValue() {
-		return this.miniedit ? this.miniedit.getValue() : this.textbox.value;
+		return this.miniedit ? this.miniedit.getValue() : this.textbox!.value;
 	}
 	setValue(value: string, start: number, end = start) {
 		if (this.miniedit) {
 			this.miniedit.setValue(value, { start, end });
 		} else {
-			this.textbox.value = value;
-			this.textbox.setSelectionRange?.(start, end);
+			this.textbox!.value = value;
+			this.textbox!.setSelectionRange?.(start, end);
 		}
 	}
 	getSelection() {
 		const value = this.getValue();
 		let { start, end } = this.miniedit ?
 			(this.miniedit.getSelection() || { start: value.length, end: value.length }) :
-			{ start: this.textbox.selectionStart, end: this.textbox.selectionEnd };
+			{ start: this.textbox!.selectionStart, end: this.textbox!.selectionEnd };
 		return { value, start, end };
 	}
 	setSelection(start: number, end: number) {
 		if (this.miniedit) {
 			this.miniedit.setSelection({ start, end });
 		} else {
-			this.textbox.setSelectionRange?.(start, end);
+			this.textbox!.setSelectionRange?.(start, end);
 		}
 	}
 	replaceSelection(text: string) {
@@ -1241,7 +1250,7 @@ export class ChatTextEntry extends preact.Component<{
 	}
 	override render() {
 		const { room } = this.props;
-		const OLD_TEXTBOX = false;
+		const OLD_TEXTBOX = !PSView.useContentEditable && !this.miniedit;
 		if (room.connected === 'client-only' && room.id.startsWith('battle-')) {
 			return <div
 				class="chat-log-add hasuserlist" onClick={this.focusIfNoSelection} style={{ left: this.props.left || 0 }}
@@ -1255,14 +1264,10 @@ export class ChatTextEntry extends preact.Component<{
 		>
 			<form class={`chatbox${this.props.tinyLayout ? ' nolabel' : ''}`} style={canTalk ? {} : { display: 'none' }}>
 				<label style={`color:${BattleLog.usernameColor(PS.user.userid)}`}>{PS.user.name}:</label>
-				{OLD_TEXTBOX ? <textarea
-					class={connected && canTalk ? 'textbox autofocus' : 'textbox disabled'}
-					autofocus
-					rows={1}
-					onInput={this.update}
-					onKeyDown={this.onKeyDown}
-					style={{ minHeight: '16px', padding: '2px 3px 1px 3px' }}
-					placeholder={PSView.focusPreview(room)}
+				{OLD_TEXTBOX ? <PSTextarea
+					name="message"
+					class={connected && canTalk ? 'autofocus' : 'disabled'} minHeight="16px"
+					placeholder={PSView.focusPreview(room)} onKeyDown={this.onKeyDown}
 				/> : <ChatTextBox
 					disabled={!connected || !canTalk}
 					placeholder={PSView.focusPreview(room)}
@@ -1282,16 +1287,9 @@ class ChatTextBox extends preact.Component<{ placeholder: string, disabled?: boo
 		this.base!.classList?.toggle('autofocus', !nextProps.disabled);
 		return false;
 	}
-	handleFocus = () => {
-		PSView.setTextboxFocused(true);
-	};
-	handleBlur = () => {
-		PSView.setTextboxFocused(false);
-	};
 	override render() {
 		return <pre
 			class={`textbox textbox-empty ${this.props.disabled ? ' disabled' : ' autofocus'}`} placeholder={this.props.placeholder}
-			onFocus={this.handleFocus} onBlur={this.handleBlur}
 		>{'\n'}</pre>;
 	}
 }
@@ -1569,6 +1567,48 @@ export class ChatLog extends preact.Component<{
 			<ChatLogInner class="inner message-log" />
 			{this.props.hasPreempt && <ChatLogInner class="inner-preempt message-log" />}
 			{this.props.children && <div class="controls">{this.props.children}</div>}
+		</div>;
+	}
+}
+
+export class PSTextarea extends preact.Component<{
+	initialValue?: string, name?: string, placeholder?: string, class?: string,
+	onKeyDown?: (e: KeyboardEvent) => void, minHeight?: string,
+}> {
+	cssAutosize = !!window.CSS?.supports?.('field-sizing', 'content');
+	updateSize = () => {
+		if (this.cssAutosize) return;
+
+		const textbox = this.base!.querySelector('textarea')!;
+		const textboxTest = this.base!.querySelector<HTMLTextAreaElement>('textarea.heighttester')!;
+		textboxTest.style.width = `${textbox.offsetWidth}px`;
+		textboxTest.value = textbox.value;
+		textbox.setAttribute('data-changed', textbox.value === this.props.initialValue ? '' : '1');
+		const newHeight = Math.max(textboxTest.scrollHeight + 40, 50);
+		textbox.style.height = `${newHeight}px`;
+	};
+	override componentDidMount(): void {
+		const textbox = this.base!.querySelector('textarea')!;
+		if (this.props.initialValue) {
+			textbox.value = this.props.initialValue;
+		}
+		this.updateSize();
+		window.addEventListener('resize', this.updateSize);
+	}
+	override componentWillUnmount(): void {
+		window.removeEventListener('resize', this.updateSize);
+	}
+	override render() {
+		return <div style="position:relative">
+			<textarea
+				name={this.props.name} class={`textbox ${this.props.class || ''}`}
+				style={`min-height:${this.props.minHeight || '3em'}`} placeholder={this.props.placeholder}
+				onInput={this.updateSize} onKeyUp={this.updateSize} onKeyDown={this.props.onKeyDown}
+			/>
+			{!this.cssAutosize && <div><textarea
+				class={`textbox heighttester ${this.props.class || ''}`}
+				style="visibility:hidden;position:absolute;left:-200px"
+			/></div>}
 		</div>;
 	}
 }

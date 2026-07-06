@@ -23,7 +23,6 @@
 	padding: 5px 0 5px 8px;
 	overflow: auto;
 	-webkit-overflow-scrolling: touch;
-	overscroll-behavior-block: contain;
 }
 .teambuilder-folder-select {
 	display: inline-block;
@@ -843,7 +842,6 @@ you can't delete it by pressing Backspace */
 	bottom: 0;
 	overflow: auto;
 	-webkit-overflow-scrolling: touch;
-	overscroll-behavior-block: contain;
 }
 .set-searchresults .dexlist, .searchresults .dexlist {
 	min-width: 624px;

@@ -956,6 +956,10 @@ class PSServer {
 
 type PSRoomLocation = 'left' | 'right' | 'popup' | 'mini-window' | 'modal-popup';
 
+export interface PSRoomFocusOptions {
+	preventScroll?: boolean;
+}
+
 export interface RoomOptions {
 	id: RoomID;
 	title?: string;
@@ -1060,7 +1064,7 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 	 */
 	readonly canConnect: boolean = false;
 	connectWhenLoggedIn = false;
-	onParentFocus: ((e?: Event) => boolean | void) | null = null;
+	onRequestFocus: ((options?: PSRoomFocusOptions) => boolean | void) | null = null;
 	onParentKeyDown: ((e?: Event) => boolean | void) | null = null;
 
 	width = 0;
@@ -1072,7 +1076,7 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 	 * their width/height without flickering. But hidden HTML elements can't be
 	 * focused, so this is a note-to-self to focus the next time they can be.
 	 */
-	focusNextUpdate = false;
+	focusNextUpdate: boolean | PSRoomFocusOptions = false;
 	parentElem: HTMLElement | null = null;
 	parentRoomid: RoomID | null = null;
 	rightPopup = false;
@@ -2442,21 +2446,23 @@ export const PS = new class extends PSModel {
 			if (roomid === '') this.mainmenu = newRoom as MainMenuRoom;
 			if (this.room === room) {
 				this.room = newRoom;
-				newRoom.focusNextUpdate = true;
+				newRoom.focusNextUpdate = { preventScroll: true };
 			}
 
 			updated = true;
 		}
 		if (updated) this.update();
 	}
-	setFocus(room: PSRoom) {
-		room.onParentFocus?.();
+	setFocus(room: PSRoom, options?: PSRoomFocusOptions) {
+		room.onRequestFocus?.(options);
 	}
 	focusRoom(roomid: RoomID) {
 		const room = this.rooms[roomid];
 		if (!room) return false;
 		if (this.room === room) {
-			this.setFocus(room);
+			const focusOptions = room.focusNextUpdate === true ? undefined : room.focusNextUpdate || undefined;
+			room.focusNextUpdate = false;
+			this.setFocus(room, focusOptions);
 			return true;
 		}
 		this.closePopupsAbove(room, true);
@@ -2849,7 +2855,7 @@ export const PS = new class extends PSModel {
 		}
 
 		if (wasFocused) {
-			this.room.focusNextUpdate = true;
+			this.room.focusNextUpdate = { preventScroll: true };
 		}
 	}
 	/** do NOT use this in a while loop: see `closePopupsUntil */

@@ -8,8 +8,8 @@
 import preact from "../js/lib/preact";
 import { PSLoginServer } from "./client-connection";
 import { PSBackground } from "./client-core";
-import { Config, PS, PSRoom, type RoomID, type RoomOptions, type Team } from "./client-main";
-import { PSIcon, PSPanelErrorBoundary, PSPanelWrapper, PSRoomPanel, ReconnectTimer } from "./panels";
+import { Config, PS, PSRoom, type PSRoomFocusOptions, type RoomID, type RoomOptions, type Team } from "./client-main";
+import { PSIcon, PSPanelErrorBoundary, PSPanelWrapper, PSRoomPanel, PSView, ReconnectTimer } from "./panels";
 import type { BattlesRoom } from "./panel-battle";
 import type { ChatRoom } from "./panel-chat";
 import type { LadderFormatRoom } from "./panel-ladder";
@@ -554,8 +554,11 @@ class MainMenuPanel extends PSRoomPanel<MainMenuRoom> {
 		super.componentDidMount();
 		this.subscribeTo(PSBackground);
 	}
-	override focus() {
-		this.base?.querySelector<HTMLButtonElement>('.formatselect')?.focus();
+	override focus(options?: PSRoomFocusOptions) {
+		if (!options?.preventScroll) PSView.scrollToRoom();
+		if (PSView.hasTapped) return;
+
+		PSView.politeFocus(this.base?.querySelector<HTMLButtonElement>('.formatselect'));
 	}
 	submitSearch = (ev: Event, format: string, team?: Team) => {
 		if (!PS.user.named) {

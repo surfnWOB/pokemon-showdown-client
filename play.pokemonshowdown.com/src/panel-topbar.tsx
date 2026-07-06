@@ -165,23 +165,18 @@ export class PSHeader extends preact.Component {
 			const oldNarrowMode = PSView.narrowMode;
 			PSView.narrowMode = width <= 700;
 			PSView.verticalHeaderWidth = PSView.narrowMode ? NARROW_MODE_HEADER_WIDTH : VERTICAL_HEADER_WIDTH;
-			document.documentElement.style.width = PSView.narrowMode ? `${width + NARROW_MODE_HEADER_WIDTH}px` : 'auto';
+			document.documentElement.style.width = PSView.useCSSScrollSnap() ?
+				`${width + NARROW_MODE_HEADER_WIDTH}px` : 'auto';
 			if (oldNarrowMode !== PSView.narrowMode) {
-				if (PSView.narrowMode) {
-					if (!PSView.textboxFocused) {
-						document.documentElement.classList?.add('scroll-snap-enabled');
-					}
-				} else {
-					document.documentElement.classList?.remove('scroll-snap-enabled');
-				}
+				PSView.updateScrollSnap();
 				PS.update();
 			}
 			return;
 		}
 		if (PSView.narrowMode) {
-			document.documentElement.classList?.remove('scroll-snap-enabled');
 			document.documentElement.style.width = 'auto';
 			PSView.narrowMode = false;
+			PSView.updateScrollSnap();
 		}
 
 		const userbarLeft = this.base.querySelector('div.userbar')?.getBoundingClientRect()?.left;
@@ -306,16 +301,16 @@ export class PSHeader extends preact.Component {
 export class PSMiniHeader extends preact.Component {
 	menuOpen?: boolean;
 	override componentDidMount() {
-		window.addEventListener('scroll', this.handleScroll);
+		PSView.addScrollListener(this.handleScroll);
 	}
 	override componentWillUnmount() {
-		window.removeEventListener('scroll', this.handleScroll);
+		PSView.removeScrollListener(this.handleScroll);
 	}
 	handleScroll = () => {
-		if (this.menuOpen !== !window.scrollX) this.forceUpdate();
+		if (this.menuOpen !== !PSView.getScrollX()) this.forceUpdate();
 	};
 	override render() {
-		this.menuOpen = !window.scrollX;
+		this.menuOpen = !PSView.getScrollX();
 
 		if (PS.leftPanelWidth !== null) return null;
 

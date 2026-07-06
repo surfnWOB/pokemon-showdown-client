@@ -448,6 +448,7 @@ textarea.textbox {
 	box-sizing: border-box;
 	resize: none;
 	field-sizing: content;
+	overflow-wrap: break-word;
 }
 pre.textbox {
 	white-space: pre-wrap;

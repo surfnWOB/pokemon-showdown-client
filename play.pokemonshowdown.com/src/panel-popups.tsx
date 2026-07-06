@@ -5,7 +5,8 @@ import { BattleLog } from "./battle-log";
 import { PSLoginServer } from "./client-connection";
 import { PSBackground } from "./client-core";
 import {
-	PS, PSRoom, Config, type RoomOptions, type PSLoginState, type RoomID, type TimestampOptions,
+	PS, PSRoom, Config, type PSRoomFocusOptions, type RoomOptions, type PSLoginState, type RoomID,
+	type TimestampOptions,
 } from "./client-main";
 import { type BattleRoom } from "./panel-battle";
 import { ChatUserList, type ChatRoom } from "./panel-chat";
@@ -891,7 +892,7 @@ class LoginPanel extends PSRoomPanel {
 	update = () => {
 		this.forceUpdate();
 	};
-	override focus() {
+	override focus(_options?: PSRoomFocusOptions) {
 		const passwordBox = this.base!.querySelector<HTMLInputElement>('input[name=password]');
 		const usernameBox = this.base!.querySelector<HTMLInputElement>('input[name=username]');
 		(passwordBox || usernameBox)?.select();

@@ -16,7 +16,7 @@ import { BattleNatures, BattleStatNames, type StatName } from "./battle-dex-data
 import { BattleStatGuesser, BattleStatOptimizer, BattleTooltips } from "./battle-tooltips";
 import { PSModel } from "./client-core";
 import { Net } from "./client-connection";
-import { PSIcon } from "./panels";
+import { PSIcon, PSView } from "./panels";
 
 type InnerFocusType = 'pokemon' | 'ability' | 'item' | 'move' | 'stats' | 'details' | 'import';
 type TeamEditorMode = 'form' | 'import';
@@ -1260,7 +1260,7 @@ class TeamTextbox extends preact.Component<{
 			} else {
 				this.forceUpdate();
 			}
-			this.textbox.focus();
+			PSView.politeFocus(this.textbox);
 			return true;
 		}
 		return false;
@@ -1619,7 +1619,7 @@ class TeamTextbox extends preact.Component<{
 		const textbox = this.textbox;
 		// const value = textbox.value;
 		// textbox.value = value.slice(0, start) + text + value.slice(end);
-		textbox.focus();
+		PSView.politeFocus(textbox);
 		textbox.setSelectionRange(start, end);
 		document.execCommand('insertText', false, text);
 		// textbox.setSelectionRange(selectionStart, selectionEnd);
@@ -1673,7 +1673,7 @@ class TeamTextbox extends preact.Component<{
 		}
 		const end = this.textbox.value === '\n\n' ? 0 : this.textbox.value.length;
 		this.textbox.setSelectionRange(end, end);
-		this.textbox.focus();
+		PSView.politeFocus(this.textbox);
 		this.engageFocus({
 			offsetY: this.getYAt(end, true),
 			setIndex: this.setInfo.length,
@@ -1872,6 +1872,7 @@ class TeamEditorForm extends preact.Component<{
 	pendingFocusSelection: [number | null, number | null, 'forward' | 'backward' | 'none' | undefined] | null = null;
 	/** whether to focus the details/stats button or their panel contents */
 	pendingFocusButton = false;
+	pendingFocusPolite = true;
 	mouseDownTextbox: HTMLInputElement | null = null;
 	startFocusAnimation(source: Element | null) {
 		if (this.props.editor.innerFocus) return;
@@ -1886,7 +1887,7 @@ class TeamEditorForm extends preact.Component<{
 		const start = this.focusAnimationStartLocation;
 		if (!start) return;
 		this.focusAnimationStartLocation = null;
-		if (window.PS?.prefs.noanim || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+		if (window.PS?.prefs.noanim || PSView.prefersReducedMotion()) return;
 		const setButton = this.base!.querySelector<HTMLElement>('.team-focus-editor .set-form');
 		if (!setButton) return;
 		const rect = setButton.getBoundingClientRect();
@@ -2210,7 +2211,7 @@ class TeamEditorForm extends preact.Component<{
 		const focus = editor.parseFocus(target.getAttribute('data-focus')) as InnerFocusState;
 		if (!focus) return;
 
-		// calling .focus() to focus after innerfocusing does trigger this listener
+		// Focusing after innerfocusing does trigger this listener.
 		if (this.pendingFocus) return;
 
 		this.pendingFocusValue = target.value;
@@ -2232,7 +2233,7 @@ class TeamEditorForm extends preact.Component<{
 		if (document.activeElement === target) return;
 		this.mouseDownTextbox = target;
 		document.addEventListener('mouseup', this.mouseUpField, { once: true });
-		target.focus();
+		PSView.politeFocus(target);
 		target.select();
 		ev.preventDefault();
 	};
@@ -2242,11 +2243,12 @@ class TeamEditorForm extends preact.Component<{
 		if (!target || ev.target !== target) return;
 		this.openFocusTextbox(target);
 	};
-	changeFocus(focus: TeamEditorState['innerFocus'], focusButton = false) {
+	changeFocus(focus: TeamEditorState['innerFocus'], focusButton = false, polite = true) {
 		const { editor } = this.props;
 		editor.innerFocus = focus;
 		this.pendingFocus = focus;
 		this.pendingFocusButton = focusButton;
+		this.pendingFocusPolite = polite;
 		if (!focus) {
 			this.props.onUpdate();
 			return;
@@ -2293,13 +2295,14 @@ class TeamEditorForm extends preact.Component<{
 					input.value = this.pendingFocusValue ?? editor.getField(focus);
 					input.classList.remove('incomplete');
 				}
-				input.focus();
+				PSView.politeFocus(input, this.pendingFocusPolite);
 				if (this.pendingFocusSelection && input instanceof HTMLInputElement) {
 					input.setSelectionRange?.(...this.pendingFocusSelection);
 				} else {
 					(input as HTMLInputElement).select?.();
 				}
 				this.pendingFocus = null;
+				this.pendingFocusPolite = true;
 				this.pendingFocusValue = null;
 				this.pendingFocusSelection = null;
 			}
@@ -2580,12 +2583,12 @@ class TeamEditorForm extends preact.Component<{
 		const focus = editor.parseFocus(target.value) as InnerFocusState;
 		if (editor.stringifyFocus(editor.innerFocus) === target.value) {
 			this.pendingFocus = focus;
-			this.pendingFocusButton = false;
+			this.pendingFocusButton = PSView.hasTapped;
 			this.forceUpdate();
 			return;
 		}
 		this.startFocusAnimation(target);
-		this.changeFocus(focus, false);
+		this.changeFocus(focus, PSView.hasTapped);
 	};
 	keyDownPanelButton = (ev: KeyboardEvent) => {
 		if (ev.keyCode !== 9) return;
@@ -2608,7 +2611,7 @@ class TeamEditorForm extends preact.Component<{
 			const target = this.getOuterFocusTarget(focus, restoreNickname);
 			const setButton = this.getOuterSetButton(focus);
 			if (target && ((target as HTMLInputElement).name === 'nickname' || !target.classList.contains('set-field'))) {
-				target.focus({ preventScroll: true });
+				PSView.politeFocus(target);
 				(target as HTMLInputElement).select?.();
 			}
 			this.restoreOuterSetScroll(setButton || target || null, expectedTop);
@@ -2767,7 +2770,7 @@ class TeamEditorForm extends preact.Component<{
 		}
 		const nextType = next.startsWith('move') ? 'move' : next as InnerFocusType;
 		const nextTypeIndex = parseInt(next.slice(nextType.length) || '-1');
-		this.changeFocus({ setIndex: focus.setIndex, type: nextType, typeIndex: nextTypeIndex }, true);
+		this.changeFocus({ setIndex: focus.setIndex, type: nextType, typeIndex: nextTypeIndex }, true, false);
 		return true;
 	}
 	cur(type: InnerFocusType, setIndex: number, typeIndex = -1) {
@@ -3049,8 +3052,10 @@ class SetImportForm extends preact.Component<{
 	refreshText(text = this.getExportText(), dirty = text !== this.revertText) {
 		if (!this.textbox) return;
 		this.textbox.value = text;
-		this.textbox.focus();
-		this.textbox.select();
+		if (!PSView.hasTapped) {
+			PSView.politeFocus(this.textbox);
+			this.textbox.select();
+		}
 		this.setState({ error: '', copied: false, dirty });
 	}
 	revertSetToRevertPoint() {
@@ -3072,7 +3077,7 @@ class SetImportForm extends preact.Component<{
 		if (editor.readonly || !this.textbox) return;
 		this.textbox.value = this.revertText;
 		if (!this.revertSetToRevertPoint()) return;
-		this.textbox.focus();
+		PSView.politeFocus(this.textbox);
 		this.textbox.select();
 		this.setState({ error: '', copied: false, dirty: false });
 	};
