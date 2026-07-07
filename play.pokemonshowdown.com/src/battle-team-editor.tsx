@@ -711,8 +711,10 @@ export class TeamEditorState extends PSModel {
 		}
 		return Math.trunc(val);
 	}
-	export(compat?: boolean) {
-		return Teams.export(this.sets, this.dex, !compat);
+	export(includeTrailingSpaces?: boolean) {
+		const exported = Teams.export(this.sets, this.dex);
+		if (includeTrailingSpaces) return exported.replace(/^(.+)$/gm, '$1  ');
+		return exported;
 	}
 	import(value: string) {
 		this.sets = Teams.import(value);
@@ -1071,7 +1073,6 @@ class TeamTextbox extends preact.Component<{
 	}[] = [];
 	textbox: HTMLTextAreaElement = null!;
 	heightTester: HTMLTextAreaElement = null!;
-	compat = false;
 	/** we changed the set but are delaying updates until the selection form is closed */
 	setDirty = false;
 	selection: {
@@ -1193,7 +1194,7 @@ class TeamTextbox extends preact.Component<{
 			break;
 		case 80: // p
 			if (ev.metaKey) {
-				window.PS?.alert(editor.export(this.compat));
+				window.PS?.alert(editor.export());
 				ev.stopImmediatePropagation();
 				ev.preventDefault();
 				break;
@@ -1581,21 +1582,12 @@ class TeamTextbox extends preact.Component<{
 		const end = this.setInfo[index + 1].index;
 		return [start, end];
 	}
-	changeCompat = (ev: Event) => {
-		const checkbox = ev.currentTarget as HTMLInputElement;
-		this.compat = checkbox.checked;
-		this.editor.import(this.textbox.value);
-		this.textbox.value = this.editor.export(this.compat);
-		// this.textbox.select();
-		// document.execCommand('insertText', false, this.editor.export(this.compat));
-		this.updateText();
-	};
 	replaceSet(index: number) {
 		const editor = this.editor;
 		const { team } = editor;
 		if (!team) return;
 
-		let newText = Teams.exportSet(editor.sets[index], editor.dex, !this.compat);
+		let newText = Teams.exportSet(editor.sets[index], editor.dex);
 		const [start, end] = this.getSetRange(index);
 		if (start && start === this.textbox.value.length && !this.textbox.value.endsWith('\n\n')) {
 			newText = (this.textbox.value.endsWith('\n') ? '\n' : '\n\n') + newText;
@@ -1641,7 +1633,7 @@ class TeamTextbox extends preact.Component<{
 		this.heightTester = this.base!.getElementsByClassName('heighttester')[0] as HTMLTextAreaElement;
 
 		this.editor = this.props.editor;
-		const exportedTeam = this.editor.export(this.compat);
+		const exportedTeam = this.editor.export(true);
 		this.textbox.value = exportedTeam;
 		this.updateText();
 		setTimeout(() => this.updateText());
@@ -1761,10 +1753,7 @@ class TeamTextbox extends preact.Component<{
 					) : (
 						<><i class="fa fa-copy" aria-hidden></i> Copy</>
 					)}
-				</button> {}
-				<label class="checkbox inline">
-					<input type="checkbox" name="compat" onChange={this.changeCompat} /> Old export format
-				</label>
+				</button>
 			</p>
 			<div class="teameditor-text">
 				<textarea
@@ -3032,7 +3021,7 @@ class SetImportForm extends preact.Component<{
 	revertText = '';
 	getExportText() {
 		if (!this.props.set) return '';
-		return Teams.exportSet(this.props.set, this.props.editor.dex, true).trim();
+		return Teams.exportSet(this.props.set, this.props.editor.dex).trim();
 	}
 	override componentDidMount() {
 		this.setRevertPoint();

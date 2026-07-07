@@ -242,8 +242,8 @@ class TeamPanel extends PSRoomPanel<TeamRoom> {
 			PS.alert(`Must use on an uploaded team.`);
 			return;
 		}
-		const uploadedTeam = Teams.export(Teams.unpack(team.uploadedPackedTeam), undefined, true);
-		const localTeam = Teams.export(Teams.unpack(team.packedTeam), undefined, true);
+		const uploadedTeam = Teams.export(Teams.unpack(team.uploadedPackedTeam), undefined);
+		const localTeam = Teams.export(Teams.unpack(team.packedTeam), undefined);
 		PS.alert(TeamPanel.renderTeamDiff(localTeam, uploadedTeam), { width: 720 });
 		ev.preventDefault();
 		ev.stopImmediatePropagation();

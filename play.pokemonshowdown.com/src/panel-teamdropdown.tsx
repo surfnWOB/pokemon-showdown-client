@@ -11,10 +11,10 @@ import { Dex, toID, type ID } from "./battle-dex";
 import { Teams } from "./battle-teams";
 
 export class PSTeambuilder {
-	static exportPackedTeam(team: Team, newFormat?: boolean) {
+	static exportPackedTeam(team: Team) {
 		const sets = Teams.unpack(team.packedTeam);
 		const dex = Dex.forFormat(team.format);
-		return Teams.export(sets, dex, newFormat);
+		return Teams.export(sets, dex);
 	}
 	static splitPrefix(buffer: string, delimiter: string, prefixOffset = 0): [string, string] {
 		const delimIndex = buffer.indexOf(delimiter);
