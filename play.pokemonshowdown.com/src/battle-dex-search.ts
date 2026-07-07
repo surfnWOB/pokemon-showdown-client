@@ -1292,6 +1292,8 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			table = table['gen3advplus'];
 		} else if (this.formatType === 'gen3tradebacks') {
 			table = table['gen3tradebacks'];
+		} else if (this.formatType === 'gen3puretradebacks') {
+			table = table['gen3puretradebacks'];
 		} else if (this.formatType === 'gen3hoennification') {
 			table = table['gen3hoennification'];
 		} else if (this.formatType === 'gen3frlgindigo') {
@@ -1412,7 +1414,8 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			tierSet = tierSet.slice(slices.Regular);
 		} else if (this.formatType === 'zangouse') {
 			// keep tier order as-is: Zang, OU, NFE
-		} else if (this.formatType === 'gen3advplus' || this.formatType === 'gen3tradebacks') {
+		} else if (this.formatType === 'gen3advplus' || this.formatType === 'gen3tradebacks' ||
+			this.formatType === 'gen3puretradebacks') {
 			// Single OU-based ladder (Uber banned, no separate UU/RU/... sub-formats to browse).
 			tierSet = tierSet.slice(slices.OU);
 		} else if (!isDoublesOrBS) {
@@ -2118,6 +2121,7 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 		if (this.formatType === 'gen1rbyplus') lsetTable = lsetTable['gen1rbyplus'];
 		if (this.formatType === 'gen3advplus') lsetTable = lsetTable['gen3advplus'];
 		if (this.formatType === 'gen3tradebacks') lsetTable = lsetTable['gen3tradebacks'];
+		if (this.formatType === 'gen3puretradebacks') lsetTable = lsetTable['gen3puretradebacks'];
 		if (this.formatType === 'gen3hoennification') lsetTable = lsetTable['gen3hoennification'];
 		if (this.formatType === 'gen3frlgindigo') lsetTable = lsetTable['gen3frlgindigo'];
 		while (learnsetid) {
