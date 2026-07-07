@@ -1265,6 +1265,11 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			// boosted OU-and-below pool is legal, so slice from OU like the `ou` branch
 			// below instead of showing the Uber/AG buckets.
 			tierSet = tierSet.slice(slices.OU);
+		} else if (dex.gen === 3 && format === 'pssubers') {
+			// [Gen 3] PSS Ubers: the Ubers metagame on the physical/special-split mod. Keep the
+			// natural Uber → OU → … → LC order (Uber on top) instead of the OU-first default that
+			// [Gen 3] PSS (OU) falls through to below, so Ubers browse above OU.
+			tierSet = tierSet.slice(slices.Uber);
 		} else if (
 			format === 'ubers' || format === 'uber' || format === 'ubersuu' ||
 			format === '4v4doublesuu' || format === 'nationaldexdoubles'
