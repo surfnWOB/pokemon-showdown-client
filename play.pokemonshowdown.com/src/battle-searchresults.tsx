@@ -102,13 +102,16 @@ export class PSSearchResults extends preact.Component<{
 				`<span class="col twoabilitycol">${escapeHTML(pokemon.abilities['0'])}<br />${escapeHTML(pokemon.abilities['1'])}</span>` :
 				`<span class="col abilitycol">${escapeHTML(pokemon.abilities['0'])}</span>`;
 		}
-		if (search.dex.gen >= 5) {
-			if (pokemon.abilities['S']) {
+		// gen3puretradebacks carries later-gen tradeback abilities in the 'S' slot (gen 3
+		// strips 'H'), so render the hidden/special column for it too — otherwise those
+		// abilities (e.g. Tentacruel's Rain Dish) never appear in the browse list.
+		if (search.dex.gen >= 5 || search.dex.modid === 'gen3puretradebacks') {
+			if (pokemon.abilities['S'] && pokemon.abilities['H']) {
 				buf += `<span class="col twoabilitycol${pokemon.unreleasedHidden ? ' unreleasedhacol' : ''}">` +
-					`${escapeHTML(pokemon.abilities['H'] || '')}<br />${escapeHTML(pokemon.abilities['S'])}</span>`;
-			} else if (pokemon.abilities['H']) {
+					`${escapeHTML(pokemon.abilities['H'])}<br />${escapeHTML(pokemon.abilities['S'])}</span>`;
+			} else if (pokemon.abilities['H'] || pokemon.abilities['S']) {
 				buf += `<span class="col abilitycol${pokemon.unreleasedHidden ? ' unreleasedhacol' : ''}">` +
-					`${escapeHTML(pokemon.abilities['H'])}</span>`;
+					`${escapeHTML(pokemon.abilities['H'] || pokemon.abilities['S'])}</span>`;
 			} else {
 				buf += `<span class="col abilitycol"></span>`;
 			}

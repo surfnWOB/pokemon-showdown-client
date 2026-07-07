@@ -349,7 +349,11 @@
 		// abilities
 		if (gen >= 3 && !(this.engine && this.engine.dex.modid === 'gen7letsgo')) {
 			var abilities = pokemon.abilities;
-			if (gen >= 5) {
+			// gen3puretradebacks carries later-gen tradeback abilities in the 'S' slot
+			// (gen 3 strips 'H'); route it through the gen-5 two-column layout so those
+			// abilities (e.g. Tentacruel's Rain Dish) show in the list like a hidden ability.
+			var isPureTradebacks = (this.engine && this.engine.dex.modid === 'gen3puretradebacks');
+			if (gen >= 5 || isPureTradebacks) {
 				if (abilities['1']) {
 					buf += '<span class="col twoabilitycol">' + abilities['0'] + '<br />' +
 						abilities['1'] + '</span>';
@@ -362,7 +366,7 @@
 					if (abilities['H']) {
 						buf += '<span class="col twoabilitycol' + (unreleasedHidden ? ' unreleasedhacol' : '') + '">' + (abilities['H'] || '') + '<br />(' + abilities['S'] + ')</span>';
 					} else {
-						buf += '<span class="col abilitycol">(' + abilities['S'] + ')</span>';
+						buf += '<span class="col abilitycol">' + (isPureTradebacks ? abilities['S'] : '(' + abilities['S'] + ')') + '</span>';
 					}
 				} else if (abilities['H']) {
 					buf += '<span class="col abilitycol' + (unreleasedHidden ? ' unreleasedhacol' : '') + '">' + abilities['H'] + '</span>';
