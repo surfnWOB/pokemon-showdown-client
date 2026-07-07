@@ -271,7 +271,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		8.6, 8.4, 8.2, -8.4, -8.6,
 		7.1,
 		5.1,
-		3.1, 3.11, 3.02, 3.03, 3.05, 3.06, 3.17, 3.07, 3.08, 3.09, 3.12, 3.13,
+		3.1, 3.11, 3.02, 3.03, 3.05, 3.06, 3.17, 3.07, 3.08, 3.09, 3.12, 3.13, 3.14,
 		1.05,
 	];
 
@@ -304,6 +304,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		const isGen3SubZU = genIdent === 3.06;
 		const isGen3AdvPlus = genIdent === 3.07;
 		const isGen3Tradebacks = genIdent === 3.08;
+		const isGen3PureTradebacks = genIdent === 3.14;
 		const isGen3Hoennification = genIdent === 3.09;
 		const isGen3FRLGIndigo = genIdent === 3.12;
 		const isGen3ShadowColosseum = genIdent === 3.13;
@@ -327,6 +328,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			if (isGen3SubZU) genStr += 'subzu';
 			if (isGen3AdvPlus) genStr += 'advplus';
 			if (isGen3Tradebacks) genStr += 'tradebacks';
+			if (isGen3PureTradebacks) genStr += 'puretradebacks';
 			if (isGen3Hoennification) genStr += 'hoennification';
 			if (isGen3FRLGIndigo) genStr += 'frlgindigo';
 			if (isGen3ShadowColosseum) genStr += 'shadowcolosseum';
@@ -691,7 +693,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			BattleTeambuilderTable['gen3rslc'].overrideTier = overrideTier;
 			BattleTeambuilderTable['gen3rslc'].formatSlices = formatSlices;
 		} else if (
-			isBW1 || isRS || isFRLG || isGen3AdvPlus || isGen3Tradebacks || isGen3Hoennification || isGen3FRLGIndigo
+			isBW1 || isRS || isFRLG || isGen3AdvPlus || isGen3Tradebacks || isGen3PureTradebacks || isGen3Hoennification || isGen3FRLGIndigo
 		) {
 			BattleTeambuilderTable[gen] = {};
 			BattleTeambuilderTable[gen].overrideTier = overrideTier;
@@ -1155,6 +1157,17 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			BattleTeambuilderTable['gen3tradebacks'].learnsets[id][moveid] = '3';
 		}
 	}
+	const G3PureTradebacksLearnsets = Dex.mod('gen3puretradebacks').data.Learnsets;
+	for (const id in G3PureTradebacksLearnsets) {
+		const species = Dex.mod('gen3puretradebacks').species.get(id);
+		if (species.isNonstandard && !['Unobtainable', 'CAP'].includes(species.isNonstandard)) continue;
+		const learnset = G3PureTradebacksLearnsets[id].learnset;
+		if (!learnset) continue;
+		BattleTeambuilderTable['gen3puretradebacks'].learnsets[id] = {};
+		for (const moveid in learnset) {
+			BattleTeambuilderTable['gen3puretradebacks'].learnsets[id][moveid] = '3';
+		}
+	}
 	const G3HoennificationLearnsets = Dex.mod('gen3hoennification').data.Learnsets;
 	for (const id in G3HoennificationLearnsets) {
 		const species = Dex.mod('gen3hoennification').species.get(id);
@@ -1486,7 +1499,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 
 	for (const mod of [
 		'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
-		'gen1rbyplus', 'gen3advplus', 'gen3tradebacks', 'gen3hoennification', 'gen3frlgindigo', 'gen3shadowcolosseum',
+		'gen1rbyplus', 'gen3advplus', 'gen3tradebacks', 'gen3puretradebacks', 'gen3hoennification', 'gen3frlgindigo', 'gen3shadowcolosseum',
 	]) {
 		const modDex = Dex.mod(mod);
 		const modData = modDex.data;

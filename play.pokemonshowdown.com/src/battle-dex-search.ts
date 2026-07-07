@@ -623,7 +623,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 	protected formatType: 'doubles' | 'bdsp' | 'bdspdoubles' | 'rs' | 'rslc' | 'frlg' | 'bw1' | 'letsgo' | 'metronome' |
 		'natdex' | 'nfe' | 'ssdlc1' | 'ssdlc1doubles' | 'predlc' | 'predlcdoubles' | 'predlcnatdex' | 'svdlc1' | 'svdlc1doubles' |
 		'svdlc1natdex' | 'stadium' | 'lc' | 'champions' | 'natdexchampions' | 'zangouse' | 'gen3mega' | 'gen3ubersuu' |
-		'gen3subzu' | 'gen1rbyplus' | 'gen3advplus' | 'gen3tradebacks' | 'gen3hoennification' | 'gen3frlgindigo' |
+		'gen3subzu' | 'gen1rbyplus' | 'gen3advplus' | 'gen3tradebacks' | 'gen3puretradebacks' | 'gen3hoennification' | 'gen3frlgindigo' |
 		'gen3shadowcolosseum' | null = null;
 	isDoubles = false;
 
@@ -802,7 +802,11 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType = 'gen3advplus';
 			this.dex = Dex.mod('gen3advplus' as ID);
 		}
-		if (this.dex.gen === 3 && format.includes('tradebacks')) {
+		if (this.dex.gen === 3 && format.includes('puretradebacks')) {
+			this.formatType = 'gen3puretradebacks';
+			this.dex = Dex.mod('gen3puretradebacks' as ID);
+		}
+		if (this.dex.gen === 3 && format.includes('tradebacks') && !format.includes('puretradebacks')) {
 			this.formatType = 'gen3tradebacks';
 			this.dex = Dex.mod('gen3tradebacks' as ID);
 		}
@@ -918,6 +922,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (this.formatType === 'gen3tradebacks') table = table['gen3tradebacks'];
 		if (this.formatType === 'gen3hoennification') table = table['gen3hoennification'];
 		if (this.formatType === 'gen3frlgindigo') table = table['gen3frlgindigo'];
+		if (this.formatType === 'gen3puretradebacks') table = table['gen3puretradebacks'];
 		if (speciesid in table.learnsets) return speciesid;
 		const species = this.dex.species.get(speciesid);
 		if (!species.exists) return '' as ID;
@@ -995,6 +1000,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			if (this.formatType === 'gen3tradebacks') table = table['gen3tradebacks'];
 			if (this.formatType === 'gen3hoennification') table = table['gen3hoennification'];
 			if (this.formatType === 'gen3frlgindigo') table = table['gen3frlgindigo'];
+			if (this.formatType === 'gen3puretradebacks') table = table['gen3puretradebacks'];
 			let learnset = table.learnsets[learnsetid];
 			const eggMovesOnly = this.eggMovesOnly(learnsetid, speciesid);
 			if (learnset && (moveid in learnset) && (!this.format.startsWith('tradebacks') ? learnset[moveid].includes(genChar) :
@@ -1040,6 +1046,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType === 'gen1rbyplus' ? `gen1rbyplus` :
 			this.formatType === 'gen3advplus' ? `gen3advplus` :
 			this.formatType === 'gen3tradebacks' ? `gen3tradebacks` :
+			this.formatType === 'gen3puretradebacks' ? `gen3puretradebacks` :
 			this.formatType === 'gen3hoennification' ? `gen3hoennification` :
 			this.formatType === 'gen3frlgindigo' ? `gen3frlgindigo` :
 			this.formatType === 'gen3shadowcolosseum' ? `gen3shadowcolosseum` :
