@@ -647,6 +647,8 @@ export class ChatRoom extends PSRoom {
 			if (cmd !== 'choose') target = `${cmd} ${target}`;
 			if (target === 'choose auto' || target === 'choose default') {
 				this.sendDirect('/choose default');
+				room.overlayActive = null;
+				this.update(null);
 				return;
 			}
 			const possibleError = room.choices.addChoice(target);
@@ -654,8 +656,26 @@ export class ChatRoom extends PSRoom {
 				this.errorReply(possibleError);
 				return;
 			}
-			if (room.choices.isDone()) this.sendDirect(`/choose ${room.choices.toString()}`);
+			if (room.choices.isDone()) {
+				this.sendDirect(`/choose ${room.choices.toString()}`);
+			}
+			room.overlayActive = null;
 			this.update(null);
+		},
+		'movemenu,switchmenu'(target, cmd) {
+			if (!this.battle) return this.errorReply('You are not in a battle');
+			const room = this as any as BattleRoom;
+			if (!target && cmd === 'movemenu') {
+				room.overlayActive = (room.overlayActive === 'move' ? null : 'move');
+				this.update(null);
+				return;
+			}
+			if (!target && cmd === 'switchmenu') {
+				room.overlayActive = (room.overlayActive === 'switch' ? null : 'switch');
+				this.update(null);
+				return;
+			}
+			this.errorReply('???');
 		},
 	});
 	openChallenge() {
@@ -1260,7 +1280,7 @@ export class ChatTextEntry extends preact.Component<{
 		const canTalk = PS.user.named || room.id === 'dm-';
 		const connected = room.connected === true || room.connected === 'client-only';
 		return <div
-			class="chat-log-add hasuserlist" onClick={this.focusIfNoSelection} style={{ left: this.props.left || 0 }}
+			class="chat-log-add" onClick={this.focusIfNoSelection} style={{ left: this.props.left || 0 }}
 		>
 			<form class={`chatbox${this.props.tinyLayout ? ' nolabel' : ''}`} style={canTalk ? {} : { display: 'none' }}>
 				<label style={`color:${BattleLog.usernameColor(PS.user.userid)}`}>{PS.user.name}:</label>
@@ -1508,7 +1528,7 @@ class ChatLogInner extends preact.Component<{ class: string }> {
 
 export class ChatLog extends preact.Component<{
 	class: string, room: ChatRoom, children?: preact.ComponentChildren,
-	left?: number, top?: number, noSubscription?: boolean, hasPreempt?: boolean,
+	left?: number, top?: number, bottom?: number, noSubscription?: boolean, hasPreempt?: boolean,
 }> {
 	subscription: PSSubscription | null = null;
 	moveLogContents(source: HTMLDivElement, target: HTMLDivElement) {
@@ -1562,7 +1582,7 @@ export class ChatLog extends preact.Component<{
 	override render() {
 		return <div
 			class={this.props.class} role="log" aria-label="Chat log"
-			style={{ left: this.props.left || 0, top: this.props.top || 0 }}
+			style={{ left: this.props.left || 0, top: this.props.top || 0, bottom: this.props.bottom ?? 40 }}
 		>
 			<ChatLogInner class="inner message-log" />
 			{this.props.hasPreempt && <ChatLogInner class="inner-preempt message-log" />}

@@ -6,7 +6,7 @@ import { PSLoginServer } from "./client-connection";
 import { PSBackground } from "./client-core";
 import {
 	PS, PSRoom, Config, type PSRoomFocusOptions, type RoomOptions, type PSLoginState, type RoomID,
-	type TimestampOptions,
+	type TimestampOptions, type BattleLayoutPreference,
 } from "./client-main";
 import { type BattleRoom } from "./panel-battle";
 import { ChatUserList, type ChatRoom } from "./panel-chat";
@@ -14,6 +14,14 @@ import { PSRoomPanel, PSPanelWrapper, PSView } from "./panels";
 import { PSHeader } from "./panel-topbar";
 
 const WARNING_SECONDS = 5;
+const BATTLE_LAYOUT_LABELS: Record<BattleLayoutPreference, string> = {
+	'side-by-side': 'Side-by-side, controls below',
+	'side-by-side-overlay': 'Side-by-side, overlay controls',
+	'top-and-bottom': 'Top-and-bottom, controls below',
+	'top-and-bottom-overlay': 'Top-and-bottom, overlay controls',
+	'scrolling': 'Scrolling, controls below',
+	'scrolling-overlay': 'Scrolling, overlay controls',
+};
 
 /**
  * User popup
@@ -1618,6 +1626,11 @@ class BattleOptionsPanel extends PSRoomPanel {
 		}
 		}
 	};
+	handleBattleLayout = (ev: Event) => {
+		const value = (ev.currentTarget as HTMLSelectElement).value as typeof PS.prefs.battlelayout;
+		PS.prefs.set('battlelayout', value || null);
+		PS.update();
+	};
 	getBattleRoom() {
 		const battleRoom = this.props.room.getParent() as BattleRoom | null;
 		return battleRoom?.battle ? battleRoom : null;
@@ -1628,6 +1641,12 @@ class BattleOptionsPanel extends PSRoomPanel {
 		const battleRoom = this.getBattleRoom();
 		const isPlayer = !!battleRoom?.battle.myPokemon;
 		const canOfferTie = battleRoom && ((battleRoom.battle.turn >= 100 && isPlayer) || PS.user.group === '~');
+		const sideBySideDisabled = !!battleRoom && battleRoom.width < 500;
+		let automaticLayout: BattleLayoutPreference | null = null;
+		if (battleRoom) {
+			const { layout, overlayControls } = PS.chooseBattleLayout(battleRoom.width, battleRoom.height);
+			automaticLayout = `${layout}${overlayControls ? '-overlay' : ''}` as BattleLayoutPreference;
+		}
 		return <PSPanelWrapper room={room} width={380}><div class="pad">
 			{battleRoom && <>
 				<p><strong>In this battle</strong></p>
@@ -1665,6 +1684,34 @@ class BattleOptionsPanel extends PSRoomPanel {
 				</p>
 			</>}
 			<p><strong>All battles</strong></p>
+			<p>
+				<label class="optlabel">Layout: <select
+					name="battlelayout" class="button" onChange={this.handleBattleLayout}
+					value={PS.prefs.battlelayout || ''}
+				>
+					<option value="">
+						Automatic{automaticLayout ? ` (${BATTLE_LAYOUT_LABELS[automaticLayout]})` : ''}
+					</option>
+					<option value="side-by-side" disabled={sideBySideDisabled}>
+						{BATTLE_LAYOUT_LABELS['side-by-side']} (DESKTOP)
+					</option>
+					<option value="side-by-side-overlay" disabled={sideBySideDisabled}>
+						{BATTLE_LAYOUT_LABELS['side-by-side-overlay']}
+					</option>
+					<option value="top-and-bottom">
+						{BATTLE_LAYOUT_LABELS['top-and-bottom']} (MOBILE VERTICAL)
+					</option>
+					<option value="top-and-bottom-overlay">
+						{BATTLE_LAYOUT_LABELS['top-and-bottom-overlay']}
+					</option>
+					<option value="scrolling">
+						{BATTLE_LAYOUT_LABELS['scrolling']}
+					</option>
+					<option value="scrolling-overlay">
+						{BATTLE_LAYOUT_LABELS['scrolling-overlay']} (MOBILE HORIZONTAL)
+					</option>
+				</select></label>
+			</p>
 			<p>
 				<label class="checkbox">
 					<input

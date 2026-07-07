@@ -72,6 +72,13 @@ export declare const Config: PSConfig;
  */
 export type RoomID = Lowercase<string> & { __isRoomID: true };
 export type TimestampOptions = 'minutes' | 'seconds' | undefined;
+/**
+ * * `side-by-side`: desktop layout, with battle on left and chat on right, controls below battle
+ * * `top-and-bottom`: vertical phone layout, with battle on top and chat/controls on bottom
+ * * `scrolling`: horizontal phone layout, fully scrollable
+ */
+export type BattlePanelLayout = 'side-by-side' | 'top-and-bottom' | 'scrolling';
+export type BattleLayoutPreference = BattlePanelLayout | `${BattlePanelLayout}-overlay`;
 
 const PSPrefsDefaults: { [key: string]: any } = {};
 
@@ -126,6 +133,7 @@ class PSPrefs extends PSStreamModel<string | null> {
 	autotimer: boolean | null = null;
 	autohardcore: boolean | null = null;
 	spectatefromstart: boolean | null = null;
+	battlelayout: BattleLayoutPreference | null = null;
 	rightpanelbattles: boolean | null = null;
 	disallowspectators: boolean | null = null;
 	starredformats: { [formatid: string]: true | undefined } | null = null;
@@ -1974,16 +1982,55 @@ export const PS = new class extends PSModel {
 	 * * 0 = only one panel visible
 	 * * null = vertical nav layout
 	 * n.b. Resizes only trigger a re-render if the panel layout or a
-	 * width-dependent layout breakpoint changes.
+	 * width/height-dependent layout breakpoint changes.
 	 */
 	leftPanelWidth: number | null = 0;
 	mainmenu: MainMenuRoom = null!;
 	layoutViewportWidth = 0;
 
-	roomWidthBreakpointPassed(oldWidth: number, newWidth: number) {
-		return (oldWidth < 550) !== (newWidth < 550) || // chat-room userlists, teambuilder
+	roomLayoutBreakpointPassed(room: PSRoom, newWidth: number, newHeight: number) {
+		const oldWidth = room.width;
+		const oldHeight = room.height;
+		if ((oldWidth < 550) !== (newWidth < 550) || // chat-room userlists, teambuilder
 			(oldWidth < 620) !== (newWidth < 620) || // main menu and teambuilder tiny-layout class
-			(oldWidth <= 700) !== (newWidth <= 700); // battle tiny-layout
+			(oldWidth <= 700) !== (newWidth <= 700)) { // battle tiny-layout
+			return true;
+		}
+		if (room.type === 'battle') {
+			const oldLayoutState = this.chooseBattleLayout(oldWidth, oldHeight, this.prefs.battlelayout);
+			const newLayoutState = this.chooseBattleLayout(newWidth, newHeight, this.prefs.battlelayout);
+			if (oldLayoutState.layout !== newLayoutState.layout ||
+				oldLayoutState.battleHeight !== newLayoutState.battleHeight ||
+				oldLayoutState.battleWidth !== newLayoutState.battleWidth ||
+				oldLayoutState.overlayControls !== newLayoutState.overlayControls) {
+				return true;
+			}
+		}
+		return false;
+	}
+	chooseBattleLayout(width: number, height: number, preference?: BattleLayoutPreference | null) {
+		let scale = Math.min(1, width / 640, height / 360);
+		const uncappedBattleHeight = Math.round(360 * scale);
+		let layout: BattlePanelLayout = width > 780 ? 'side-by-side' :
+			height < uncappedBattleHeight + 150 ? 'scrolling' : 'top-and-bottom';
+
+		const preferredLayout = preference?.replace(/-overlay$/, '') as BattlePanelLayout;
+		if (preferredLayout && (width >= 500 || preferredLayout !== 'side-by-side')) {
+			layout = preferredLayout;
+		}
+		if (layout === 'side-by-side') {
+			scale = Math.min(scale, Math.max(0, width - 180) / 640);
+		} else if (layout === 'top-and-bottom') {
+			scale = Math.min(scale, Math.max(0, height - 180) / 360);
+		}
+
+		const battleHeight = Math.round(360 * scale);
+		const battleWidth = Math.round(640 * scale);
+		let overlayControls = height < battleHeight + 180;
+		if (preferredLayout) {
+			overlayControls = !!preference?.endsWith('-overlay');
+		}
+		return { layout, battleHeight, battleWidth, overlayControls };
 	}
 
 	/**
@@ -2124,19 +2171,19 @@ export const PS = new class extends PSModel {
 			const headerWidth = viewportWidth <= 700 ?
 				NARROW_MODE_HEADER_WIDTH : VERTICAL_HEADER_WIDTH;
 			const roomWidth = totalWidth + 1 - headerWidth;
-			needsUpdate ||= this.roomWidthBreakpointPassed(this.panel.width, roomWidth);
+			needsUpdate ||= this.roomLayoutBreakpointPassed(this.panel, roomWidth, totalHeight - 30);
 			this.panel.width = roomWidth;
 			this.panel.height = totalHeight - 30;
 		} else if (leftPanelWidth) {
 			const rightPanelWidth = totalWidth + 1 - leftPanelWidth;
-			needsUpdate ||= this.roomWidthBreakpointPassed(this.leftPanel.width, leftPanelWidth);
-			needsUpdate ||= this.roomWidthBreakpointPassed(this.rightPanel!.width, rightPanelWidth);
+			needsUpdate ||= this.roomLayoutBreakpointPassed(this.leftPanel, leftPanelWidth, roomHeight);
+			needsUpdate ||= this.roomLayoutBreakpointPassed(this.rightPanel!, rightPanelWidth, roomHeight);
 			this.leftPanel.width = leftPanelWidth;
 			this.leftPanel.height = roomHeight;
 			this.rightPanel!.width = rightPanelWidth;
 			this.rightPanel!.height = roomHeight;
 		} else {
-			needsUpdate ||= this.roomWidthBreakpointPassed(this.panel.width, totalWidth);
+			needsUpdate ||= this.roomLayoutBreakpointPassed(this.panel, totalWidth, roomHeight);
 			this.panel.width = totalWidth;
 			this.panel.height = roomHeight;
 		}

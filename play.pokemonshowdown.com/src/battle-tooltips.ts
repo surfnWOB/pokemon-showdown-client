@@ -163,6 +163,10 @@ export class BattleTooltips {
 	static parentElem: HTMLElement | null = null;
 	static isLocked = false;
 	static isPressed = false;
+	static allowsTouchScroll(elem: EventTarget | null) {
+		if (!(elem instanceof HTMLElement)) return false;
+		return elem.dataset.tooltip?.startsWith('activepokemon|') || false;
+	}
 
 	static hideTooltip() {
 		BattleTooltips.cancelLongTap();
@@ -202,16 +206,16 @@ export class BattleTooltips {
 
 	listen(elem: HTMLElement | JQuery) {
 		const $elem = $(elem);
-		$elem.on('mouseover', '.has-tooltip', this.mouseOverEvent);
-		$elem.on('click', '.has-tooltip', this.clickTooltipEvent);
-		$elem.on('focus', '.has-tooltip', this.showTooltipEvent);
-		$elem.on('mouseout', '.has-tooltip', BattleTooltips.unshowTooltip);
-		$elem.on('mousedown', '.has-tooltip', this.holdLockTooltipEvent);
-		$elem.on('blur', '.has-tooltip', BattleTooltips.unshowTooltip);
-		$elem.on('mouseup', '.has-tooltip', BattleTooltips.unshowTooltip);
+		$elem.on('mouseover.battleTooltips', '.has-tooltip', this.mouseOverEvent);
+		$elem.on('click.battleTooltips', '.has-tooltip', this.clickTooltipEvent);
+		$elem.on('focus.battleTooltips', '.has-tooltip', this.showTooltipEvent);
+		$elem.on('mouseout.battleTooltips', '.has-tooltip', BattleTooltips.unshowTooltip);
+		$elem.on('mousedown.battleTooltips', '.has-tooltip', this.holdLockTooltipEvent);
+		$elem.on('blur.battleTooltips', '.has-tooltip', BattleTooltips.unshowTooltip);
+		$elem.on('mouseup.battleTooltips', '.has-tooltip', BattleTooltips.unshowTooltip);
 
-		$elem.on('touchstart', '.has-tooltip', e => {
-			e.preventDefault();
+		$elem.on('touchstart.battleTooltips', '.has-tooltip', e => {
+			if (!BattleTooltips.allowsTouchScroll(e.currentTarget)) e.preventDefault();
 			this.holdLockTooltipEvent(e);
 			if (!BattleTooltips.parentElem) {
 				// should never happen, but in case there's a bug in the tooltip handler
@@ -220,15 +224,20 @@ export class BattleTooltips {
 			$(BattleTooltips.parentElem!).addClass('pressed');
 			BattleTooltips.isPressed = true;
 		});
-		$elem.on('touchend', '.has-tooltip', e => {
-			e.preventDefault();
-			if (e.currentTarget === BattleTooltips.parentElem && BattleTooltips.isPressed) {
+		$elem.on('touchend.battleTooltips', '.has-tooltip', e => {
+			const allowScroll = BattleTooltips.allowsTouchScroll(e.currentTarget);
+			if (!allowScroll) e.preventDefault();
+			if (!allowScroll && e.currentTarget === BattleTooltips.parentElem && BattleTooltips.isPressed) {
 				BattleTooltips.parentElem!.click();
 			}
 			BattleTooltips.unshowTooltip();
 		});
-		$elem.on('touchleave', '.has-tooltip', BattleTooltips.unshowTooltip);
-		$elem.on('touchcancel', '.has-tooltip', BattleTooltips.unshowTooltip);
+		$elem.on('touchleave.battleTooltips', '.has-tooltip', BattleTooltips.unshowTooltip);
+		$elem.on('touchcancel.battleTooltips', '.has-tooltip', BattleTooltips.unshowTooltip);
+	}
+
+	unlisten(elem: HTMLElement | JQuery) {
+		$(elem).off('.battleTooltips');
 	}
 
 	clickTooltipEvent = (e: Event) => {
