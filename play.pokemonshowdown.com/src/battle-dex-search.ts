@@ -212,7 +212,7 @@ export class DexSearch {
 		if (this.typedSearch) {
 			this.dex = this.typedSearch.dex;
 			if (searchType === 'pokemon' && this.dex.gen >= 3 && this.dex.modid !== 'gen7letsgo') {
-				this.numAbilityCols = this.dex.gen < 5 ? 1 : 2;
+				this.numAbilityCols = (this.dex.gen < 5 && this.dex.modid !== 'gen3puretradebacks') ? 1 : 2;
 			}
 		}
 	}

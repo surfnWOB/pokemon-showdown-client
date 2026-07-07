@@ -138,17 +138,19 @@ export class PSSearchResults extends preact.Component<{
 				`<span class="col twoabilitycol">${escapeHTML(ability0)}<br />${escapeHTML(ability1)}</span>` :
 				`<span class="col abilitycol">${escapeHTML(ability0)}</span>`;
 
-			if (search.numAbilityCols >= 2) {
+			// gen3puretradebacks carries later-gen tradeback abilities in the 'S' slot (gen 3
+			// strips 'H'), so render the hidden/special column for it too.
+			if (search.numAbilityCols >= 2 || search.dex.modid === 'gen3puretradebacks') {
 				const hiddenAbility = pokemon.abilities['H'] &&
 					search.dex.text.get(search.dex.abilities.get(pokemon.abilities['H'])).name;
 				const specialAbility = pokemon.abilities['S'] &&
 					search.dex.text.get(search.dex.abilities.get(pokemon.abilities['S'])).name;
-				if (pokemon.abilities['S']) {
+				if (pokemon.abilities['S'] && pokemon.abilities['H']) {
 					buf += `<span class="col twoabilitycol${pokemon.unreleasedHidden ? ' unreleasedhacol' : ''}">` +
-						`${escapeHTML(hiddenAbility || '')}<br />${escapeHTML(specialAbility)}</span>`;
-				} else if (pokemon.abilities['H']) {
+						`${escapeHTML(hiddenAbility)}<br />${escapeHTML(specialAbility)}</span>`;
+				} else if (pokemon.abilities['H'] || pokemon.abilities['S']) {
 					buf += `<span class="col abilitycol${pokemon.unreleasedHidden ? ' unreleasedhacol' : ''}">` +
-						`${escapeHTML(hiddenAbility)}</span>`;
+						`${escapeHTML(hiddenAbility || specialAbility)}</span>`;
 				} else {
 					buf += `<span class="col abilitycol"></span>`;
 				}
