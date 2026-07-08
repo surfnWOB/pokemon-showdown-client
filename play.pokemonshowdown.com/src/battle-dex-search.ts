@@ -1313,7 +1313,15 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			}
 		} else if (format === 'ou') tierSet = tierSet.slice(slices.OU);
 		else if (format === 'uubl') tierSet = tierSet.slice(slices['(OU)'] || slices.UUBL);
-		else if (format === 'uu') tierSet = tierSet.slice(slices.UU);
+		else if (format === 'uublclassic26') {
+			// [Gen 3] UUBL Classic 26 keeps Raikou and Registeel legal even though they were raised
+			// to OU on 2026-07-08 (so they now sit in the OU bucket, above the UUBL slice). Browse
+			// like standard UUBL ((OU) and below), but surface those two on top so they stay visible.
+			const start = slices['(OU)'] || slices.UUBL;
+			const kept = tierSet.slice(0, start).filter(([type, id]) => type === 'pokemon' && (id === 'raikou' || id === 'registeel'));
+			tierSet = tierSet.slice(start);
+			if (kept.length) tierSet = [['header', 'OU'], ...kept, ...tierSet];
+		} else if (format === 'uu') tierSet = tierSet.slice(slices.UU);
 		else if (format === 'ru') tierSet = tierSet.slice(slices.RU || slices.UU);
 		else if (format === 'nu') tierSet = tierSet.slice(slices.NU);
 		else if (format === 'pu') tierSet = tierSet.slice(slices.PU);
