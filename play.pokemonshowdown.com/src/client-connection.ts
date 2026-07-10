@@ -14,6 +14,7 @@ const KEEPALIVE_RANGE = 20000;
 
 export class PSConnection {
 	socket: WebSocket | null = null;
+	/** true for either worker or direct connections. `.worker` or `.socket` will be truthy */
 	connected = false;
 	lastMessageTimeBeforeReconnect = 0;
 	queue: string[] = [];
@@ -162,7 +163,7 @@ export class PSConnection {
 			PS.isOffline = true;
 			for (const roomid in PS.rooms) {
 				const room = PS.rooms[roomid]!;
-				if (room.connected === true) room.connected = 'autoreconnect';
+				if (room.connectedToServer()) room.connected = 'autoreconnect';
 			}
 			this.socket = null;
 			PS.update();
@@ -192,7 +193,7 @@ export class PSConnection {
 		this.socket = null;
 		for (const roomid in PS.rooms) {
 			const room = PS.rooms[roomid]!;
-			if (room.connected === true) room.connected = 'autoreconnect';
+			if (room.connectedToServer()) room.connected = 'autoreconnect';
 		}
 		PS.update();
 	}

@@ -351,7 +351,7 @@ class PSPrefs extends PSStreamModel<string | null> {
 
 		for (const roomid in PS.rooms) {
 			const room = PS.rooms[roomid]!;
-			if (room.type === 'battle') {
+			if (room.type === 'battle' && room.connected === 'autoreconnect') {
 				room.connect();
 			}
 		}
@@ -1058,11 +1058,10 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 	 * Set to 'init' during initialization, including while parsing
 	 * the lines after receiveing `'init'` from the server.
 	 *
-	 * Only connected to server when `=== true`. String options other
-	 * than `init` mean the room isn't connected to the game server
-	 * but to something else.
+	 * Use `.connectedToServer()` to check for the states that count
+	 * as "connected for real".
 	 *
-	 * 'client-only' for DMs
+	 * 'client-only' is used for DMs and for replay pages.
 	 */
 	connected: 'autoreconnect' | 'client-only' | 'expired' | 'init' | boolean = false;
 	/**
@@ -1117,6 +1116,14 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 	getParent() {
 		if (this.parentRoomid) return PS.rooms[this.parentRoomid] || null;
 		return null;
+	}
+	/**
+	 * True if this.connected is `true | 'init' | 'autoreconnect'`.
+	 * Determines whether we should send `/leave` if the room is closed, and
+	 * whether we should try to rejoin if the socket disconnects.
+	 */
+	connectedToServer() {
+		return this.connected === true || this.connected === 'init' || this.connected === 'autoreconnect';
 	}
 	notify(options: { title: string, body?: string, noAutoDismiss?: boolean, id?: string }) {
 		let desktopNotification: Notification | null = null;
@@ -1810,7 +1817,7 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 		PS.send(msg, this.id);
 	}
 	destroy() {
-		if (this.connected === true) {
+		if (this.connectedToServer()) {
 			this.sendDirect(`/noreply /leave ${this.id}`);
 			this.connected = false;
 		}
@@ -1993,7 +2000,7 @@ export const PS = new class extends PSModel {
 		const oldHeight = room.height;
 		if ((oldWidth < 550) !== (newWidth < 550) || // chat-room userlists, teambuilder
 			(oldWidth < 620) !== (newWidth < 620) || // main menu and teambuilder tiny-layout class
-			(oldWidth <= 700) !== (newWidth <= 700)) { // battle tiny-layout
+			(oldWidth <= 780) !== (newWidth <= 780)) { // battle tiny-layout
 			return true;
 		}
 		if (room.type === 'battle') {
@@ -2162,20 +2169,18 @@ export const PS = new class extends PSModel {
 	/** @returns changed */
 	updateLayout(): boolean {
 		const leftPanelWidth = this.calculateLeftPanelWidth();
-		const viewportWidth = document.documentElement.clientWidth;
-		const totalWidth = document.body.offsetWidth;
-		const totalHeight = document.body.offsetHeight;
-		const roomHeight = totalHeight - 56;
+		const viewportWidth = window.innerWidth;
+		const viewportHeight = window.innerWidth;
+		const roomHeight = viewportHeight - 56;
 		let needsUpdate = this.leftPanelWidth !== leftPanelWidth;
 		if (leftPanelWidth === null) {
-			const headerWidth = viewportWidth <= 700 ?
-				NARROW_MODE_HEADER_WIDTH : VERTICAL_HEADER_WIDTH;
-			const roomWidth = totalWidth + 1 - headerWidth;
-			needsUpdate ||= this.roomLayoutBreakpointPassed(this.panel, roomWidth, totalHeight - 30);
+			const headerWidthOffset = viewportWidth <= 700 ? 0 : VERTICAL_HEADER_WIDTH;
+			const roomWidth = viewportWidth + 1 - headerWidthOffset;
+			needsUpdate ||= this.roomLayoutBreakpointPassed(this.panel, roomWidth, viewportHeight - 30);
 			this.panel.width = roomWidth;
-			this.panel.height = totalHeight - 30;
+			this.panel.height = viewportHeight - 30;
 		} else if (leftPanelWidth) {
-			const rightPanelWidth = totalWidth + 1 - leftPanelWidth;
+			const rightPanelWidth = viewportWidth + 1 - leftPanelWidth;
 			needsUpdate ||= this.roomLayoutBreakpointPassed(this.leftPanel, leftPanelWidth, roomHeight);
 			needsUpdate ||= this.roomLayoutBreakpointPassed(this.rightPanel!, rightPanelWidth, roomHeight);
 			this.leftPanel.width = leftPanelWidth;
@@ -2183,8 +2188,8 @@ export const PS = new class extends PSModel {
 			this.rightPanel!.width = rightPanelWidth;
 			this.rightPanel!.height = roomHeight;
 		} else {
-			needsUpdate ||= this.roomLayoutBreakpointPassed(this.panel, totalWidth, roomHeight);
-			this.panel.width = totalWidth;
+			needsUpdate ||= this.roomLayoutBreakpointPassed(this.panel, viewportWidth, roomHeight);
+			this.panel.width = viewportWidth;
 			this.panel.height = roomHeight;
 		}
 
@@ -2370,10 +2375,9 @@ export const PS = new class extends PSModel {
 	 * @see {@link leftPanelWidth} for return value meaning
 	 */
 	calculateLeftPanelWidth() {
-		const available = document.body.offsetWidth;
-		if (document.documentElement.clientWidth < 800 || this.prefs.onepanel === 'vertical') {
-			return null;
-		}
+		if (this.prefs.onepanel === 'vertical') return null;
+		if (!this.prefs.onepanel && window.innerWidth < 700) return null;
+		if (!this.prefs.onepanel && window.innerHeight < 430) return null;
 		// If we don't have both a left room and a right room, obviously
 		// just show one room
 		if (!this.leftPanel || !this.rightPanel || this.prefs.onepanel) {
@@ -2383,6 +2387,7 @@ export const PS = new class extends PSModel {
 		// The rest of this code can assume we have both a left room and a
 		// right room, and also want to show both if they fit
 
+		const available = window.innerWidth;
 		const left = this.getWidthFor(this.leftPanel);
 		const right = this.getWidthFor(this.rightPanel);
 

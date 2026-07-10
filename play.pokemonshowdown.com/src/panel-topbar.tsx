@@ -179,11 +179,19 @@ export class PSHeader extends preact.Component {
 			PSView.updateScrollSnap();
 		}
 
-		const userbarLeft = this.base.querySelector('div.userbar')?.getBoundingClientRect()?.left;
+		let userbarLeft = this.base.querySelector('div.userbar .icon.button')?.getBoundingClientRect()?.left;
+		if (userbarLeft) userbarLeft -= 5;
 		const plusTabRight = this.base.querySelector('a.roomtab[aria-label="Join chat"]')?.getBoundingClientRect()?.right;
 		const overflow = this.base.querySelector<HTMLElement>('.overflow');
 
 		if (!overflow || !userbarLeft || !plusTabRight) return;
+
+		const maintabbar = this.base.querySelector<HTMLElement>('div.maintabbar');
+		if (maintabbar) {
+			const userbarRight = window.innerWidth - userbarLeft;
+			maintabbar.style.marginRight = `${userbarRight}px`;
+			overflow.style.right = `${userbarRight}px`;
+		}
 
 		if (plusTabRight > userbarLeft - 3) {
 			overflow.style.display = 'block';
@@ -243,7 +251,6 @@ export class PSHeader extends preact.Component {
 					</ul>
 				</div>
 			</div>
-			{null /* overflow */}
 			<div class="userbar">
 				{this.renderUser()} {}
 				<div style="float:right">
@@ -255,6 +262,8 @@ export class PSHeader extends preact.Component {
 					</button>
 				</div>
 			</div>
+			{null /* maintabbar */}
+			{null /* overflow */}
 		</div>;
 	}
 	override render() {
@@ -263,6 +272,16 @@ export class PSHeader extends preact.Component {
 		}
 		return <div id="header" class="header" role="navigation">
 			<div class="maintabbarbottom"></div>
+			{null /* vertical tabs */}
+			<div class="userbar">
+				{this.renderUser()} {}
+				<button class="icon button" data-href="volume" title="Sound" aria-label="Sound" onDblClick={PSHeader.toggleMute}>
+					<i class={PS.prefs.mute ? 'fa fa-volume-off' : 'fa fa-volume-up'}></i>
+				</button> {}
+				<button class="icon button" data-href="options" title="Options" aria-label="Options">
+					<i class="fa fa-cog" aria-hidden></i>
+				</button>
+			</div>
 			<div class="tabbar maintabbar"><div class="inner-1" role={PS.leftPanelWidth ? 'none' : 'tablist'}><div class="inner-2">
 				<ul class="maintabbar-left" style={{ width: `${PS.leftPanelWidth}px` }} role={PS.leftPanelWidth ? 'tablist' : 'none'}>
 					<li>
@@ -283,15 +302,6 @@ export class PSHeader extends preact.Component {
 			<div class="overflow">
 				<button name="tablist" class="button" data-href="roomtablist" aria-label="All tabs" type="button">
 					<i class="fa fa-caret-down" aria-hidden></i>
-				</button>
-			</div>
-			<div class="userbar">
-				{this.renderUser()} {}
-				<button class="icon button" data-href="volume" title="Sound" aria-label="Sound" onDblClick={PSHeader.toggleMute}>
-					<i class={PS.prefs.mute ? 'fa fa-volume-off' : 'fa fa-volume-up'}></i>
-				</button> {}
-				<button class="icon button" data-href="options" title="Options" aria-label="Options">
-					<i class="fa fa-cog" aria-hidden></i>
 				</button>
 			</div>
 		</div>;

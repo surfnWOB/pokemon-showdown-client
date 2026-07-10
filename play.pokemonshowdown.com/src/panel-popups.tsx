@@ -707,7 +707,11 @@ class OptionsPanel extends PSRoomPanel {
 					name="layout" class="button" onChange={this.setLayout}
 					value={PS.prefs.onepanel === true ? 'onepanel' : PS.prefs.onepanel || ''}
 				>
-					<option value="">Two panels (if wide enough)</option>
+					<option value="">
+						{window.innerWidth < 700 || window.innerHeight < 430 ? "Automatic (Vertical tabs)" :
+						window.innerWidth < 900 ? "Automatic (Single panel)" :
+						"Two panels (if wide enough)"}
+					</option>
 					<option value="onepanel">Single panel</option>
 					<option value="vertical">Vertical tabs</option>
 				</select></label>
@@ -1768,7 +1772,7 @@ class BattleOptionsPanel extends PSRoomPanel {
 					/> Start at turn 0 when spectating battles
 				</label>
 			</p>
-			{!PS.prefs.onepanel && document.body.offsetWidth >= 800 && <p>
+			{!PS.prefs.onepanel && window.innerWidth >= 800 && <p>
 				<label class="checkbox">
 					<input
 						name="rightpanel" checked={PS.prefs.rightpanelbattles || false}
@@ -1894,7 +1898,7 @@ class RoomTabListPanel extends PSRoomPanel {
 class BattleTimerPanel extends PSRoomPanel {
 	static readonly id = 'battletimer';
 	static readonly routes = ['battletimer'];
-	static readonly location = 'modal-popup';
+	static readonly location = 'popup';
 	static readonly noURL = true;
 
 	override render() {

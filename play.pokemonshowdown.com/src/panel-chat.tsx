@@ -72,7 +72,7 @@ export class ChatRoom extends PSRoom {
 		if (!this.connected || this.connected === 'autoreconnect') {
 			if (this.pmTarget === null) {
 				PS.send(`/join ${this.id}`);
-				this.connected = true;
+				if (this.connected !== 'autoreconnect') this.connected = 'init';
 			} else {
 				this.connected = 'client-only';
 			}
@@ -176,52 +176,45 @@ export class ChatRoom extends PSRoom {
 		super.receiveLine(args);
 	}
 	override handleReconnect(msg: string): boolean | void {
-		if (this.battle) {
-			this.battle.stepQueue = [];
-			this.battle.preemptStepQueue = [];
-			this.battle.reset();
-			return false;
-		} else {
-			let lines = msg.split('\n');
+		let lines = msg.split('\n');
 
-			// cut off starting lines until we get to PS.lastMessage timestamp
-			// then cut off roomintro from the end
-			let cutOffStart = 0;
-			let cutOffEnd = lines.length;
-			const cutOffTime = PS.connection?.lastMessageTimeBeforeReconnect || parseInt(PS.lastMessageTime);
-			const cutOffExactLine = this.lastMessage ? '|' + this.lastMessage?.join('|') : '';
-			let reconnectMessage = '|raw|<div class="infobox">You reconnected.</div>';
-			for (let i = 0; i < lines.length; i++) {
-				if (lines[i].startsWith('|users|')) {
-					this.add(lines[i]);
-				}
-				if (lines[i] === cutOffExactLine) {
-					cutOffStart = i + 1;
-				} else if (lines[i].startsWith(`|c:|`)) {
-					const time = parseInt(lines[i].split('|')[2] || '');
-					if (time < cutOffTime) cutOffStart = i;
-				}
-				if (lines[i].startsWith('|raw|<div class="infobox"> You joined ')) {
-					const timestamp = BattleLog.renderTimestamp(Date.now() / 1000, PS.prefs.timestamps?.chatrooms);
-					reconnectMessage = `|raw|<div class="infobox">${timestamp}You reconnected to ${lines[i].slice(38)}`;
-					cutOffEnd = i;
-					if (!lines[i - 1]) cutOffEnd = i - 1;
-				}
+		// cut off starting lines until we get to PS.lastMessage timestamp
+		// then cut off roomintro from the end
+		let cutOffStart = 0;
+		let cutOffEnd = lines.length;
+		const cutOffTime = PS.connection?.lastMessageTimeBeforeReconnect || parseInt(PS.lastMessageTime);
+		const cutOffExactLine = this.lastMessage ? '|' + this.lastMessage?.join('|') : '';
+		let reconnectMessage = '|raw|<div class="infobox">You reconnected.</div>';
+		for (let i = 0; i < lines.length; i++) {
+			if (lines[i].startsWith('|users|')) {
+				this.add(lines[i]);
 			}
-			lines = lines.slice(cutOffStart, cutOffEnd);
-			if (lines[0]?.startsWith('|init|')) {
-				lines[0] = `||Note: Scrollback doesn't go all the way back to when you disconnected.`;
+			if (lines[i] === cutOffExactLine) {
+				cutOffStart = i + 1;
+			} else if (lines[i].startsWith(`|c:|`)) {
+				const time = parseInt(lines[i].split('|')[2] || '');
+				if (time < cutOffTime) cutOffStart = i;
 			}
-
-			if (lines.length) {
-				const timestamp = BattleLog.renderTimestamp(cutOffTime, PS.prefs.timestamps?.chatrooms);
-				this.receiveLine([`raw`, `<div class="infobox">${timestamp}You disconnected.</div>`]);
-				for (const line of lines) this.receiveLine(BattleTextParser.parseLine(line));
-				this.receiveLine(BattleTextParser.parseLine(reconnectMessage));
+			if (lines[i].startsWith('|raw|<div class="infobox"> You joined ')) {
+				const timestamp = BattleLog.renderTimestamp(Date.now() / 1000, PS.prefs.timestamps?.chatrooms);
+				reconnectMessage = `|raw|<div class="infobox">${timestamp}You reconnected to ${lines[i].slice(38)}`;
+				cutOffEnd = i;
+				if (!lines[i - 1]) cutOffEnd = i - 1;
 			}
-			this.update(null);
-			return true;
 		}
+		lines = lines.slice(cutOffStart, cutOffEnd);
+		if (lines[0]?.startsWith('|init|')) {
+			lines[0] = `||Note: Scrollback doesn't go all the way back to when you disconnected.`;
+		}
+
+		if (lines.length) {
+			const timestamp = BattleLog.renderTimestamp(cutOffTime, PS.prefs.timestamps?.chatrooms);
+			this.receiveLine([`raw`, `<div class="infobox">${timestamp}You disconnected.</div>`]);
+			for (const line of lines) this.receiveLine(BattleTextParser.parseLine(line));
+			this.receiveLine(BattleTextParser.parseLine(reconnectMessage));
+		}
+		this.update(null);
+		return true;
 	}
 	updateTarget(name?: string | null) {
 		const selfWithGroup = `${PS.user.group || ' '}${PS.user.name}`;
@@ -638,7 +631,7 @@ export class ChatRoom extends PSRoom {
 			this.update(null);
 		},
 		'move,switch,team,pass,shift,choose'(target, cmd) {
-			if (!this.battle) return this.add('|error|You are not in a battle');
+			if (!this.battle) return this.errorReply('You are not in a battle');
 			const room = this as any as BattleRoom;
 			if (!room.choices) {
 				this.receiveLine([`error`, `/choose - You are not a player in this battle`]);
@@ -1440,21 +1433,21 @@ class ChatPanel extends PSRoomPanel<ChatRoom> {
 
 	override render() {
 		const room = this.props.room;
-		const tinyLayout = room.width < 550;
+		const userListWidth = room.width < 550 ? 0 : 146;
 		const challengeOpen = room.challengeMenuOpen || room.challenging || room.challenged;
-
 		return <PSPanelWrapper room={room} focusClick noScroll fullSize>
 			<ChatLog
-				class={`chat-log${tinyLayout ? '' : ' hasuserlist'}${challengeOpen ? ' challenge-open' : ''}`} room={this.props.room}
-				left={tinyLayout ? 0 : 146} top={room.tour?.info.isActive ? 30 : 0}
+				class={`chat-log${!userListWidth ? '' : ' hasuserlist'}${challengeOpen ? ' challenge-open' : ''}`}
+				room={this.props.room} left={userListWidth} top={room.tour?.info.isActive ? 30 : 0}
 			>
 				{this.renderControls()}
 			</ChatLog>
-			{room.tour && <TournamentBox tour={room.tour} left={tinyLayout ? 0 : 146} />}
+			{room.tour && <TournamentBox tour={room.tour} left={userListWidth} />}
 			<ChatTextEntry
-				room={this.props.room} onMessage={this.send} onKey={this.onKey} left={tinyLayout ? 0 : 146} tinyLayout={tinyLayout}
+				room={this.props.room} onMessage={this.send} onKey={this.onKey} left={userListWidth}
+				tinyLayout={room.width - userListWidth < 400}
 			/>
-			<ChatUserList room={this.props.room} minimized={tinyLayout} />
+			<ChatUserList room={this.props.room} minimized={!userListWidth} />
 		</PSPanelWrapper>;
 	}
 }

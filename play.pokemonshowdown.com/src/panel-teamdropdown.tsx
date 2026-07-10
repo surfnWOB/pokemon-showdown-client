@@ -255,7 +255,7 @@ class TeamDropdownPanel extends PSRoomPanel {
 			teams = this.getTeams();
 		}
 
-		let availableWidth = document.body.offsetWidth;
+		let availableWidth = window.innerWidth;
 		let width = 307;
 		if (availableWidth > 636) width = 613;
 		if (availableWidth > 945) width = 919;

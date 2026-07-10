@@ -405,6 +405,10 @@ export class PSView extends preact.Component {
 	override componentDidMount() {
 		PSView.scrollFrame = this.base!.children[0] as HTMLDivElement | null;
 		PSView.scrollFrame?.addEventListener('scroll', PSView.handleFrameScroll);
+		if (PSView.isFirefox) {
+			// Firefox bug: dvh calculated incorrectly
+			document.documentElement.style.height = '100%';
+		}
 		PSView.updateScrollSnap();
 	}
 	override componentWillUnmount() {
@@ -1186,7 +1190,7 @@ export class PSView extends preact.Component {
 				PS.arrowKeysUsed = true;
 				PS.focusRightRoom();
 			} else if (shiftKey && kc === 37) { // shift + left
-				if (PS.prefs.onepanel === 'vertical') return;
+				if (PS.leftPanelWidth === null) return;
 				const curLoc = PS.room.location;
 				let newLoc = curLoc;
 				let newIndex: number | null = null;
@@ -1222,7 +1226,7 @@ export class PSView extends preact.Component {
 					PS.update();
 				}
 			} else if (shiftKey && kc === 39) { // shift + right
-				if (PS.prefs.onepanel === 'vertical') return;
+				if (PS.leftPanelWidth === null) return;
 				const curLoc = PS.room.location;
 				let newLoc = curLoc;
 				let newIndex: number | null = null;
@@ -1500,7 +1504,7 @@ export class PSView extends preact.Component {
 		if (PS.leftPanelWidth === null) {
 			// vertical mode
 			if (room === PS.panel) {
-				// const minWidth = Math.min(500, Math.max(320, document.body.offsetWidth - 9));
+				// const minWidth = Math.min(500, Math.max(320, window.innerWidth - 9));
 				return { top: '30px', left: `${PSView.verticalHeaderWidth}px`, minWidth: `none` };
 			}
 		} else if (PS.leftPanelWidth === 0) {

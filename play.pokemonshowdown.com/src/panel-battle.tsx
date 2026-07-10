@@ -157,11 +157,24 @@ export class BattleRoom extends ChatRoom {
 
 	override interruptClose(explicit?: boolean, elem?: HTMLElement | null) {
 		const battle = this.battle;
-		if ((battle && !battle.ended && this.connected !== 'expired' && this.side && !battle.isReplay) || this.requireForfeit) {
+		const activeBattle = battle && !battle.ended && this.request && this.connectedToServer();
+		if (activeBattle || this.requireForfeit) {
 			PS.join('forfeitbattle' as RoomID, { parentElem: elem, parentRoomid: this.id });
 			return `You are still in ${this.title}`;
 		}
 		return super.interruptClose(explicit, elem);
+	}
+
+	override handleReconnect(): boolean | void {
+		if (this.battle) {
+			this.battle.stepQueue = [];
+			this.battle.preemptStepQueue = [];
+			this.battle.resetStep();
+		}
+		this.side = null;
+		this.request = null;
+		this.choices = null;
+		return false;
 	}
 
 	loadReplay() {

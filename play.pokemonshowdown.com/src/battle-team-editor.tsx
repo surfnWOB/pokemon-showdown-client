@@ -970,7 +970,7 @@ export class TeamEditor extends preact.Component<{
 		this.forceUpdate();
 	};
 	static probablyMobile() {
-		return document.body.offsetWidth < 500;
+		return window.innerWidth < 500;
 	}
 	renderDefensiveCoverage() {
 		const { editor } = this;
