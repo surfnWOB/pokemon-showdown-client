@@ -89,6 +89,12 @@ describe('offline production integration', () => {
 		assert.match(offline, /url\(\/sprites\/typeicons\/Fire\.png\)/);
 	});
 
+	it('keeps the passive online indicator free of an empty action button', () => {
+		const offline = read('play.pokemonshowdown.com/style/offline.css');
+		assert.match(offline,
+			/\.offline-client-status-action\[hidden\]\s*{[^}]*display:\s*none\s*!important;?[^}]*}/s);
+	});
+
 	it('exposes one classic-client attachment seam', () => {
 		const client = read('play.pokemonshowdown.com/src/oldclient/client.js');
 		const menu = read('play.pokemonshowdown.com/src/oldclient/client-mainmenu.js');

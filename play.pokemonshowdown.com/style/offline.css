@@ -98,6 +98,10 @@
 	display: none !important;
 }
 
+.offline-client-status-action[hidden] {
+	display: none !important;
+}
+
 .offline-client-status-online {
 	border-color: #48885b;
 	background: #e8f6eb;

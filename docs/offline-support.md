@@ -37,9 +37,9 @@ bootstrap or ES3 offline artifact.
   requests. Controlled navigations and every build-owned core asset, including
   deployment configuration, are cache-first. Optional media is warmed
   separately and kept in a bounded, query-aware runtime cache.
-- After first installation, the client announces that offline support is ready.
-  A user can then request persistent origin storage from that explicit gesture;
-  the page never prompts for persistence during bootstrap.
+- After first installation, a passive `Online` indicator confirms readiness.
+  It does not request persistent origin storage or present an action during
+  bootstrap.
 - Format snapshots stay in the classic client's small, synchronous local
   storage path. Moving them to IndexedDB would add an asynchronous migration
   without improving the bounded data model.
