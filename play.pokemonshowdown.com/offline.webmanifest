@@ -1,0 +1,30 @@
+{
+  "short_name": "Showdown!",
+  "name": "Pokémon Showdown!",
+  "description": "Build and manage Pokémon Showdown teams with offline teambuilder support.",
+  "lang": "en",
+  "categories": ["games", "utilities"],
+  "id": "/",
+  "scope": "/",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#344b6c",
+  "background_color": "#344b6c",
+  "icons": [
+    {
+      "src": "/favicon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/favicon-256.png",
+      "type": "image/png",
+      "sizes": "256x256"
+    },
+    {
+      "src": "/favicon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

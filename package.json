@@ -10,10 +10,13 @@
   },
   "scripts": {
     "lint": "eslint --cache --cache-location caches/eslintcache.json",
-    "test": "node build && echo \"tsc... \\c\" && tsc && echo \"DONE\neslint... \\c\" && eslint --cache --cache-location caches/eslintcache.json --max-warnings 0 && echo \"DONE\" && node --test test/*.js",
+    "test": "node build && npm run --silent compile:offline-tools && echo \"tsc... \\c\" && tsc && echo \"DONE\neslint... \\c\" && eslint --cache --cache-location caches/eslintcache.json --max-warnings 0 && echo \"DONE\" && node --test test/*.js",
     "fix": "eslint --cache --cache-location caches/eslintcache.json --fix",
     "build": "node build",
-    "build-full": "node build full"
+    "build-full": "node build full",
+    "compile:offline-tools": "tsc -p build-tools/offline/tsconfig.json && tsc -p build-tools/offline/classic/tsconfig.json && tsc -p build-tools/offline/worker/tsconfig.json",
+    "offline:finalize": "npm run --silent compile:offline-tools && node caches/offline-tools/node/cli.js",
+    "test:offline": "npm run --silent compile:offline-tools && node --test test/offline-*.test.js"
   },
   "dependencies": {
     "@babel/core": "^7.26.10",
@@ -29,6 +32,8 @@
     "@stylistic/eslint-plugin": "^4.0.1",
     "@types/d3": "^3.5.53",
     "@types/jquery": "^3.5.3",
+    "@types/node": "^20.19.43",
+    "browserslist": "4.24.4",
     "eslint": "^9.20.1",
     "globals": "^16.0.0",
     "preact": "^10.29.2",
