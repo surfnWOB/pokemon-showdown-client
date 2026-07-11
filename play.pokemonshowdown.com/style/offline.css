@@ -1,0 +1,146 @@
+.roomcounters .usercount {
+	background-image: url(/sprites/gen5/meloetta.png);
+}
+.roomcounters button:hover .usercount,
+.roomcounters .button:hover .usercount {
+	background-image: url(/sprites/gen5ani/meloetta.gif);
+}
+.roomcounters .usercount.afd,
+.roomcounters button:hover .usercount.afd,
+.roomcounters .button:hover .usercount.afd {
+	background-image: url(/sprites/afd/meloetta.png);
+}
+.roomcounters .battlecount {
+	background-image: url(/sprites/gen5/meloetta-pirouette.png);
+}
+.roomcounters button:hover .battlecount,
+.roomcounters .button:hover .battlecount {
+	background-image: url(/sprites/gen5ani/meloetta-pirouette.gif);
+}
+.roomcounters .battlecount.afd,
+.roomcounters button:hover .battlecount.afd,
+.roomcounters .button:hover .battlecount.afd {
+	background-image: url(/sprites/afd/meloetta-pirouette.png);
+}
+.avatarlist button {
+	background-image: url(/sprites/trainers-sheet.png);
+}
+
+.typeicon-Normal { background-image: url(/sprites/typeicons/Normal.png); }
+.typeicon-Fire { background-image: url(/sprites/typeicons/Fire.png); }
+.typeicon-Fighting { background-image: url(/sprites/typeicons/Fighting.png); }
+.typeicon-Water { background-image: url(/sprites/typeicons/Water.png); }
+.typeicon-Flying { background-image: url(/sprites/typeicons/Flying.png); }
+.typeicon-Grass { background-image: url(/sprites/typeicons/Grass.png); }
+.typeicon-Poison { background-image: url(/sprites/typeicons/Poison.png); }
+.typeicon-Electric { background-image: url(/sprites/typeicons/Electric.png); }
+.typeicon-Ground { background-image: url(/sprites/typeicons/Ground.png); }
+.typeicon-Psychic { background-image: url(/sprites/typeicons/Psychic.png); }
+.typeicon-Rock { background-image: url(/sprites/typeicons/Rock.png); }
+.typeicon-Ice { background-image: url(/sprites/typeicons/Ice.png); }
+.typeicon-Bug { background-image: url(/sprites/typeicons/Bug.png); }
+.typeicon-Dragon { background-image: url(/sprites/typeicons/Dragon.png); }
+.typeicon-Ghost { background-image: url(/sprites/typeicons/Ghost.png); }
+.typeicon-Dark { background-image: url(/sprites/typeicons/Dark.png); }
+.typeicon-Steel { background-image: url(/sprites/typeicons/Steel.png); }
+.typeicon-Fairy { background-image: url(/sprites/typeicons/Fairy.png); }
+.typeicon-Stellar {
+	background-image: url(/sprites/typeicons/Stellar.png),
+		conic-gradient(from 80deg at 50% 50%,
+			#d9d, #a6d, #75a, #557, #679, #49d, #3ad, #3af, #47d,
+			#49d, #5b7, #bd4, #dd8, #db5, #fd3, #fa3, #f63, #e79
+		);
+}
+.typeicon-Stellar-hard {
+	background-image: url(/sprites/typeicons/Stellar.png),
+		conic-gradient(from 80deg at 50% 50%,
+			#d9d 0deg 20deg,
+			#a6d 20deg 40deg,
+			#75a 40deg 60deg,
+			#557 60deg 80deg,
+			#679 80deg 100deg,
+			#49d 100deg 120deg,
+			#3ad 120deg 140deg,
+			#3af 140deg 160deg,
+			#47d 160deg 180deg,
+			#49d 180deg 200deg,
+			#5b7 200deg 220deg,
+			#bd4 220deg 240deg,
+			#dd8 240deg 260deg,
+			#db5 260deg 280deg,
+			#fd3 280deg 300deg,
+			#fa3 300deg 320deg,
+			#f63 320deg 340deg,
+			#e79 340deg 360deg
+		);
+}
+
+.offline-client-status,
+.offline-client-update {
+	box-sizing: border-box;
+	position: fixed;
+	right: 12px;
+	bottom: 12px;
+	z-index: 10000;
+	max-width: min(440px, calc(100vw - 24px));
+	padding: 10px 12px;
+	border: 1px solid #8a6d2f;
+	border-radius: 6px;
+	background: #fff5cf;
+	box-shadow: 0 3px 12px rgba(0, 0, 0, 0.24);
+	color: #34280d;
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.offline-client-status[hidden],
+.offline-client-update[hidden] {
+	display: none !important;
+}
+
+.offline-client-status-online {
+	border-color: #48885b;
+	background: #e8f6eb;
+	color: #173e22;
+}
+
+.offline-client-status-message,
+.offline-client-update-message {
+	display: inline;
+}
+
+.offline-client-status-action,
+.offline-client-update-action,
+.offline-client-update-dismiss {
+	margin: 0 0 0 8px;
+	white-space: nowrap;
+}
+
+html.dark .offline-client-status,
+html.dark .offline-client-update {
+	border-color: #a9873b;
+	background: #40371f;
+	color: #fff4ca;
+}
+
+html.dark .offline-client-status-online {
+	border-color: #57966b;
+	background: #203c29;
+	color: #e5f8ea;
+}
+
+@media (max-width: 500px) {
+	.offline-client-status,
+	.offline-client-update {
+		right: 8px;
+		bottom: 8px;
+		left: 8px;
+		max-width: none;
+	}
+
+	.offline-client-status-action,
+	.offline-client-update-action,
+	.offline-client-update-dismiss {
+		margin-top: 7px;
+	}
+}

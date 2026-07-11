@@ -98,6 +98,12 @@ Even with a test key, the following things will fail in `testclient`:
 
 Everything else can be tested.
 
+Fork deployment
+------------------------------------------------------------------------
+
+This fork's production-only offline finalization is documented in
+[`docs/offline-support.md`](docs/offline-support.md).
+
 Warning
 ------------------------------------------------------------------------
 

@@ -70,6 +70,51 @@ export default configure([
 		},
 	},
 	{
+		name: "TypeScript for Node",
+		files: ['build-tools/offline/*.ts'],
+		extends: [configs.ts],
+		languageOptions: {
+			parserOptions: {
+				projectService: true,
+				tsconfigRootDir: import.meta.dirname,
+			},
+			globals: {
+				...globals.builtin,
+				...globals.node,
+			},
+		},
+	},
+	{
+		name: "TypeScript for service workers",
+		files: ['build-tools/offline/worker/*.ts'],
+		extends: [configs.ts],
+		languageOptions: {
+			parserOptions: {
+				projectService: true,
+				tsconfigRootDir: import.meta.dirname,
+			},
+			globals: {
+				...globals.builtin,
+				...globals.serviceworker,
+			},
+		},
+	},
+	{
+		name: "TypeScript for modern offline adapters",
+		files: ['build-tools/offline/classic/*.ts'],
+		extends: [configs.ts],
+		languageOptions: {
+			parserOptions: {
+				projectService: true,
+				tsconfigRootDir: import.meta.dirname,
+			},
+			globals: {
+				...globals.builtin,
+				...globals.browser,
+			},
+		},
+	},
+	{
 		name: "JavaScript for Node",
 		files: [
 			'*.mjs', // look mom I'm linting myself!
