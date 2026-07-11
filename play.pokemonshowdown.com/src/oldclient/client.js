@@ -705,6 +705,7 @@ function toId() {
 				Object.assign(LadderRoom.COIL_B, data);
 			});
 
+			if (window.OfflineClient) window.OfflineClient.attach(this);
 			this.initializeConnection();
 		},
 		/**
