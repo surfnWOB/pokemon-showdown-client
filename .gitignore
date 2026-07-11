@@ -17,6 +17,8 @@ npm-debug.log
 /play.pokemonshowdown.com/data/
 /play.pokemonshowdown.com/js/
 /play.pokemonshowdown.com/ads.txt
+/play.pokemonshowdown.com/offline.html
+/play.pokemonshowdown.com/service-worker.js
 
 /pokemonshowdown.com/.well-known/
 /pokemonshowdown.com/.pages-cached/
