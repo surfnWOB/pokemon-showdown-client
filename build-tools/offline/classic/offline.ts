@@ -120,7 +120,7 @@ let promptedWorker: ServiceWorker | null = null;
 let statusElement: HTMLElement | null = null;
 let statusMessage: HTMLElement | null = null;
 let statusAction: HTMLButtonElement | null = null;
-let statusActionMode: 'dismiss' | 'persist' | 'reconnect' | 'reload' = 'reload';
+let statusActionMode: 'dismiss' | 'reconnect' | 'reload' = 'reload';
 let updateElement: HTMLElement | null = null;
 let attachedClient: LegacyClient | null = null;
 let restoringFormats = false;
@@ -305,8 +305,6 @@ function handleStatusAction(): boolean {
 	case 'dismiss':
 		hideConnectivityStatus();
 		return true;
-	case 'persist':
-		return requestPersistentStorage();
 	case 'reconnect':
 		return attemptReconnect();
 	default:
@@ -315,30 +313,13 @@ function handleStatusAction(): boolean {
 }
 
 function setStatusAction(
-	mode: 'dismiss' | 'persist' | 'reconnect' | 'reload', label: string, ariaLabel: string
+	mode: 'dismiss' | 'reconnect' | 'reload', label: string, ariaLabel: string
 ): void {
 	if (!statusAction) return;
 	statusActionMode = mode;
 	setText(statusAction, label);
 	statusAction.setAttribute('aria-label', ariaLabel);
-}
-
-function finishPersistenceRequest(persisted: boolean): void {
-	if (offlineMode) return;
-	setText(statusMessage, persisted ?
-		'Offline data is protected from automatic browser storage cleanup.' :
-		'Offline support is ready. Your browser will keep its data on a best-effort basis.');
-	setStatusAction('dismiss', 'Dismiss', 'Dismiss offline readiness status');
-}
-
-function requestPersistentStorage(): boolean {
-	const storage = getNavigator()?.storage;
-	if (!storage?.persist) {
-		finishPersistenceRequest(false);
-		return false;
-	}
-	void storage.persist().then(finishPersistenceRequest, () => finishPersistenceRequest(false));
-	return true;
+	showElement(statusAction);
 }
 
 function showOfflineReady(): void {
@@ -346,26 +327,9 @@ function showOfflineReady(): void {
 	const element = ensureStatusElement();
 	if (!element || !statusAction) return;
 	element.className = 'offline-client-status offline-client-status-online';
-	const storage = getNavigator()?.storage;
-	if (!storage?.persisted) {
-		finishPersistenceRequest(false);
-		showElement(element);
-		return;
-	}
-	void storage.persisted().then(persisted => {
-		if (offlineMode) return;
-		if (persisted) {
-			finishPersistenceRequest(true);
-		} else {
-			setText(statusMessage,
-				'Offline support is ready. Keep offline data to protect local teams and cached assets from cleanup.');
-			setStatusAction('persist', 'Keep offline data', 'Protect offline data from automatic cleanup');
-		}
-		showElement(element);
-	}, () => {
-		finishPersistenceRequest(false);
-		showElement(element);
-	});
+	setText(statusMessage, 'Online');
+	hideElement(statusAction);
+	showElement(element);
 }
 
 function scheduleDOMReady(): void {
