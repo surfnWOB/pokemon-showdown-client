@@ -622,7 +622,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 
 	protected formatType: 'doubles' | 'bdsp' | 'bdspdoubles' | 'rs' | 'rslc' | 'frlg' | 'bw1' | 'letsgo' | 'metronome' |
 		'natdex' | 'nfe' | 'ssdlc1' | 'ssdlc1doubles' | 'predlc' | 'predlcdoubles' | 'predlcnatdex' | 'svdlc1' | 'svdlc1doubles' |
-		'svdlc1natdex' | 'stadium' | 'lc' | 'champions' | 'natdexchampions' | 'zangouse' | 'gen3mega' | 'gen3ubersuu' |
+		'svdlc1natdex' | 'stadium' | 'lc' | 'champions' | 'natdexchampions' | 'zangouse' | 'gen3mega' | 'gen3megascap' | 'gen3ubersuu' |
 		'gen3subzu' | 'gen1rbyplus' | 'gen3advplus' | 'gen3tradebacks' | 'gen3puretradebacks' | 'gen3hoennification' | 'gen3frlgindigo' |
 		'gen3shadowcolosseum' | null = null;
 	isDoubles = false;
@@ -781,7 +781,10 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType = 'zangouse';
 			this.dex = Dex.mod('gen3zangouse' as ID);
 		}
-		if (this.dex.gen === 3 && format.includes('mega')) {
+		if (this.dex.gen === 3 && format === 'megascap') {
+			this.formatType = 'gen3megascap';
+			this.dex = Dex.mod('gen3megascap' as ID);
+		} else if (this.dex.gen === 3 && format.includes('mega')) {
 			this.formatType = 'gen3mega';
 			this.dex = Dex.mod('gen3mega' as ID);
 		}
@@ -1041,6 +1044,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType === 'natdexchampions' ? `natdexchampions` :
 			this.formatType === 'zangouse' ? `gen3zangouse` :
 			this.formatType === 'gen3mega' ? `gen3mega` :
+			this.formatType === 'gen3megascap' ? `gen3megascap` :
 			this.formatType === 'gen3ubersuu' ? `gen3ubersuu` :
 			this.formatType === 'gen3subzu' ? `gen3subzu` :
 			this.formatType === 'gen1rbyplus' ? `gen1rbyplus` :
@@ -1146,7 +1150,7 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 		const dex = this.dex;
 
 		let table = BattleTeambuilderTable;
-		if ((format.endsWith('cap') || format.endsWith('caplc')) && dex.gen < 9) {
+		if ((format.endsWith('cap') || format.endsWith('caplc')) && dex.gen < 9 && this.formatType !== 'gen3megascap') {
 			table = table[`gen${dex.gen}`];
 		} else if (this.formatType === 'champions') {
 			table = table[`champions`];
@@ -1219,6 +1223,8 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			table = table['gen3zangouse'];
 		} else if (this.formatType === 'gen3mega') {
 			table = table['gen3mega'];
+		} else if (this.formatType === 'gen3megascap') {
+			table = table['gen3megascap'];
 		} else if (this.formatType === 'gen3ubersuu') {
 			table = table['gen3ubersuu'];
 		} else if (this.formatType === 'gen3subzu') {
@@ -1262,6 +1268,11 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			// UU slice, so slicing there excludes them — matching the server banlist
 			// ['Uber', 'OU', 'UUBL'] ('OU' also covers the "(OU)" technicality Megas).
 			tierSet = tierSet.slice(slices.UU);
+		} else if (this.formatType === 'gen3megascap' && format === 'megascap') {
+			// Keep the entire custom roster visible. The usual CAP/OU slicing would
+			// discard its AG and Uber Mega/Primal formes before their ban status can
+			// be rendered to the player.
+			tierSet = tierSet.slice();
 		} else if (this.formatType === 'gen3mega' && format === 'megas') {
 			// [Gen 3] Megas (OU): browse OU → (OU) → straight to UU and below. AG
 			// (M-Salamence) and Uber sit above OU and are banned, so slice them off the
@@ -1651,6 +1662,10 @@ class BattleItemSearch extends BattleTypedSearch<'item'> {
 			table = table['gen3rs'];
 		} else if (this.formatType === 'frlg') {
 			table = table['gen3frlg'];
+		} else if (this.formatType === 'gen3mega') {
+			table = table['gen3mega'];
+		} else if (this.formatType === 'gen3megascap') {
+			table = table['gen3megascap'];
 		} else if (this.formatType === 'natdex') {
 			table = table[`gen${this.dex.gen}natdex`];
 		} else if (this.formatType?.endsWith('doubles')) { // no natdex/bdsp doubles support
@@ -2342,5 +2357,6 @@ if (typeof require === 'function') {
 	// in Node (test harness): expose the search classes as globals, mirroring
 	// battle-dex.ts (global.Dex/toID). Lets test/*.js exercise getStatBoost etc.
 	global.BattlePokemonSearch = BattlePokemonSearch;
+	global.BattleItemSearch = BattleItemSearch;
 	global.BattleTypedSearch = BattleTypedSearch;
 }
