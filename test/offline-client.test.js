@@ -723,7 +723,7 @@ describe('OfflineClient', () => {
 		assert.equal(loaded.api.isKnownOffline(), false);
 	});
 
-	it('announces first-install readiness and requests persistence only from a user gesture', async () => {
+	it('shows a minimal online indicator after first install and preserves the full offline warning', async () => {
 		let persistenceRequests = 0;
 		const active = {postMessage() {}};
 		const registration = eventTarget({waiting: null, installing: null, active});
@@ -750,12 +750,20 @@ describe('OfflineClient', () => {
 		await Promise.resolve();
 
 		const status = loaded.root.document.getElementById('offline-client-status');
-		assert.match(elementText(status), /Offline support is ready/);
+		const action = loaded.root.document.getElementById('offline-client-status-action');
+		assert.equal(elementText(status), 'Online');
+		assert.equal(action.hidden, true);
 		assert.equal(persistenceRequests, 0);
-		status.children[1].dispatch('click');
-		assert.equal(persistenceRequests, 1);
-		await Promise.resolve();
-		assert.match(elementText(status), /protected from automatic browser storage cleanup/);
+
+		loaded.root.navigator.onLine = false;
+		loaded.root.dispatch('offline');
+		const message = loaded.root.document.getElementById('offline-client-status-message');
+		assert.equal(elementText(message),
+			'You are offline. Local teams and teambuilding are still available, ' +
+			'but battles and other network features are unavailable.');
+		assert.equal(action.hidden, false);
+		assert.equal(elementText(action), 'Retry connection');
+		assert.equal(action.attributes['aria-label'], 'Reconnect to the server');
 	});
 
 	it('surfaces a redundant first-install worker as an offline installation failure', async () => {
