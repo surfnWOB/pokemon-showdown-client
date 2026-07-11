@@ -271,7 +271,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		8.6, 8.4, 8.2, -8.4, -8.6,
 		7.1,
 		5.1,
-		3.1, 3.11, 3.02, 3.03, 3.05, 3.06, 3.17, 3.07, 3.08, 3.09, 3.12, 3.13, 3.14,
+		3.1, 3.11, 3.02, 3.03, 3.15, 3.05, 3.06, 3.17, 3.07, 3.08, 3.09, 3.12, 3.13, 3.14,
 		1.05,
 	];
 
@@ -300,6 +300,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		const isFRLG = genIdent === 3.11;
 		const isZangOuSe = genIdent === 3.02;
 		const isGen3Mega = genIdent === 3.03;
+		const isGen3MegaCAP = genIdent === 3.15;
 		const isGen3UbersUU = genIdent === 3.05;
 		const isGen3SubZU = genIdent === 3.06;
 		const isGen3AdvPlus = genIdent === 3.07;
@@ -324,6 +325,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			if (isFRLG) genStr += 'frlg';
 			if (isZangOuSe) genStr += 'zangouse';
 			if (isGen3Mega) genStr += 'mega';
+			if (isGen3MegaCAP) genStr += 'megascap';
 			if (isGen3UbersUU) genStr += 'ubersuu';
 			if (isGen3SubZU) genStr += 'subzu';
 			if (isGen3AdvPlus) genStr += 'advplus';
@@ -343,7 +345,10 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		// upstream gen3rs — only the tier labels (and thus the browsable slices) change.
 		const modId = isGen3UbersUU ? 'gen3' : isRSLC ? 'gen3rs' : isRS ? 'gen3adv200' : gen;
 		// process.stdout.write("" + gen + (isDoubles ? " doubles" : "") + "... ");
-		const pokemon = Object.keys(Dex.data.Pokedex);
+		// Gen 3 Megas CAP adds Mega Magcargo, which has no base-dex entry. Build
+		// this table from the mod's complete Pokedex so its custom species is
+		// included in the browsable tier list alongside the inherited species.
+		const pokemon = Object.keys(isGen3MegaCAP ? Dex.mod(modId).data.Pokedex : Dex.data.Pokedex);
 		pokemon.sort();
 		const tierTable = {};
 		const overrideTier = {};
@@ -662,7 +667,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			BattleTeambuilderTable[gen].tiers = tiers;
 			BattleTeambuilderTable[gen].items = items;
 			BattleTeambuilderTable[gen].formatSlices = formatSlices;
-		} else if (isGen3Mega) {
+		} else if (isGen3Mega || isGen3MegaCAP) {
 			BattleTeambuilderTable[gen] = {};
 			BattleTeambuilderTable[gen].overrideTier = overrideTier;
 			BattleTeambuilderTable[gen].tiers = tiers;
@@ -779,7 +784,9 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			if (formatSlices['DUU'] === undefined) formatSlices['DUU'] = formatSlices['New'];
 		}
 
-		const itemList = Object.keys(Dex.data.Items);
+		// Magcargoite is only legal in the CAP mod. Build this format's picker from
+		// its complete item table so the re-legalized stone is browseable.
+		const itemList = Object.keys(isGen3MegaCAP ? Dex.mod(modId).data.Items : Dex.data.Items);
 		itemList.sort();
 
 		const greatItems = [['header', "Popular items"]];
@@ -1408,7 +1415,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		'accuracy', 'basePower', 'category', 'desc', 'flags', 'isNonstandard', 'pp', 'priority', 'shortDesc', 'target', 'type',
 	];
 	const overrideAbilityKeys = ['desc', 'flags', 'gen', 'isNonstandard', 'rating', 'shortDesc'];
-	const overrideItemKeys = ['desc', 'fling', 'isNonstandard', 'naturalGift', 'shortDesc'];
+	const overrideItemKeys = ['desc', 'fling', 'gen', 'isNonstandard', 'naturalGift', 'shortDesc'];
 
 	//
 	// Past gen table
@@ -1498,7 +1505,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 	//
 
 	for (const mod of [
-		'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
+		'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen3megascap', 'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
 		'gen1rbyplus', 'gen3advplus', 'gen3tradebacks', 'gen3puretradebacks', 'gen3hoennification', 'gen3frlgindigo', 'gen3shadowcolosseum',
 	]) {
 		const modDex = Dex.mod(mod);

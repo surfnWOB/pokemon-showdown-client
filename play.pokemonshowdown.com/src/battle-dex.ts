@@ -310,7 +310,9 @@ export const Dex = new class implements ModdedDex {
 		if (dex.gen === 3 && formatid.includes('pss')) {
 			dex = Dex.mod('gen3pss' as ID);
 		}
-		if (dex.gen === 3 && formatid.includes('mega')) {
+		if (dex.gen === 3 && formatid === 'megascap') {
+			dex = Dex.mod('gen3megascap' as ID);
+		} else if (dex.gen === 3 && formatid.includes('mega')) {
 			dex = Dex.mod('gen3mega' as ID);
 		}
 		if (dex.gen === 4 && formatid.includes('nopss')) {
