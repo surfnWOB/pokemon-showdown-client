@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { collectLocalStylesheetImports } from './css-imports';
+
 export const WEB_ROOT_NAME = 'play.pokemonshowdown.com';
 export const SOURCE_SHELL_PATH = 'testclient-old.html';
 export const OFFLINE_SHELL_PATH = 'offline.html';
@@ -14,6 +16,8 @@ const SHELL_MEDIA = [
 	'/fx/client-bg-charizards.jpg',
 	'/fx/client-bgsheet.png',
 	'/fx/client-topbar-bg.png',
+	// The classic topbar adds this srcset candidate at runtime on Retina displays.
+	'/pokemonshowdownbeta@2x.png',
 ] as const;
 
 // Upstream intentionally lets these development-only data files fall back to
@@ -139,6 +143,9 @@ export function collectClassicCore(rootDir: string): string[] {
 		for (const filename of walkFiles(path.join(webRoot, subdir), include)) {
 			assets.add(toURLPath(path.relative(webRoot, filename)));
 		}
+	}
+	for (const stylesheet of collectLocalStylesheetImports(webRoot, [...assets])) {
+		assets.add(stylesheet);
 	}
 	return [...assets].sort();
 }
