@@ -11,6 +11,7 @@ const {
 	computeOfflineVersion,
 	toURLPath,
 } = require('../caches/offline-tools/node/policy');
+const {collectLocalStylesheetImports} = require('../caches/offline-tools/node/css-imports');
 const {buildFormatTokens, renderOfflineFormats} = require('../caches/offline-tools/node/formats');
 const {finalizeOfflineBuild} = require('../caches/offline-tools/node/finalize');
 const {assertDeploymentShellReady, renderOfflineShell} = require('../caches/offline-tools/node/shell');
@@ -217,14 +218,62 @@ describe('offline build tooling', () => {
 		assert.ok(OPTIONAL_MEDIA.every(asset => !asset.startsWith('/audio/')));
 
 		const core = collectClassicCore(ROOT);
+		const stylesheetImports = collectLocalStylesheetImports(
+			path.join(ROOT, 'play.pokemonshowdown.com'), ['/style/battle.css']
+		);
 		assert.ok(core.includes('/fx/client-bg-charizards.jpg'));
 		assert.ok(core.includes('/fx/client-bgsheet.png'));
+		assert.ok(core.includes('/pokemonshowdownbeta@2x.png'));
+		assert.ok(stylesheetImports.includes('/style/battle-log.css?v12.6'));
 		assert.ok(!core.includes('/fx/angry.png'));
 		assert.ok(!core.includes('/js/panels.js'));
 		assert.ok(!core.some(asset => asset.startsWith('/showdex/')));
 		assert.ok(core.includes('/style/fonts/fontawesome-webfont.woff2'));
 		assert.ok(!core.some(asset => /^\/style\/fonts?\/.*\.(?:eot|otf|svg|ttf|woff)$/.test(asset)));
 		assert.ok(!core.some(asset => asset.startsWith('/replays-js/')));
+	});
+
+	it('recursively promotes local stylesheet imports into the atomic core', () => {
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-offline-css-'));
+		const webRoot = path.join(root, 'play.pokemonshowdown.com');
+		try {
+			fs.mkdirSync(path.join(webRoot, 'style/nested'), {recursive: true});
+			fs.writeFileSync(path.join(webRoot, 'offline.html'),
+				'<link rel="stylesheet" href="/style/root.css" />');
+			fs.writeFileSync(path.join(webRoot, 'style/root.css'), [
+				'@import url("./base.css?v=12.6") screen;',
+				'@import url("./theme\\2e css") layer(theme);',
+				'@import "https://example.com/external.css";',
+				'@import "https://offline.invalid/not-local.css";',
+				'@import "//offline.invalid/not-local-either.css";',
+				'@import "blob:https://offline.invalid/not-local-blob.css";',
+				'@\\69 mport u\\72 l("./escaped-identifiers.css");',
+				'@custom @import "./custom-ghost.css";',
+				'/* @import "./commented.css"; */',
+				'.fixture::before { content: "@import \'./ghost.css\';"; }',
+			].join('\n'));
+			fs.writeFileSync(path.join(webRoot, 'style/base.css'), [
+				'@import "./nested/theme.css#current";',
+				'@import url("./root.css");',
+			].join('\n'));
+			fs.writeFileSync(path.join(webRoot, 'style/nested/theme.css'), '.fixture { color: green; }');
+			fs.writeFileSync(path.join(webRoot, 'style/theme.css'), '.fixture { color: purple; }');
+			fs.writeFileSync(path.join(webRoot, 'style/escaped-identifiers.css'), '.fixture { color: blue; }');
+
+			const core = collectClassicCore(root);
+			assert.ok(core.includes('/style/root.css'));
+			assert.ok(core.includes('/style/base.css?v=12.6'));
+			assert.ok(core.includes('/style/nested/theme.css'));
+			assert.ok(core.includes('/style/theme.css'));
+			assert.ok(core.includes('/style/escaped-identifiers.css'));
+			assert.ok(!core.some(asset => asset.includes('example.com')));
+			assert.ok(!core.some(asset => asset.includes('offline.invalid')));
+			assert.ok(!core.includes('/not-local.css'));
+			assert.ok(!core.includes('/not-local-either.css'));
+			assert.ok(!core.some(asset => /(?:commented|ghost|not-local-blob)\.css/.test(asset)));
+		} finally {
+			fs.rmSync(root, {recursive: true, force: true});
+		}
 	});
 
 	it('derives a fork-local shell without modifying the upstream entrypoint', () => {
