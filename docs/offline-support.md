@@ -17,6 +17,11 @@ strict TypeScript source to the ignored `js/oldclient/offline.js` artifact. The
 generated shell loads both fork-owned artifacts as native modules before the
 classic app starts.
 
+Fork-local `build-tools/offline/css-imports.ts` closes the shell's local
+stylesheet graph recursively. This keeps transitive upstream `@import` changes
+inside the atomic core without maintaining a second handwritten stylesheet
+list or modifying upstream CSS.
+
 The offline adapter supports the last three major versions of Chrome, Edge,
 Firefox, Safari, and iOS Safari, declared in the fork-local
 `build-tools/offline/.browserslistrc` policy. Generated browser code uses an
@@ -35,11 +40,19 @@ bootstrap or ES3 offline artifact.
   instead of replaying the classic client's insecure alternate-port fallbacks.
 - The atomic app shell is content-versioned and installed with bounded parallel
   requests. Controlled navigations and every build-owned core asset, including
-  deployment configuration, are cache-first. Optional media is warmed
-  separately and kept in a bounded, query-aware runtime cache.
+  deployment configuration, transitive local stylesheets, and both topbar logo
+  densities, are cache-first. Optional media is warmed separately and kept in a
+  bounded, query-aware runtime cache. Individual full-size Pokémon art remains
+  runtime-cached after it is viewed online rather than making installation
+  download every species sprite.
 - After first installation, a passive `Online` indicator confirms readiness.
   It does not request persistent origin storage or present an action during
   bootstrap.
+- Network-only controls, including team validation, uploads, and room discovery,
+  are disabled while offline. A `MutationObserver` applies the state to controls
+  rendered later by the classic client. Guarded indirect actions keep the
+  complete offline warning in place and never open an alert-style connection
+  popup.
 - Format snapshots stay in the classic client's small, synchronous local
   storage path. Moving them to IndexedDB would add an asynchronous migration
   without improving the bounded data model.
@@ -71,8 +84,9 @@ The strict TypeScript finalizer lives entirely in `build-tools/offline/`. It:
 1. derives an ignored, self-hosted `offline.html` from the unmodified upstream
    `testclient-old.html`;
 2. snapshots the exact server format protocol;
-3. selects only the explicit classic-client core and its modern WOFF2 icon
-   font; battle-only Showdex remains network-only;
+3. selects the explicit classic-client core, recursively follows its local CSS
+   imports, and includes its modern WOFF2 icon font; battle-only Showdex remains
+   network-only;
 4. injects immutable configuration into a separately typechecked service-worker
    runtime; and
 5. emits the modern-browser adapter, then writes the ignored `service-worker.js`
