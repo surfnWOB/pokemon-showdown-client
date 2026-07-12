@@ -85,13 +85,20 @@ function elementText(element) {
 	return result;
 }
 
-function makeJQueryHarness() {
+function makeJQueryHarness(options) {
+	options = options || {};
+	let validationPresent = options.validationPresent !== false;
 	function control(disabled) {
 		return {disabled, classes: new Set(disabled ? ['disabled'] : []), attributes: Object.create(null)};
 	}
 	const network = control(false);
+	const validation = control(false);
+	const teamUpload = control(false);
+	const roomAction = control(false);
 	const availableBattle = control(false);
 	const unavailableBattle = control(true);
+	const localTeambuilderBig = control(false);
+	const scopeSelectors = [];
 
 	function selection(elements, scope) {
 		return {
@@ -112,8 +119,18 @@ function makeJQueryHarness() {
 				return selection([], scope);
 			},
 			find(selector) {
-				if (selector === 'button.big') return selection([availableBattle, unavailableBattle], scope);
-				return selection([network], scope);
+				const found = [];
+				if (selector === 'button.big') {
+					if (scope.includes('.mainmenu')) found.push(availableBattle, unavailableBattle);
+					if (scope.includes('#room-teambuilder')) found.push(localTeambuilderBig);
+				} else {
+					if (scope.includes('.mainmenu')) found.push(network);
+					if (scope.includes('#room-teambuilder') && selector.includes('button[name="validate"]') &&
+						validationPresent) {
+						found.push(validation);
+					}
+				}
+				return selection(found, scope);
 			},
 			hasClass(className) {
 				return elements.some(element => element.classes.has(className));
@@ -132,8 +149,29 @@ function makeJQueryHarness() {
 			},
 		};
 	}
-	const scope = selection([], null);
-	return {network, availableBattle, unavailableBattle, jquery: () => scope};
+	return {
+		network,
+		validation,
+		teamUpload,
+		roomAction,
+		availableBattle,
+		unavailableBattle,
+		localTeambuilderBig,
+		jquery(selector) {
+			scopeSelectors.push(selector);
+			const direct = [];
+			if (validationPresent && selector.includes('#room-teambuilder button[name="validate"]')) {
+				direct.push(validation);
+			}
+			if (selector.includes('#room-teambuilder button[name="psExport"]')) direct.push(teamUpload);
+			if (selector.includes('#room-rooms button[name="toggleMoreRooms"]')) direct.push(roomAction);
+			return selection(direct, selector);
+		},
+		scopeSelectors,
+		revealValidation() {
+			validationPresent = true;
+		},
+	};
 }
 
 function makeStorage() {
@@ -170,6 +208,7 @@ function loadController(options) {
 	if (options.OfflineFormats) root.OfflineFormats = options.OfflineFormats;
 	if (options.OfflineBattleFormats) root.OfflineBattleFormats = options.OfflineBattleFormats;
 	if (options.ReconnectPopup) root.ReconnectPopup = options.ReconnectPopup;
+	if (options.MutationObserver) root.MutationObserver = options.MutationObserver;
 
 	const context = vm.createContext({
 		window: root,
@@ -267,6 +306,39 @@ describe('OfflineClient', () => {
 			tournamentShow: false,
 			rated: false,
 		});
+	});
+
+	it('preserves classic team storage across offline actions and reconnects', () => {
+		const storage = makeStorage();
+		const teams = 'gen9]Offline Team|Pikachu||lightball|static|thunderbolt|Timid||||||';
+		storage.setItem('showdown_teams', teams);
+		let sends = 0;
+		const app = {
+			initializeConnection() {},
+			connect() {},
+			send() {
+				sends++;
+			},
+			parseFormats() {},
+		};
+		const loaded = loadController({
+			app,
+			storage,
+			BattleFormats: {},
+			OfflineFormats: {formats: ['formats', 'Offline Format,4']},
+		});
+		const assertTeamsUnchanged = () => assert.equal(storage.getItem('showdown_teams'), teams);
+
+		assertTeamsUnchanged();
+		loaded.root.dispatch('offline');
+		assertTeamsUnchanged();
+		assert.equal(app.send('/vtm gen9ou'), false);
+		assert.equal(sends, 0);
+		assertTeamsUnchanged();
+		assert.equal(loaded.api.saveFormats(['formats', 'Updated Format,e']), true);
+		assertTeamsUnchanged();
+		loaded.api.setConnected(app);
+		assertTeamsUnchanged();
 	});
 
 	it('attaches all classic-client behavior through one idempotent adapter seam', () => {
@@ -382,11 +454,55 @@ describe('OfflineClient', () => {
 		assert.equal(controls.unavailableBattle.disabled, true);
 		loaded.root.dispatch('offline');
 		assert.equal(controls.network.disabled, true);
+		assert.equal(controls.validation.disabled, true);
+		assert.equal(controls.teamUpload.disabled, true);
+		assert.equal(controls.roomAction.disabled, true);
 		assert.equal(controls.availableBattle.disabled, true);
+		assert.equal(controls.localTeambuilderBig.disabled, false);
 		loaded.api.setConnected(app);
 		assert.equal(controls.network.disabled, false);
+		assert.equal(controls.validation.disabled, false);
+		assert.equal(controls.teamUpload.disabled, false);
+		assert.equal(controls.roomAction.disabled, false);
 		assert.equal(controls.availableBattle.disabled, false);
+		assert.equal(controls.localTeambuilderBig.disabled, false);
 		assert.equal(controls.unavailableBattle.disabled, true);
+	});
+
+	it('disables network controls rendered after offline mode begins', () => {
+		let mutationListener;
+		class MutationObserver {
+			constructor(listener) {
+				mutationListener = listener;
+			}
+			observe() {}
+		}
+		const controls = makeJQueryHarness({validationPresent: false});
+		const app = {
+			initializeConnection() {},
+			connect() {},
+			send() {},
+			parseFormats() {},
+		};
+		const loaded = loadController({
+			$: controls.jquery,
+			app,
+			BattleFormats: {},
+			OfflineFormats: {formats: ['formats', 'Offline Format,4']},
+			MutationObserver,
+		});
+
+		loaded.root.dispatch('offline');
+		assert.equal(controls.validation.disabled, false);
+		controls.revealValidation();
+		assert.equal(typeof mutationListener, 'function');
+		mutationListener();
+		assert.equal(controls.validation.disabled, true);
+		assert.ok(controls.scopeSelectors.some(selector =>
+			selector.includes('#room-teambuilder button[name="validate"]') &&
+			selector.includes('#room-teambuilder button[name="psExport"]') &&
+			selector.includes('#room-rooms button[name="toggleMoreRooms"]')
+		));
 	});
 
 	it('treats navigator offline state as a hint and still permits one connection probe', () => {
@@ -610,18 +726,35 @@ describe('OfflineClient', () => {
 		assert.equal(loaded.root.app.offlineMode, true);
 	});
 
-	it('throttles network-required popup and live-region feedback', () => {
+	it('keeps network-required actions non-modal without replacing the full offline warning', () => {
 		const messages = [];
-		const loaded = loadController({app: {
+		const sends = [];
+		const app = {
+			initializeConnection() {},
+			connect() {},
+			send(message) {
+				sends.push(message);
+			},
+			parseFormats() {},
 			addPopupMessage(message) {
 				messages.push(message);
 			},
-		}});
-		assert.equal(loaded.api.notifyNetworkRequired(), true);
-		assert.equal(loaded.api.notifyNetworkRequired(), false);
-		assert.deepEqual(messages, ['This action requires an internet connection.']);
+		};
+		const loaded = loadController({
+			app,
+			BattleFormats: {},
+			OfflineFormats: {formats: ['formats', 'Offline Format,4']},
+		});
+		loaded.root.dispatch('offline');
 		const status = loaded.root.document.getElementById('offline-client-status');
-		assert.match(elementText(status), /requires an internet connection/);
+		const offlineWarning = 'You are offline. Local teams and teambuilding are still available, ' +
+			'but battles and other network features are unavailable.';
+		assert.equal(elementText(status), offlineWarning + 'Retry connection');
+		assert.equal(app.send('/vtm gen9ou'), false);
+		assert.equal(app.send('/search gen9ou'), false);
+		assert.deepEqual(sends, []);
+		assert.deepEqual(messages, []);
+		assert.equal(elementText(status), offlineWarning + 'Retry connection');
 	});
 
 	it('waits for update approval, sends SKIP_WAITING, and reloads once after takeover', async () => {
