@@ -393,16 +393,99 @@ describe('OfflineClient', () => {
 		loaded.root.document.getElementById('offline-client-status-action').dispatch('click');
 		assert.equal(initializationCalls, 1);
 		assert.equal(loaded.api.isKnownOffline(), true);
-		assert.equal(app.send('/still-connecting'), false);
-		assert.equal(sendCalls, 0);
+		// A reconnect probe is in flight (reconnecting=true): sends now delegate
+		// to the native queue-and-replay path instead of being dropped, so the
+		// first post-reconnect message is not lost.
+		assert.equal(app.send('/still-connecting'), 'sent');
+		assert.equal(sendCalls, 1);
 
 		loaded.root.navigator.onLine = true;
 		app.trigger('init:socketopened');
 		assert.equal(app.send('/cmd'), 'sent');
-		assert.equal(sendCalls, 1);
+		assert.equal(sendCalls, 2);
 		app.trigger('init:connectionerror');
 		assert.equal(app.offlineMode, true);
 		assert.equal(app.isDisconnected, true);
+	});
+
+	it('treats a navigator offline event as a hint while the socket is still open', () => {
+		const handlers = Object.create(null);
+		let sendCalls = 0;
+		const app = {
+			socket: {readyState: 1},
+			on(name, listener) {
+				(handlers[name] || (handlers[name] = [])).push(listener);
+			},
+			trigger(name) {
+				for (const listener of handlers[name] || []) listener();
+			},
+			initializeConnection() {},
+			connect() {},
+			send() {
+				sendCalls++;
+				return 'sent';
+			},
+			parseFormats() {},
+		};
+		const loaded = loadController({app, storage: makeStorage()});
+		assert.equal(loaded.api.attach(app), true);
+
+		// A transient onLine flap must not tear down a healthy live session.
+		loaded.root.navigator.onLine = false;
+		loaded.root.dispatch('offline');
+		assert.equal(loaded.api.isKnownOffline(), false);
+		assert.notEqual(app.isDisconnected, true);
+		assert.equal(app.send('/pm someone, still here'), 'sent');
+		assert.equal(sendCalls, 1);
+
+		// A real socket close remains authoritative and does enter offline.
+		app.trigger('init:socketclosed');
+		assert.equal(loaded.api.isKnownOffline(), true);
+		assert.equal(app.isDisconnected, true);
+	});
+
+	it('re-issues open chat room joins on reconnect but not on first connect', () => {
+		const handlers = Object.create(null);
+		const sent = [];
+		const app = {
+			socket: {readyState: 1},
+			rooms: {
+				'': {type: 'mainmenu'},
+				lobby: {type: 'chat'},
+				help: {type: 'chat'},
+				'battle-gen9ou-1': {type: 'battle'},
+			},
+			on(name, listener) {
+				(handlers[name] || (handlers[name] = [])).push(listener);
+			},
+			trigger(name) {
+				for (const listener of handlers[name] || []) listener();
+			},
+			initializeConnection() {},
+			connect() {},
+			send(data) {
+				sent.push(data);
+				return 'sent';
+			},
+			parseFormats() {},
+		};
+		const loaded = loadController({app, storage: makeStorage()});
+		assert.equal(loaded.api.attach(app), true);
+
+		// First-ever open is a normal boot; App.initialize already autojoins, so
+		// the adapter must not re-issue joins here.
+		app.trigger('init:socketopened');
+		assert.deepEqual(sent, []);
+
+		// A genuine disconnect, then a soft reconnect (second socket open).
+		app.trigger('init:socketclosed');
+		assert.equal(loaded.api.isKnownOffline(), true);
+		app.trigger('init:socketopened');
+
+		// Only non-empty chat rooms are re-joined, using the native '/join <id>';
+		// the main menu, battle rooms, and empty id are skipped.
+		assert.deepEqual(sent, ['/join lobby', '/join help']);
+		assert.equal(loaded.api.isKnownOffline(), false);
 	});
 
 	it('attaches when the deferred module runs after the synchronous classic bootstrap', () => {
