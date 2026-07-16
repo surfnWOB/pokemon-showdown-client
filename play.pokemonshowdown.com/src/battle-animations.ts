@@ -1743,6 +1743,27 @@ interface InitScenePos {
 	display?: string;
 }
 
+export function getPokemonSpriteHTML(sp: SpriteData, style: string) {
+	if (!sp.gen3MegasCapAura) {
+		return `<img src="${sp.url!}" style="${style}"${sp.pixelated ? ' class="pixelated"' : ''} />`;
+	}
+
+	const aura = sp.gen3MegasCapAura;
+	const staticClass = aura.animated ? '' : ' gen3megascap-aura-static';
+	const artClass = `gen3megascap-aura-art${sp.pixelated ? ' pixelated' : ''}`;
+	const auraStyle = [
+		style,
+		`--g3mc-mask:url(${sp.url!})`,
+		`--g3mc-inner-duration:${aura.innerDuration}ms`,
+		`--g3mc-outer-duration:${aura.outerDuration}ms`,
+		`--g3mc-inner-delay:${aura.innerDelay}ms`,
+		`--g3mc-outer-delay:${aura.outerDelay}ms`,
+	].join(';');
+	return `<div class="gen3megascap-aura gen3megascap-aura-${aura.type}${staticClass}" ` +
+		`data-species="${aura.species}" style="${auraStyle}">` +
+		`<img src="${sp.url!}" class="${artClass}" /></div>`;
+}
+
 export class Sprite {
 	scene: BattleScene;
 	$el: JQuery = null!;
@@ -1755,8 +1776,7 @@ export class Sprite {
 		let sp = null;
 		if (spriteData) {
 			sp = spriteData;
-			let rawHTML = sp.rawHTML ||
-				`<img src="${sp.url!}" style="display:none;position:absolute"${sp.pixelated ? ' class="pixelated"' : ''} />`;
+			let rawHTML = sp.rawHTML || getPokemonSpriteHTML(sp, 'display:none;position:absolute');
 			this.$el = $(rawHTML);
 		} else {
 			sp = {
@@ -2003,8 +2023,15 @@ export class PokemonSprite extends Sprite {
 		this.sp = sp;
 		this.oldsp = null;
 
-		const $el = this.isSubActive ? this.$sub! : this.$el;
-		$el.attr('src', sp.url!);
+		let $el = this.isSubActive ? this.$sub! : this.$el;
+		if (!this.isSubActive && (sp.gen3MegasCapAura || $el.hasClass('gen3megascap-aura'))) {
+			const $newEl = $(getPokemonSpriteHTML(sp, 'display:block;position:absolute'));
+			$el.replaceWith($newEl);
+			this.$el = $newEl;
+			$el = $newEl;
+		} else {
+			$el.attr('src', sp.url!);
+		}
 		$el.css(this.scene.pos({
 			x: this.x,
 			y: this.y,
@@ -2152,7 +2179,7 @@ export class PokemonSprite extends Sprite {
 		if (this.$el) {
 			this.$el.stop(true, false);
 			this.$el.remove();
-			const $newEl = $(`<img src="${this.sp.url!}" style="display:none;position:absolute"${this.sp.pixelated ? ' class="pixelated"' : ''} />`);
+			const $newEl = $(getPokemonSpriteHTML(this.sp, 'display:none;position:absolute'));
 			this.$el = $newEl;
 		}
 
@@ -2589,7 +2616,7 @@ export class PokemonSprite extends Sprite {
 			}
 		}
 		// Constructing here gives us 300ms extra time to preload the new sprite
-		let $newEl = $('<img src="' + sp.url + '" style="display:block;opacity:0;position:absolute"' + (sp.pixelated ? ' class="pixelated"' : '') + ' />');
+		let $newEl = $(getPokemonSpriteHTML(sp, 'display:block;opacity:0;position:absolute'));
 		$newEl.css(this.scene.pos({
 			x: this.x,
 			y: this.y,
