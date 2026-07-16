@@ -199,6 +199,19 @@ export interface SpriteData {
 	isFrontSprite?: boolean;
 	cryurl?: string;
 	shiny?: boolean;
+	gen3MegasCapAura?: Gen3MegasCapAuraData;
+}
+
+export type Gen3MegasCapAuraType = 'dark' | 'dragon' | 'fighting' | 'ghost' | 'ice' | 'normal' | 'psychic' | 'water';
+
+export interface Gen3MegasCapAuraData {
+	species: ID;
+	type: Gen3MegasCapAuraType;
+	innerDuration: number;
+	outerDuration: number;
+	innerDelay: number;
+	outerDelay: number;
+	animated: boolean;
 }
 
 export interface TeambuilderSpriteData {
@@ -266,6 +279,47 @@ export const Dex = new class implements ModdedDex {
 		'raichu-megay': { front: [89, 90] },
 		'chimecho-mega': { front: [90, 90] },
 	};
+
+	/**
+	 * Archie's first ten [Gen 3] Megas CAP designs deliberately borrow their base forme's
+	 * Gen 3 pixel art. An aura distinguishes the Mega without inventing art that does not exist.
+	 * Keep this exact allowlist: older custom Megas have their own sprite designs.
+	 */
+	readonly gen3MegasCapAuraTypes: { [speciesid: string]: Gen3MegasCapAuraType } = {
+		parasectmega: 'ghost',
+		hitmonchanmega: 'fighting',
+		dittomega: 'normal',
+		noctowlmega: 'ghost',
+		mantinemega: 'dragon',
+		mightyenamegax: 'dark',
+		mightyenamegay: 'dark',
+		beautiflymega: 'psychic',
+		walreinmega: 'ice',
+		luvdiscmega: 'water',
+	};
+
+	getGen3MegasCapAuraData(species: Species): Gen3MegasCapAuraData | undefined {
+		const type = this.gen3MegasCapAuraTypes[species.id];
+		if (!type) return;
+
+		// FNV-1a gives every species a stable tempo and phase without persistent state.
+		let hash = 0x811c9dc5;
+		for (let i = 0; i < species.id.length; i++) {
+			hash = Math.imul(hash ^ species.id.charCodeAt(i), 0x01000193) >>> 0;
+		}
+		const innerDuration = 2800 + 100 * (hash % 9);
+		const outerDuration = Math.round(innerDuration * 1.61803398875);
+		const outerHash = Math.imul(hash ^ 0x9e3779b9, 0x85ebca6b) >>> 0;
+		return {
+			species: species.id,
+			type,
+			innerDuration,
+			outerDuration,
+			innerDelay: -(100 + hash % (innerDuration - 100)),
+			outerDelay: -(100 + outerHash % (outerDuration - 100)),
+			animated: !Dex.prefs('noanim'),
+		};
+	}
 
 	/**
 	 * April Fools' Day setting:
@@ -669,6 +723,26 @@ export const Dex = new class implements ModdedDex {
 		const species = Dex.species.get(pokemon);
 		// Gmax sprites are already extremely large, so we don't need to double.
 		if (species.name.endsWith('-Gmax')) isDynamax = false;
+		const gen3MegasCapAura = mechanicsGen === 3 ? this.getGen3MegasCapAuraData(species) : undefined;
+		if (gen3MegasCapAura) {
+			const baseSpecies = Dex.species.get(species.baseSpecies);
+			const shinyDir = options.shiny ? '-shiny' : '';
+			const spriteDir = `gen3${isFront ? '' : '-back'}${shinyDir}`;
+			const baseScale = options.noScale ? 1 : (isFront ? 2 : 2 / 1.5);
+			const megaScale = 1.16;
+			return {
+				gen: 3,
+				w: 96 * baseScale * megaScale,
+				h: 96 * baseScale * megaScale,
+				y: options.noScale ? 0 : (isFront ? -16 : -11) * megaScale,
+				url: `${Dex.resourcePrefix}sprites/${spriteDir}/${baseSpecies.spriteid}.png`,
+				pixelated: true,
+				isFrontSprite: isFront,
+				cryurl: `audio/cries/${baseSpecies.id}.mp3`,
+				shiny: options.shiny,
+				gen3MegasCapAura,
+			};
+		}
 		let spriteData = {
 			gen: mechanicsGen,
 			w: 96,
@@ -922,6 +996,18 @@ export const Dex = new class implements ModdedDex {
 			}
 		}
 		if (species.exists === false) return { spriteDir: 'sprites/gen5', spriteid: '0', x: 10, y: 5, pixelated: true };
+		// The builder stays static: show the borrowed base Gen 3 PNG without the battle-only aura.
+		if (dex.modid === 'gen3megascap' && this.gen3MegasCapAuraTypes[species.id]) {
+			const baseSpecies = Dex.species.get(species.baseSpecies);
+			return {
+				spriteid: baseSpecies.spriteid,
+				spriteDir: 'sprites/gen3',
+				shiny: !!pokemon.shiny,
+				x: 10,
+				y: 5,
+				pixelated: true,
+			};
+		}
 		if (Dex.afdMode) {
 			return {
 				spriteid,
