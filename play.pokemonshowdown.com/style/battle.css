@@ -735,6 +735,166 @@ License: GPLv2
 	image-rendering: pixelated;
 	-ms-interpolation-mode: nearest-neighbor;
 }
+
+/* Archie's [Gen 3] Megas CAP: base pixel art with an Albers-inspired, type-color aura. */
+.gen3megascap-aura {
+	--g3mc-inner-color: #8f5bd7;
+	--g3mc-inner-alpha: rgba(143, 91, 215, 0.64);
+	--g3mc-outer-color: #8c7baa;
+	--g3mc-outer-alpha: rgba(140, 123, 170, 0.40);
+	isolation: isolate;
+	overflow: visible;
+	pointer-events: none;
+	filter: drop-shadow(0 0 5px var(--g3mc-outer-alpha));
+}
+.gen3megascap-aura-art {
+	display: block;
+	position: absolute;
+	z-index: 2;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	filter:
+		drop-shadow(0 0 1px rgba(248, 244, 232, 0.94))
+		drop-shadow(0 1px 1px rgba(17, 21, 28, 0.68))
+		drop-shadow(0 0 3px var(--g3mc-inner-alpha));
+}
+.gen3megascap-aura:not(.gen3megascap-aura-static) {
+	animation: gen3megascap-fallback-outer var(--g3mc-outer-duration) ease-in-out var(--g3mc-outer-delay) infinite;
+}
+.gen3megascap-aura:not(.gen3megascap-aura-static) .gen3megascap-aura-art {
+	animation: gen3megascap-fallback-inner var(--g3mc-inner-duration) ease-in-out var(--g3mc-inner-delay) infinite;
+}
+.gen3megascap-aura-fighting {
+	--g3mc-inner-color: #e35248;
+	--g3mc-inner-alpha: rgba(227, 82, 72, 0.64);
+	--g3mc-outer-color: #b47a73;
+	--g3mc-outer-alpha: rgba(180, 122, 115, 0.40);
+}
+.gen3megascap-aura-normal {
+	--g3mc-inner-color: #e0b27a;
+	--g3mc-inner-alpha: rgba(224, 178, 122, 0.64);
+	--g3mc-outer-color: #b7aa9b;
+	--g3mc-outer-alpha: rgba(183, 170, 155, 0.40);
+}
+.gen3megascap-aura-dragon {
+	--g3mc-inner-color: #6b63e8;
+	--g3mc-inner-alpha: rgba(107, 99, 232, 0.64);
+	--g3mc-outer-color: #7776ad;
+	--g3mc-outer-alpha: rgba(119, 118, 173, 0.40);
+}
+.gen3megascap-aura-dark {
+	--g3mc-inner-color: #76578a;
+	--g3mc-inner-alpha: rgba(118, 87, 138, 0.64);
+	--g3mc-outer-color: #68606e;
+	--g3mc-outer-alpha: rgba(104, 96, 110, 0.40);
+}
+.gen3megascap-aura-psychic {
+	--g3mc-inner-color: #ec4f9b;
+	--g3mc-inner-alpha: rgba(236, 79, 155, 0.64);
+	--g3mc-outer-color: #b87c9e;
+	--g3mc-outer-alpha: rgba(184, 124, 158, 0.40);
+}
+.gen3megascap-aura-ice {
+	--g3mc-inner-color: #63e3ed;
+	--g3mc-inner-alpha: rgba(99, 227, 237, 0.64);
+	--g3mc-outer-color: #83bac0;
+	--g3mc-outer-alpha: rgba(131, 186, 192, 0.40);
+}
+.gen3megascap-aura-water {
+	--g3mc-inner-color: #3f9fea;
+	--g3mc-inner-alpha: rgba(63, 159, 234, 0.64);
+	--g3mc-outer-color: #668ead;
+	--g3mc-outer-alpha: rgba(102, 142, 173, 0.40);
+}
+
+@keyframes gen3megascap-fallback-inner {
+	0%, 100% {
+		filter:
+			drop-shadow(0 0 1px rgba(248, 244, 232, 0.94))
+			drop-shadow(0 1px 1px rgba(17, 21, 28, 0.68))
+			drop-shadow(0 0 3px var(--g3mc-inner-alpha));
+	}
+	50% {
+		filter:
+			drop-shadow(0 0 1px rgba(248, 244, 232, 0.94))
+			drop-shadow(0 1px 1px rgba(17, 21, 28, 0.68))
+			drop-shadow(0 0 6px var(--g3mc-inner-alpha));
+	}
+}
+@keyframes gen3megascap-fallback-outer {
+	0%, 100% { filter: drop-shadow(0 0 5px var(--g3mc-outer-alpha)); }
+	50% { filter: drop-shadow(0 0 9px var(--g3mc-outer-alpha)); }
+}
+
+@supports ((-webkit-mask-image: url("")) or (mask-image: url(""))) {
+	.gen3megascap-aura,
+	.gen3megascap-aura:not(.gen3megascap-aura-static),
+	.gen3megascap-aura-art,
+	.gen3megascap-aura:not(.gen3megascap-aura-static) .gen3megascap-aura-art {
+		animation: none;
+	}
+	.gen3megascap-aura { filter: none; }
+	.gen3megascap-aura-art {
+		filter:
+			drop-shadow(0 0 1px rgba(248, 244, 232, 0.94))
+			drop-shadow(0 1px 1px rgba(17, 21, 28, 0.68));
+	}
+	.gen3megascap-aura::before,
+	.gen3megascap-aura::after {
+		content: "";
+		display: block;
+		position: absolute;
+		inset: 0;
+		background: var(--g3mc-inner-color);
+		pointer-events: none;
+		transform-origin: 50% 50%;
+		-webkit-mask-image: var(--g3mc-mask);
+		mask-image: var(--g3mc-mask);
+		-webkit-mask-position: center;
+		mask-position: center;
+		-webkit-mask-repeat: no-repeat;
+		mask-repeat: no-repeat;
+		-webkit-mask-size: 100% 100%;
+		mask-size: 100% 100%;
+	}
+	.gen3megascap-aura::before {
+		z-index: 1;
+		opacity: 0.60;
+		transform: scale(1.07);
+	}
+	.gen3megascap-aura::after {
+		z-index: 0;
+		background: var(--g3mc-outer-color);
+		filter: blur(3px);
+		opacity: 0.30;
+		transform: scale(1.16);
+	}
+	.gen3megascap-aura:not(.gen3megascap-aura-static)::before {
+		animation: gen3megascap-inner var(--g3mc-inner-duration) ease-in-out var(--g3mc-inner-delay) infinite;
+	}
+	.gen3megascap-aura:not(.gen3megascap-aura-static)::after {
+		animation: gen3megascap-outer var(--g3mc-outer-duration) ease-in-out var(--g3mc-outer-delay) infinite;
+	}
+}
+
+@keyframes gen3megascap-inner {
+	0%, 100% { opacity: 0.52; transform: scale(1.05); }
+	50% { opacity: 0.72; transform: scale(1.09); }
+}
+@keyframes gen3megascap-outer {
+	0%, 100% { opacity: 0.24; transform: scale(1.13); }
+	50% { opacity: 0.38; transform: scale(1.20); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.gen3megascap-aura,
+	.gen3megascap-aura .gen3megascap-aura-art,
+	.gen3megascap-aura::before,
+	.gen3megascap-aura::after {
+		animation: none !important;
+	}
+}
 @media (-webkit-min-device-pixel-ratio: 1.05), (min-resolution: 1.05dppx) {
 	.pixelated, .itemicon, .picon, .trainersprite {
 		image-rendering: auto;
