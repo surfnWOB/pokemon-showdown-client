@@ -202,7 +202,10 @@ export interface SpriteData {
 	gen3MegasCapAura?: Gen3MegasCapAuraData;
 }
 
-export type Gen3MegasCapAuraType = 'dark' | 'dragon' | 'fighting' | 'ghost' | 'ice' | 'normal' | 'psychic' | 'water';
+export type Gen3MegasCapAuraType = (
+	'dark' | 'dragon' | 'electric' | 'fighting' | 'ghost' | 'ground' | 'ice' | 'normal' | 'poison' |
+	'psychic' | 'steel' | 'water'
+);
 
 export interface Gen3MegasCapAuraData {
 	species: ID;
@@ -281,7 +284,7 @@ export const Dex = new class implements ModdedDex {
 	};
 
 	/**
-	 * Archie's first ten [Gen 3] Megas CAP designs deliberately borrow their base forme's
+	 * These [Gen 3] Megas CAP designs deliberately borrow their base forme's
 	 * Gen 3 pixel art. An aura distinguishes the Mega without inventing art that does not exist.
 	 * Keep this exact allowlist: older custom Megas have their own sprite designs.
 	 */
@@ -296,6 +299,18 @@ export const Dex = new class implements ModdedDex {
 		beautiflymega: 'psychic',
 		walreinmega: 'ice',
 		luvdiscmega: 'water',
+		venomothmega: 'poison',
+		quagsiremega: 'ground',
+		corsolamega: 'steel',
+		masquerainmega: 'water',
+		shedinjamega: 'ghost',
+		volbeatmega: 'electric',
+		illumisemega: 'electric',
+		grumpigmega: 'psychic',
+		flygonmega: 'dragon',
+		solrockmega: 'psychic',
+		kecleonmegax: 'normal',
+		kecleonmegay: 'normal',
 	};
 
 	getGen3MegasCapAuraData(species: Species): Gen3MegasCapAuraData | undefined {
@@ -720,12 +735,14 @@ export const Dex = new class implements ModdedDex {
 			}
 			pokemon = pokemon.getSpeciesForme() + (isGigantamax ? '-Gmax' : '');
 		}
-		const species = Dex.species.get(pokemon);
+		const spriteDex = options.mod ? Dex.mod(toID(options.mod)) : Dex;
+		const species = spriteDex.species.get(typeof pokemon === 'string' ? pokemon : pokemon.id);
 		// Gmax sprites are already extremely large, so we don't need to double.
 		if (species.name.endsWith('-Gmax')) isDynamax = false;
-		const gen3MegasCapAura = mechanicsGen === 3 ? this.getGen3MegasCapAuraData(species) : undefined;
+		const gen3MegasCapAura = mechanicsGen === 3 && spriteDex.modid === 'gen3megascap' ?
+			this.getGen3MegasCapAuraData(species) : undefined;
 		if (gen3MegasCapAura) {
-			const baseSpecies = Dex.species.get(species.baseSpecies);
+			const baseSpecies = spriteDex.species.get(species.baseSpecies);
 			const shinyDir = options.shiny ? '-shiny' : '';
 			const spriteDir = `gen3${isFront ? '' : '-back'}${shinyDir}`;
 			const baseScale = options.noScale ? 1 : (isFront ? 2 : 2 / 1.5);
@@ -985,7 +1002,7 @@ export const Dex = new class implements ModdedDex {
 	getTeambuilderSpriteData(pokemon: any, dex: ModdedDex = Dex): TeambuilderSpriteData {
 		let gen = dex.gen;
 		let id = toID(pokemon.species || pokemon);
-		let species = Dex.species.get(id);
+		let species = dex.species.get(id);
 		let spriteid: string;
 		if (typeof pokemon === 'string') {
 			spriteid = species.spriteid || id;
@@ -998,7 +1015,7 @@ export const Dex = new class implements ModdedDex {
 		if (species.exists === false) return { spriteDir: 'sprites/gen5', spriteid: '0', x: 10, y: 5, pixelated: true };
 		// The builder stays static: show the borrowed base Gen 3 PNG without the battle-only aura.
 		if (dex.modid === 'gen3megascap' && this.gen3MegasCapAuraTypes[species.id]) {
-			const baseSpecies = Dex.species.get(species.baseSpecies);
+			const baseSpecies = dex.species.get(species.baseSpecies);
 			return {
 				spriteid: baseSpecies.spriteid,
 				spriteDir: 'sprites/gen3',
