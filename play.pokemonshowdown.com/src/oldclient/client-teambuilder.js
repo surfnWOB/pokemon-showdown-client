@@ -906,7 +906,7 @@
 			if (this.curTeam.teamid) buf.push(this.curTeam.teamid);
 			buf.push(this.curTeam.name);
 			buf.push(this.curTeam.format);
-			buf.push(this.$('input[name=teamprivacy]').get(0).checked ? 1 : 0);
+			buf.push(1);
 			var team = Storage.exportTeam(this.curSetList);
 			if (!team) return app.addPopupMessage("Add a Pokémon to your team before uploading it!");
 			buf.push(team);
@@ -1271,8 +1271,6 @@
 				buf += '<input type="hidden" name="author" id="pasteAuthor">';
 				buf += '<input type="hidden" name="notes" id="pasteNotes">';
 				buf += '<p><button name="psExport" type="submit" class="button exportbutton"> <i class="fa fa-upload"></i> Upload to Showdown database (saves across devices)</button>';
-				var privacy = (Storage.prefs('uploadprivacy') || typeof Storage.prefs('uploadprivacy') !== 'boolean') ? 'checked' : '';
-				buf += ' <label><small>(Private:</small> <input type="checkbox" name="teamprivacy" ' + privacy + ' /><small>)</small></label>';
 				buf += '</p>';
 				buf += '<p><button name="pokepasteExport" type="submit" class="button exportbutton"><i class="fa fa-upload"></i> Upload to PokePaste</button></p>';
 				if (this.curTeam.format.includes('vgc')) {
