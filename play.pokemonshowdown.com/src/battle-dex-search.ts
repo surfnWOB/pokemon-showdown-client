@@ -1274,10 +1274,9 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			// ['Uber', 'OU', 'UUBL'] ('OU' also covers the "(OU)" technicality Megas).
 			tierSet = tierSet.slice(slices.UU);
 		} else if (this.formatType === 'gen3megascap' && format === 'megascap') {
-			// Keep the entire custom roster visible. The usual CAP/OU slicing would
-			// discard its AG and Uber Mega/Primal formes before their ban status can
-			// be rendered to the player.
-			tierSet = tierSet.slice();
+			// [Gen 3] Megas CAP is OU-based. Uber and AG species stay name-searchable
+			// as illegal choices, but should not precede the legal roster when browsing.
+			tierSet = tierSet.slice(slices.OU);
 		} else if (this.formatType === 'gen3mega' && format === 'megas') {
 			// [Gen 3] Megas (OU): browse OU → (OU) → straight to UU and below. AG
 			// (M-Salamence) and Uber sit above OU and are banned, so slice them off the

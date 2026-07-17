@@ -89,7 +89,7 @@ export class PSSearchResults extends preact.Component<{
 			`class="${id === this.speciesId ? 'cur' : ''}" data-target="push" ` +
 			`data-entry="pokemon|${escapeHTML(pokemon.name)}">` +
 			`<span class="col numcol">${escapeHTML(search.getTier(pokemon))}</span>` +
-			`<span class="col iconcol"><span class="pixelated" style="${escapeHTML(Dex.getPokemonIcon(pokemon.id))}"></span></span>` +
+			`<span class="col iconcol"><span class="pixelated" style="${escapeHTML(Dex.getPokemonIcon(pokemon))}"></span></span>` +
 			`<span class="col pokemonnamecol">${this.renderNameHTML(pokemon.name, matchStart, matchEnd, tagStart)}</span>`;
 		if (errorMessage) return `${buf}${errorMessage}</a></li>`;
 

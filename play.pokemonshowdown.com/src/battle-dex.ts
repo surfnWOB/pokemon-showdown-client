@@ -968,7 +968,7 @@ export const Dex = new class implements ModdedDex {
 		return num;
 	}
 
-	getPokemonIcon(pokemon: string | Pokemon | ServerPokemon | Dex.PokemonSet | null, facingLeft?: boolean) {
+	getPokemonIcon(pokemon: string | Pokemon | ServerPokemon | Dex.PokemonSet | Dex.Species | null, facingLeft?: boolean) {
 		if (pokemon === 'pokeball') {
 			return `background:transparent url(${Dex.resourcePrefix}sprites/pokemonicons-pokeball-sheet.png) no-repeat scroll -0px 4px`;
 		} else if (pokemon === 'pokeball-statused') {
@@ -981,6 +981,13 @@ export const Dex = new class implements ModdedDex {
 
 		let id = toID(pokemon);
 		if (!pokemon || typeof pokemon === 'string') pokemon = null;
+		if (
+			pokemon instanceof Species && id !== toID(pokemon.baseSpecies) &&
+			!window.BattlePokemonSprites?.[id]?.num && !window.BattlePokedex?.[id]?.num &&
+			!window.BattlePokemonIconIndexes?.[id]
+		) {
+			id = toID(pokemon.baseSpecies);
+		}
 		// @ts-expect-error safe, but too lazy to cast
 		if (pokemon?.speciesForme) id = toID(pokemon.speciesForme);
 		// @ts-expect-error safe, but too lazy to cast
