@@ -1409,13 +1409,26 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 
 	// Client relevant data that should be overridden by past gens and mods
 	const overrideSpeciesKeys = [
-		'abilities', 'baseStats', 'cosmeticFormes', 'gen', 'isNonstandard', 'requiredItems', 'types', 'unreleasedHidden',
+		'abilities', 'baseStats', 'cosmeticFormes', 'gen', 'isNonstandard', 'otherFormes', 'requiredItems', 'types',
+		'unreleasedHidden',
+	];
+	const modOnlySpeciesKeys = [
+		'exists', 'name', 'num', 'baseSpecies', 'forme', 'baseForme',
+		'types', 'abilities', 'baseStats', 'heightm', 'weightkg', 'gender', 'color', 'genderRatio', 'eggGroups', 'tags',
+		'otherFormes', 'cosmeticFormes', 'evos', 'prevo', 'evoType', 'evoLevel', 'evoMove', 'evoItem', 'evoCondition',
+		'requiredItems', 'canGigantamax', 'cannotDynamax', 'requiredTeraType', 'battleOnly', 'changesFrom',
+		'gen', 'isNonstandard', 'unreleasedHidden',
 	];
 	const overrideMoveKeys = [
 		'accuracy', 'basePower', 'category', 'desc', 'flags', 'isNonstandard', 'pp', 'priority', 'shortDesc', 'target', 'type',
 	];
 	const overrideAbilityKeys = ['desc', 'flags', 'gen', 'isNonstandard', 'rating', 'shortDesc'];
 	const overrideItemKeys = ['desc', 'fling', 'gen', 'isNonstandard', 'naturalGift', 'shortDesc'];
+	const modOnlyItemKeys = [
+		'exists', 'name', 'num', 'spritenum', 'desc', 'shortDesc', 'megaStone',
+		'zMove', 'zMoveType', 'zMoveFrom', 'zMoveUser', 'onPlate', 'onMemory', 'onDrive',
+		'fling', 'naturalGift', 'isPokeball', 'itemUser', 'gen', 'isNonstandard',
+	];
 
 	//
 	// Past gen table
@@ -1517,8 +1530,15 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		for (const id in modData.Pokedex) {
 			const modEntry = modDex.species.get(id);
 			const parentEntry = parentDex.species.get(id);
-			for (const key of overrideSpeciesKeys) {
-				if (JSON.stringify(modEntry[key]) !== JSON.stringify(parentEntry[key])) {
+			// A species defined only inside a mod has no usable global-data object for
+			// the client to clone. Emit its complete client-facing structure so
+			// ModdedDex can reconstruct its identity (including Mega forme metadata),
+			// rather than applying a handful of deltas to a nonexistent species.
+			const isModOnly = !parentEntry.exists && modEntry.exists;
+			const keys = isModOnly ? modOnlySpeciesKeys : overrideSpeciesKeys;
+			for (const key of keys) {
+				if ((isModOnly && modEntry[key] !== undefined) ||
+					JSON.stringify(modEntry[key]) !== JSON.stringify(parentEntry[key])) {
 					if (!overrideSpeciesData[id]) overrideSpeciesData[id] = {};
 					overrideSpeciesData[id][key] = modEntry[key];
 				}
@@ -1557,8 +1577,13 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		for (const id in modData.Items) {
 			const modEntry = modDex.items.get(id);
 			const parentEntry = parentDex.items.get(id);
-			for (const key of overrideItemKeys) {
-				if (JSON.stringify(modEntry[key]) !== JSON.stringify(parentEntry[key])) {
+			// Mod-only items likewise need their identity and item-to-forme mapping;
+			// those fields cannot be inherited from the empty global item placeholder.
+			const isModOnly = !parentEntry.exists && modEntry.exists;
+			const keys = isModOnly ? modOnlyItemKeys : overrideItemKeys;
+			for (const key of keys) {
+				if ((isModOnly && modEntry[key] !== undefined) ||
+					JSON.stringify(modEntry[key]) !== JSON.stringify(parentEntry[key])) {
 					if (!overrideItemData[id]) overrideItemData[id] = {};
 					overrideItemData[id][key] = modEntry[key];
 				}

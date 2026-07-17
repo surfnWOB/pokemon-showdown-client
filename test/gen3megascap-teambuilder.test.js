@@ -17,58 +17,66 @@ require('../play.pokemonshowdown.com/js/battle-dex-search.js');
 describe('[Gen 3] Megas CAP teambuilder data', () => {
 	it('should expose the whole CAP Mega roster and its custom Mega Stones', () => {
 		const search = new BattlePokemonSearch('pokemon', 'gen3megascap');
+		const builderDex = Dex.mod('gen3megascap');
 		const ids = search.getBaseResults()
 			.filter(row => row[0] === 'pokemon')
 			.map(row => row[1]);
 
-		// The format is OU-based, but the builder must still surface its banned
-		// Mega/Primal forms so players can see the complete roster and their status.
-		const newMegas = [
-			'parasectmega', 'hitmonchanmega', 'dittomega', 'noctowlmega', 'mantinemega',
-			'mightyenamegax', 'mightyenamegay', 'beautiflymega', 'walreinmega', 'luvdiscmega',
-		];
-		for (const id of [...newMegas, 'magcargomega', 'gengarmega', 'blazikenmega', 'groudonprimal']) {
+		const roster = {
+			parasectmega: ['Parasect', 'parasectite'],
+			venomothmega: ['Venomoth', 'venomite'],
+			quagsiremega: ['Quagsire', 'quagsite'],
+			magcargomega: ['Magcargo', 'magcargoite'],
+			corsolamega: ['Corsola', 'corsolite'],
+			beautiflymega: ['Beautifly', 'beautiflite'],
+			masquerainmega: ['Masquerain', 'masquerite'],
+			shedinjamega: ['Shedinja', 'shedinjite'],
+			volbeatmega: ['Volbeat', 'volbeatite'],
+			illumisemega: ['Illumise', 'illumite'],
+			grumpigmega: ['Grumpig', 'grumpigite'],
+			flygonmega: ['Flygon', 'flygonite'],
+			solrockmega: ['Solrock', 'solerock'],
+			kecleonmegax: ['Kecleon', 'kecleitex'],
+			kecleonmegay: ['Kecleon', 'kecleitey'],
+			luvdiscmega: ['Luvdisc', 'luvdite'],
+		};
+		for (const [id, [baseName, stoneId]] of Object.entries(roster)) {
+			const species = builderDex.species.get(id);
+			const base = builderDex.species.get(baseName);
+			const stone = builderDex.items.get(stoneId);
 			assert(ids.includes(id), `${id} should be visible in the CAP builder`);
+			assert.equal(species.exists, true, `${id} should exist`);
+			assert.equal(species.baseSpecies, baseName);
+			assert.equal(species.gen, 3);
+			assert.equal(species.isNonstandard, null);
+			assert.equal(species.tier, 'OU', `${id} should be OU, not illegal`);
+			assert.equal(species.isMega, true, `${id} should retain its Mega identity`);
+			assert(base.otherFormes?.includes(species.name), `${baseName} should link to ${species.name}`);
+			assert.deepEqual(species.requiredItems, [stone.name]);
+			assert.equal(stone.exists, true, `${stoneId} should exist`);
+			assert.equal(stone.gen, 3);
+			assert.equal(BattleTeambuilderTable.gen3megascap.overrideItemData[stoneId].isNonstandard, null);
+			assert.equal(stone.megaStone[baseName], species.name);
+			assert(BattleTeambuilderTable.gen3megascap.items.includes(stoneId),
+				`${stoneId} should be in the CAP item table`);
 		}
-
-		const magcargo = search.dex.species.get('magcargomega');
-		assert.equal(magcargo.exists, true);
-		assert.equal(magcargo.name, 'Magcargo-Mega');
-		assert.equal(magcargo.baseSpecies, 'Magcargo');
-		assert.equal(magcargo.forme, 'Mega');
-		assert.deepEqual(magcargo.requiredItems, ['Magcargoite']);
-		assert.deepEqual(search.dex.species.get('beautiflymega').baseStats,
-			{hp: 90, atk: 35, def: 90, spa: 80, spd: 90, spe: 100});
-
-		const stone = search.dex.items.get('magcargoite');
-		assert.equal(stone.exists, true);
-		assert.equal(stone.name, 'Magcargoite');
-		assert.deepEqual(stone.megaStone, {Magcargo: 'Magcargo-Mega'});
-		assert(BattleTeambuilderTable.gen3megascap.items.includes('magcargoite'));
-		const newStones = [
-			'parasectite', 'hitmonchanite', 'dittite', 'noctite', 'mantite',
-			'mightyenitex', 'mightyenitey', 'beautiflite', 'walrite', 'luvdite',
-		];
-		for (const id of newStones) {
-			assert(BattleTeambuilderTable.gen3megascap.items.includes(id),
-				`${id} should be in the CAP item table`);
-		}
+		assert(builderDex.species.get('corsola').otherFormes.includes('Corsola-Galar'));
+		assert.deepEqual(builderDex.species.get('beautiflymega').baseStats,
+			{hp: 90, atk: 10, def: 90, spa: 110, spd: 90, spe: 110});
+		const flygon = builderDex.species.get('flygonmega');
+		assert.equal(flygon.name, 'Flygon-Mega');
+		assert.equal(flygon.forme, 'Mega');
+		assert.equal(flygon.isMega, true);
+		assert.deepEqual(flygon.requiredItems, ['Flygonite']);
+		assert.deepEqual(builderDex.items.get('flygonite').megaStone, {Flygon: 'Flygon-Mega'});
 
 		const itemIds = new BattleItemSearch('item', 'gen3megascap').getBaseResults()
 			.filter(row => row[0] === 'item')
 			.map(row => row[1]);
-		for (const id of [...newStones, 'magcargoite', 'gengarite', 'blazikenite']) {
-			assert(itemIds.includes(id), `${id} should be visible in the CAP item picker`);
+		for (const [, stoneId] of Object.values(roster)) {
+			assert(itemIds.includes(stoneId), `${stoneId} should be visible in the CAP item picker`);
 		}
 
-		assert(BattleSearchIndex.some(([id, type]) => id === 'magcargomega' && type === 'pokemon'));
-		assert(BattleSearchIndex.some(([id, type]) => id === 'magcargoite' && type === 'item'));
-		for (const id of newMegas) {
-			assert(BattleSearchIndex.some(([indexId, type]) => indexId === id && type === 'pokemon'));
-		}
-		for (const id of newStones) {
-			assert(BattleSearchIndex.some(([indexId, type]) => indexId === id && type === 'item'));
-		}
 	});
 });
 
