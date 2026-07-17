@@ -29,6 +29,13 @@ process.stdout.write("Loading gen 6 data... ");
 Dex.includeData();
 console.log("DONE");
 
+// Mods whose data is reconstructed by BattleTeambuilderTable and can therefore safely
+// contribute otherwise-global search rows. DexSearch filters these rows through its active dex.
+const SUPPORTED_TEAMBUILDER_MODS = [
+	'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen3megascap', 'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
+	'gen1rbyplus', 'gen3advplus', 'gen3tradebacks', 'gen3puretradebacks', 'gen3hoennification', 'gen3frlgindigo', 'gen3shadowcolosseum',
+];
+
 function es3stringify(obj) {
 	const buf = JSON.stringify(obj);
 	return buf.replace(/"([A-Za-z][A-Za-z0-9]*)":/g, (fullMatch, key) => (
@@ -85,15 +92,40 @@ function requireNoCache(pathSpec) {
 	index.push('pokemon article');
 	index.push('moves article');
 
+	const directSearchEntries = new Set(index);
+	const modOnlySearchEntities = [];
+	const searchEntrySources = new Map();
+	for (const mod of SUPPORTED_TEAMBUILDER_MODS) {
+		const modDex = Dex.mod(mod);
+		for (const [type, table, getter] of [
+			['pokemon', modDex.data.Pokedex, id => modDex.species.get(id)],
+			['item', modDex.data.Items, id => modDex.items.get(id)],
+		]) {
+			for (const id in table) {
+				const globalEntry = type === 'pokemon' ? Dex.species.get(id) : Dex.items.get(id);
+				const modEntry = getter(id);
+				const directEntry = `${id} ${type}`;
+				if (globalEntry.exists || !modEntry.exists || directSearchEntries.has(directEntry)) continue;
+				if (type === 'pokemon' && modEntry.isCosmeticForme) continue;
+				directSearchEntries.add(directEntry);
+				index.push(directEntry);
+				modOnlySearchEntities.push([id, modEntry.name, type, modDex]);
+				searchEntrySources.set(`${type}:${id}`, modDex);
+			}
+		}
+	}
+
 	const compoundTable = new Map(CompoundWordNames.map(word => [toID(word), word]));
 	// generate aliases
-	function generateAlias(id, name, type) {
+	function generateAlias(id, name, type, dex = Dex) {
 		name = compoundTable.get(id) || name;
 		if (type === 'pokemon' && !compoundTable.has(id)) {
-			const species = Dex.species.get(id);
+			const species = dex.species.get(id);
 			const baseid = toID(species.baseSpecies);
 			if (baseid !== id) {
-				name = (compoundTable.get(baseid) || species.baseSpecies) + ' ' + species.forme;
+				const forme = dex !== Dex && species.name.startsWith(`${species.baseSpecies}-`) ?
+					species.name.slice(species.baseSpecies.length + 1) : species.forme;
+				name = (compoundTable.get(baseid) || species.baseSpecies) + ' ' + forme;
 			}
 		}
 		if (name.endsWith(' Mega-X') || name.endsWith(' Mega-Y')) {
@@ -142,6 +174,9 @@ function requireNoCache(pathSpec) {
 	for (const id in Dex.data.Abilities) {
 		const name = Dex.data.Abilities[id].name;
 		generateAlias(id, name, 'ability');
+	}
+	for (const [id, name, type, sourceDex] of modOnlySearchEntities) {
+		generateAlias(id, name, type, sourceDex);
 	}
 
 	// hardcode ultra beasts
@@ -197,11 +232,14 @@ function requireNoCache(pathSpec) {
 
 	const BattleSearchIndexOffset = BattleSearchIndex.map(entry => {
 		const id = entry[0];
+		const canonicalEntry = entry[2] === undefined ? entry : BattleSearchIndex[entry[2]];
+		const canonicalId = canonicalEntry[0];
+		const sourceDex = searchEntrySources.get(`${canonicalEntry[1]}:${canonicalId}`) || Dex;
 		let name = '';
 		switch (entry[1]) {
-		case 'pokemon': name = Dex.species.get(id).name; break;
+		case 'pokemon': name = sourceDex.species.get(canonicalId).name; break;
 		case 'move': name = Dex.moves.get(id).name; break;
-		case 'item': name = Dex.items.get(id).name; break;
+		case 'item': name = sourceDex.items.get(canonicalId).name; break;
 		case 'ability': name = Dex.abilities.get(id).name; break;
 		case 'article': name = BattleArticleTitles[id] || ''; break;
 		}
@@ -1517,10 +1555,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 	// Mods
 	//
 
-	for (const mod of [
-		'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen3megascap', 'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
-		'gen1rbyplus', 'gen3advplus', 'gen3tradebacks', 'gen3puretradebacks', 'gen3hoennification', 'gen3frlgindigo', 'gen3shadowcolosseum',
-	]) {
+	for (const mod of SUPPORTED_TEAMBUILDER_MODS) {
 		const modDex = Dex.mod(mod);
 		const modData = modDex.data;
 		const parentDex = Dex.forGen(modDex.gen);
