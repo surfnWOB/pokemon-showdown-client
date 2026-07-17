@@ -126,6 +126,7 @@ describe('[Gen 3] Megas CAP teambuilder data', () => {
 		assert(builderDex.species.get('corsola').otherFormes.includes('Corsola-Galar'));
 		assert.deepEqual(builderDex.species.get('beautiflymega').baseStats,
 			{hp: 90, atk: 10, def: 90, spa: 110, spd: 90, spe: 110});
+		assert.deepEqual(builderDex.species.get('beautiflymega').types, ['Grass', 'Flying']);
 		const flygon = builderDex.species.get('flygonmega');
 		assert.equal(flygon.name, 'Flygon-Mega');
 		assert.equal(flygon.forme, 'Mega');
@@ -183,7 +184,7 @@ describe('[Gen 3] Megas CAP procedural battle sprites', () => {
 		mantinemega: ['mantine', 'dragon'],
 		mightyenamegax: ['mightyena', 'dark'],
 		mightyenamegay: ['mightyena', 'dark'],
-		beautiflymega: ['beautifly', 'psychic'],
+		beautiflymega: ['beautifly', 'grass'],
 		walreinmega: ['walrein', 'ice'],
 		luvdiscmega: ['luvdisc', 'water'],
 		...Object.fromEntries(Object.entries(latestCapMegas).map(([mega, [base, , , auraType]]) => (
@@ -193,6 +194,7 @@ describe('[Gen 3] Megas CAP procedural battle sprites', () => {
 
 	it('should route the full eligible CAP Mega roster to enlarged base Gen 3 art', () => {
 		assert.deepEqual(Object.keys(Dex.gen3MegasCapAuraTypes).sort(), Object.keys(auraRoster).sort());
+		assert.equal(Dex.gen3MegasCapAuraTypes.beautiflymega, 'grass');
 		const builderDex = Dex.mod('gen3megascap');
 
 		for (const [mega, [base, auraType]] of Object.entries(auraRoster)) {
@@ -263,8 +265,12 @@ describe('[Gen 3] Megas CAP procedural battle sprites', () => {
 
 	it('should define palettes for every aura type newly introduced by this roster', () => {
 		const css = fs.readFileSync('play.pokemonshowdown.com/style/battle.css', 'utf8');
-		for (const type of ['electric', 'ground', 'poison', 'steel']) {
+		for (const type of ['electric', 'grass', 'ground', 'poison', 'steel']) {
 			assert.match(css, new RegExp(`\\.gen3megascap-aura-${type}\\s*\\{`));
+		}
+		const grassPalette = css.match(/\.gen3megascap-aura-grass\s*\{([^}]*)\}/)?.[1] || '';
+		for (const variable of ['inner-color', 'inner-alpha', 'outer-color', 'outer-alpha']) {
+			assert.match(grassPalette, new RegExp(`--g3mc-${variable}:`));
 		}
 	});
 });

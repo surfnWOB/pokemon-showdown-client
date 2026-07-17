@@ -807,6 +807,12 @@ License: GPLv2
 	--g3mc-outer-color: #668ead;
 	--g3mc-outer-alpha: rgba(102, 142, 173, 0.40);
 }
+.gen3megascap-aura-grass {
+	--g3mc-inner-color: #72c653;
+	--g3mc-inner-alpha: rgba(114, 198, 83, 0.64);
+	--g3mc-outer-color: #829f72;
+	--g3mc-outer-alpha: rgba(130, 159, 114, 0.40);
+}
 .gen3megascap-aura-poison {
 	--g3mc-inner-color: #a65bd4;
 	--g3mc-inner-alpha: rgba(166, 91, 212, 0.64);
