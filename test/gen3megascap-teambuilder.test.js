@@ -32,6 +32,52 @@ const latestCapMegas = {
 };
 
 describe('[Gen 3] Megas CAP teambuilder data', () => {
+	it('should use base-species compact icons for mod-only Megas', () => {
+		const builderDex = Dex.mod('gen3megascap');
+		const unknownIcon = Dex.getPokemonIcon('missingno');
+
+		for (const [mega, [base]] of Object.entries(latestCapMegas)) {
+			const megaIcon = Dex.getPokemonIcon(builderDex.species.get(mega));
+			assert.equal(megaIcon, Dex.getPokemonIcon(builderDex.species.get(base)),
+				`${mega} should borrow ${base}'s compact icon`);
+			assert.notEqual(megaIcon, unknownIcon, `${mega} should not use the unknown compact icon`);
+		}
+
+		// A globally indexed forme must keep its own icon instead of falling back.
+		global.BattlePokemonIconIndexes = {charizardmegax: 1};
+		try {
+			const megaCharizard = builderDex.species.get('charizardmegax');
+			const dedicatedIcon = Dex.getPokemonIcon(megaCharizard);
+			assert.equal(dedicatedIcon, Dex.getPokemonIcon('charizardmegax'));
+			assert.notEqual(dedicatedIcon, Dex.getPokemonIcon('charizard'));
+		} finally {
+			delete global.BattlePokemonIconIndexes;
+		}
+	});
+
+	it('should browse from OU while keeping Ubers text-searchable', () => {
+		const search = new DexSearch('pokemon', 'gen3megascap');
+		search.find('');
+		const defaultResults = search.results;
+		const headers = defaultResults.filter(row => row[0] === 'header').map(row => row[1]);
+		const pokemon = defaultResults.filter(row => row[0] === 'pokemon').map(row => row[1]);
+
+		assert.equal(headers[0], 'OU');
+		assert(!headers.includes('Uber'));
+		for (const mega of [
+			'parasectmega', ...Object.keys(latestCapMegas), 'magcargomega', 'beautiflymega', 'luvdiscmega',
+		]) {
+			assert(pokemon.includes(mega), `${mega} should remain in the default OU browse pool`);
+		}
+		for (const [id, tier] of [['mewtwo', 'Uber'], ['salamencemega', 'AG']]) {
+			assert(!pokemon.includes(id), `${id} should be absent from the default OU browse pool`);
+			search.find(id);
+			assert(search.results.some(row => row[0] === 'pokemon' && row[1] === id),
+				`${id} should remain text-searchable as an illegal ${tier}`);
+			assert.equal(search.illegalLabel(id), 'Illegal');
+		}
+	});
+
 	it('should expose the whole CAP Mega roster and its custom Mega Stones', () => {
 		const search = new BattlePokemonSearch('pokemon', 'gen3megascap');
 		const builderDex = Dex.mod('gen3megascap');
