@@ -807,6 +807,30 @@ License: GPLv2
 	--g3mc-outer-color: #668ead;
 	--g3mc-outer-alpha: rgba(102, 142, 173, 0.40);
 }
+.gen3megascap-aura-poison {
+	--g3mc-inner-color: #a65bd4;
+	--g3mc-inner-alpha: rgba(166, 91, 212, 0.64);
+	--g3mc-outer-color: #8f70a4;
+	--g3mc-outer-alpha: rgba(143, 112, 164, 0.40);
+}
+.gen3megascap-aura-ground {
+	--g3mc-inner-color: #d8a34a;
+	--g3mc-inner-alpha: rgba(216, 163, 74, 0.64);
+	--g3mc-outer-color: #aa8d67;
+	--g3mc-outer-alpha: rgba(170, 141, 103, 0.40);
+}
+.gen3megascap-aura-steel {
+	--g3mc-inner-color: #aab7c4;
+	--g3mc-inner-alpha: rgba(170, 183, 196, 0.64);
+	--g3mc-outer-color: #929ca5;
+	--g3mc-outer-alpha: rgba(146, 156, 165, 0.40);
+}
+.gen3megascap-aura-electric {
+	--g3mc-inner-color: #f2cf36;
+	--g3mc-inner-alpha: rgba(242, 207, 54, 0.64);
+	--g3mc-outer-color: #c1ae65;
+	--g3mc-outer-alpha: rgba(193, 174, 101, 0.40);
+}
 
 @keyframes gen3megascap-fallback-inner {
 	0%, 100% {

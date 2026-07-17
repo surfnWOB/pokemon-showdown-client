@@ -1,4 +1,5 @@
 const assert = require('assert').strict;
+const fs = require('node:fs');
 const {describe, it} = require('node:test');
 
 window = global;
@@ -7,12 +8,28 @@ global.Pokemon = class Pokemon {};
 global.PS = {prefs: {}};
 global.BattlePokedex = require('../play.pokemonshowdown.com/data/pokedex.js').BattlePokedex;
 global.BattleItems = require('../play.pokemonshowdown.com/data/items.js').BattleItems;
+global.BattleAliases = require('../play.pokemonshowdown.com/data/aliases.js').BattleAliases;
 global.BattleTeambuilderTable =
 	require('../play.pokemonshowdown.com/data/teambuilder-tables.js').BattleTeambuilderTable;
 Object.assign(global, require('../play.pokemonshowdown.com/data/search-index.js'));
 require('../play.pokemonshowdown.com/js/battle-dex-data.js');
 require('../play.pokemonshowdown.com/js/battle-dex.js');
 require('../play.pokemonshowdown.com/js/battle-dex-search.js');
+
+const latestCapMegas = {
+	venomothmega: ['venomoth', 'Venomoth', 'venomite', 'poison'],
+	quagsiremega: ['quagsire', 'Quagsire', 'quagsite', 'ground'],
+	corsolamega: ['corsola', 'Corsola', 'corsolite', 'steel'],
+	masquerainmega: ['masquerain', 'Masquerain', 'masquerite', 'water'],
+	shedinjamega: ['shedinja', 'Shedinja', 'shedinjite', 'ghost'],
+	volbeatmega: ['volbeat', 'Volbeat', 'volbeatite', 'electric'],
+	illumisemega: ['illumise', 'Illumise', 'illumite', 'electric'],
+	grumpigmega: ['grumpig', 'Grumpig', 'grumpigite', 'psychic'],
+	flygonmega: ['flygon', 'Flygon', 'flygonite', 'dragon'],
+	solrockmega: ['solrock', 'Solrock', 'solerock', 'psychic'],
+	kecleonmegax: ['kecleon', 'Kecleon', 'kecleitex', 'normal'],
+	kecleonmegay: ['kecleon', 'Kecleon', 'kecleitey', 'normal'],
+};
 
 describe('[Gen 3] Megas CAP teambuilder data', () => {
 	it('should expose the whole CAP Mega roster and its custom Mega Stones', () => {
@@ -78,6 +95,37 @@ describe('[Gen 3] Megas CAP teambuilder data', () => {
 		}
 
 	});
+
+	it('should index the mod-only Megas, their Mega aliases, and their stones only in the CAP mod', () => {
+		for (const [mega, [, baseName, stone]] of Object.entries(latestCapMegas)) {
+			const axisSuffix = mega.endsWith('megax') ? 'x' : mega.endsWith('megay') ? 'y' : '';
+			const megaAlias = `mega${baseName.toLowerCase()}${axisSuffix}`;
+			assert(BattleSearchIndex.some(row => row.length === 2 && row[0] === mega && row[1] === 'pokemon'),
+				`${mega} should have a direct search-index row`);
+			assert(BattleSearchIndex.some(row => row[0] === megaAlias &&
+				row[1] === 'pokemon' && BattleSearchIndex[row[2]]?.[0] === mega),
+			`${mega} should have a Mega-first alias`);
+			assert(BattleSearchIndex.some(row => row.length === 2 && row[0] === stone && row[1] === 'item'),
+				`${stone} should have a direct search-index row`);
+
+			const pokemonSearch = new DexSearch('pokemon', 'gen3megascap');
+			pokemonSearch.find(megaAlias);
+			assert(pokemonSearch.results.some(row => row[0] === 'pokemon' && row[1] === mega),
+				`${mega} should be searchable by its Mega-first name`);
+
+			const itemSearch = new DexSearch('item', 'gen3megascap');
+			itemSearch.find(stone);
+			assert(itemSearch.results.some(row => row[0] === 'item' && row[1] === stone),
+				`${stone} should be searchable by name`);
+		}
+
+		const standardPokemonSearch = new DexSearch('pokemon', 'gen3ou');
+		standardPokemonSearch.find('megaflygon');
+		assert(!standardPokemonSearch.results.some(row => row[0] === 'pokemon' && row[1] === 'flygonmega'));
+		const standardItemSearch = new DexSearch('item', 'gen3ou');
+		standardItemSearch.find('flygonite');
+		assert(!standardItemSearch.results.some(row => row[0] === 'item' && row[1] === 'flygonite'));
+	});
 });
 
 describe('[Gen 3] Megas CAP procedural battle sprites', () => {
@@ -92,20 +140,23 @@ describe('[Gen 3] Megas CAP procedural battle sprites', () => {
 		beautiflymega: ['beautifly', 'psychic'],
 		walreinmega: ['walrein', 'ice'],
 		luvdiscmega: ['luvdisc', 'water'],
+		...Object.fromEntries(Object.entries(latestCapMegas).map(([mega, [base, , , auraType]]) => (
+			[mega, [base, auraType]]
+		))),
 	};
 
-	it('should route exactly Archie\'s ten new Megas to enlarged base Gen 3 art', () => {
+	it('should route the full eligible CAP Mega roster to enlarged base Gen 3 art', () => {
 		assert.deepEqual(Object.keys(Dex.gen3MegasCapAuraTypes).sort(), Object.keys(auraRoster).sort());
 		const builderDex = Dex.mod('gen3megascap');
 
 		for (const [mega, [base, auraType]] of Object.entries(auraRoster)) {
 			const builderSprite = Dex.getTeambuilderSpriteData({species: mega, shiny: true}, builderDex);
-			const normalFront = Dex.getSpriteData(base, true, {gen: 3});
-			const normalBack = Dex.getSpriteData(base, false, {gen: 3});
-			const front = Dex.getSpriteData(mega, true, {gen: 3});
-			const back = Dex.getSpriteData(mega, false, {gen: 3});
-			const shinyFront = Dex.getSpriteData(mega, true, {gen: 3, shiny: true});
-			const shinyBack = Dex.getSpriteData(mega, false, {gen: 3, shiny: true});
+			const normalFront = Dex.getSpriteData(base, true, {gen: 3, mod: 'gen3megascap'});
+			const normalBack = Dex.getSpriteData(base, false, {gen: 3, mod: 'gen3megascap'});
+			const front = Dex.getSpriteData(mega, true, {gen: 3, mod: 'gen3megascap'});
+			const back = Dex.getSpriteData(mega, false, {gen: 3, mod: 'gen3megascap'});
+			const shinyFront = Dex.getSpriteData(mega, true, {gen: 3, shiny: true, mod: 'gen3megascap'});
+			const shinyBack = Dex.getSpriteData(mega, false, {gen: 3, shiny: true, mod: 'gen3megascap'});
 
 			assert.deepEqual(builderSprite, {
 				spriteid: base, spriteDir: 'sprites/gen3', shiny: true, x: 10, y: 5, pixelated: true,
@@ -135,19 +186,39 @@ describe('[Gen 3] Megas CAP procedural battle sprites', () => {
 		}
 	});
 
-	it('should keep the aura on Gen 3 only and honor static-animation preferences', () => {
-		assert.equal(Dex.getSpriteData('parasectmega', true, {gen: 4}).gen3MegasCapAura, undefined);
+	it('should keep every new aura on Gen 3 only and honor static-animation preferences', () => {
+		for (const mega of Object.keys(latestCapMegas)) {
+			assert.equal(Dex.getSpriteData(mega, true, {gen: 4, mod: 'gen3megascap'}).gen3MegasCapAura, undefined);
+			assert.equal(Dex.getSpriteData(mega, true, {gen: 3}).gen3MegasCapAura, undefined);
+			assert.equal(Dex.getSpriteData(mega, true, {gen: 3, mod: 'gen3mega'}).gen3MegasCapAura, undefined);
+		}
 		assert.equal(Dex.getSpriteData('raichumegay', true, {gen: 3}).gen3MegasCapAura, undefined);
+		assert.equal(Dex.gen3MegasCapAuraTypes.magcargomega, undefined,
+			'Magcargo-Mega has dedicated art and must stay outside the procedural roster');
 
 		global.PS.prefs.nopastgens = true;
-		const forcedGen3 = Dex.getSpriteData('parasectmega', true, {gen: 3});
+		for (const [mega, [base]] of Object.entries(latestCapMegas)) {
+			const forcedGen3 = Dex.getSpriteData(mega, true, {gen: 3, mod: 'gen3megascap'});
+			assert.equal(forcedGen3.url.endsWith(`/sprites/gen3/${base}.png`), true);
+		}
 		delete global.PS.prefs.nopastgens;
-		assert.equal(forcedGen3.url.endsWith('/sprites/gen3/parasect.png'), true);
 
 		global.PS.prefs.noanim = true;
-		const staticAura = Dex.getSpriteData('parasectmega', true, {gen: 3}).gen3MegasCapAura;
+		for (const mega of Object.keys(latestCapMegas)) {
+			const staticAura = Dex.getSpriteData(mega, true, {gen: 3, mod: 'gen3megascap'}).gen3MegasCapAura;
+			assert.equal(staticAura.animated, false);
+		}
 		delete global.PS.prefs.noanim;
-		assert.equal(staticAura.animated, false);
-		assert.equal(Dex.getSpriteData('parasectmega', true, {gen: 3}).gen3MegasCapAura.animated, true);
+		for (const mega of Object.keys(latestCapMegas)) {
+			assert.equal(Dex.getSpriteData(mega, true, {gen: 3, mod: 'gen3megascap'}).gen3MegasCapAura.animated,
+				true);
+		}
+	});
+
+	it('should define palettes for every aura type newly introduced by this roster', () => {
+		const css = fs.readFileSync('play.pokemonshowdown.com/style/battle.css', 'utf8');
+		for (const type of ['electric', 'ground', 'poison', 'steel']) {
+			assert.match(css, new RegExp(`\\.gen3megascap-aura-${type}\\s*\\{`));
+		}
 	});
 });

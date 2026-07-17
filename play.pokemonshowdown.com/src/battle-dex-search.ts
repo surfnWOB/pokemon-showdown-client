@@ -319,7 +319,7 @@ export class DexSearch {
 		// the teambuilder result rows pick up the boosts they already sort by. Move/
 		// item searches have no getStat; fall back to the unmodified base stat.
 		const ts = this.typedSearch;
-		if (ts && ts.searchType === 'pokemon') return (ts as BattlePokemonSearch).getStat(species, stat);
+		if (ts?.searchType === 'pokemon') return (ts as BattlePokemonSearch).getStat(species, stat);
 		return species.baseStats[stat];
 	}
 
@@ -511,6 +511,11 @@ export class DexSearch {
 
 			// some aliases are substrings
 			if (queryAlias === id && query !== id) continue;
+
+			// The global index also contains entities defined only by supported teambuilder mods.
+			// Keep those rows scoped to formats whose active dex can actually reconstruct them.
+			if (type === 'pokemon' && !this.dex.species.get(id).exists) continue;
+			if (type === 'item' && !this.dex.items.get(id).exists) continue;
 
 			if (searchType && searchTypeIndex !== typeIndex) {
 				// This is a filter, set it as an instafilter candidate
@@ -2419,6 +2424,7 @@ declare const global: any;
 if (typeof require === 'function') {
 	// in Node (test harness): expose the search classes as globals, mirroring
 	// battle-dex.ts (global.Dex/toID). Lets test/*.js exercise getStatBoost etc.
+	global.DexSearch = DexSearch;
 	global.BattlePokemonSearch = BattlePokemonSearch;
 	global.BattleItemSearch = BattleItemSearch;
 	global.BattleTypedSearch = BattleTypedSearch;
