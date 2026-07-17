@@ -449,8 +449,8 @@ export interface SpriteData {
 }
 
 export type Gen3MegasCapAuraType = (
-	'dark' | 'dragon' | 'electric' | 'fighting' | 'ghost' | 'ground' | 'ice' | 'normal' | 'poison' |
-	'psychic' | 'steel' | 'water'
+	'dark' | 'dragon' | 'electric' | 'fighting' | 'ghost' | 'grass' | 'ground' | 'ice' | 'normal' |
+	'poison' | 'psychic' | 'steel' | 'water'
 );
 
 export interface Gen3MegasCapAuraData {
@@ -543,7 +543,7 @@ export const Dex = new class implements ModdedDex {
 		mantinemega: 'dragon',
 		mightyenamegax: 'dark',
 		mightyenamegay: 'dark',
-		beautiflymega: 'psychic',
+		beautiflymega: 'grass',
 		walreinmega: 'ice',
 		luvdiscmega: 'water',
 		venomothmega: 'poison',
