@@ -295,13 +295,13 @@ export const Dex = new class implements ModdedDex {
 		noctowlmega: 'ghost',
 		mantinemega: 'dragon',
 		mightyenamegax: 'dark',
-		mightyenamegay: 'dark',
+		mightyenamegay: 'poison',
 		beautiflymega: 'grass',
 		walreinmega: 'ice',
 		luvdiscmega: 'water',
 		venomothmega: 'poison',
 		quagsiremega: 'ground',
-		corsolamega: 'steel',
+		corsolamega: 'psychic',
 		masquerainmega: 'water',
 		shedinjamega: 'ghost',
 		volbeatmega: 'electric',
@@ -566,11 +566,11 @@ export const Dex = new class implements ModdedDex {
 			}
 			let name = nameOrAbility || '';
 			let id = toID(nameOrAbility);
-			if (window.BattleAliases && id in BattleAliases) {
+			if (!window.BattleAbilities) window.BattleAbilities = {};
+			if (!(id in BattleAbilities) && window.BattleAliases && id in BattleAliases) {
 				name = BattleAliases[id];
 				id = toID(name);
 			}
-			if (!window.BattleAbilities) window.BattleAbilities = {};
 			let data = window.BattleAbilities[id];
 			if (data && typeof data.exists === 'boolean') return data;
 			if (!data) data = { exists: false };
@@ -1231,7 +1231,10 @@ export class ModdedDex {
 	abilities = {
 		get: (name: string): Ability => {
 			let id = toID(name);
-			if (window.BattleAliases && id in BattleAliases) {
+			const modTable = this.modid !== `gen${this.gen}` ?
+				window.BattleTeambuilderTable[this.modid] : undefined;
+			const hasDirectEntry = !!window.BattleAbilities?.[id] || !!modTable?.overrideAbilityData?.[id];
+			if (!hasDirectEntry && window.BattleAliases && id in BattleAliases) {
 				name = BattleAliases[id];
 				id = toID(name);
 			}
@@ -1245,11 +1248,8 @@ export class ModdedDex {
 					Object.assign(data, table.overrideAbilityData[id]);
 				}
 			}
-			if (this.modid !== `gen${this.gen}`) {
-				const table = window.BattleTeambuilderTable[this.modid];
-				if (table && id in table.overrideAbilityData) {
-					Object.assign(data, table.overrideAbilityData[id]);
-				}
+			if (modTable && id in modTable.overrideAbilityData) {
+				Object.assign(data, modTable.overrideAbilityData[id]);
 			}
 
 			const ability = new Ability(id, name, data);
