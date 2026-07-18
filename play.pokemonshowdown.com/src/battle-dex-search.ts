@@ -24,6 +24,26 @@ export type SearchRow = (
 
 type SearchFilter = [string, string];
 
+// [Gen 1] 7U (Other section; see the server's config/formats.ts). The roster is pinned to the
+// Smogon 7U hub's official legality list, so the teambuilder pool is defined here rather than
+// derived from a single tier slice. Keep these three lists in sync with the server banlist/
+// unbanlist and the 7U Viability Rankings.
+//   ADDS  = legal mons that live above the gen1 LC slice (NFE/ZU buckets), surfaced into the pool
+//   CUTS  = LC-slice mons the tier bans (removed from the pool)
+//   VIABLE = the S-B viability picks, labelled "7U" and grouped on top (in VR order)
+const GEN1_7U_ADDS = [
+	'beedrill', 'charmeleon', 'ditto', 'farfetchd', 'gloom', 'golbat', 'hitmonchan',
+	'ivysaur', 'kakuna', 'nidorina', 'nidorino', 'pidgeotto', 'tentacool',
+];
+const GEN1_7U_CUTS = [
+	'bellsprout', 'caterpie', 'diglett', 'dratini', 'horsea', 'pikachu', 'ponyta', 'sandshrew', 'seel',
+];
+const GEN1_7U_VIABLE = [
+	'meowth', 'charmeleon', 'tentacool', 'golbat', 'ivysaur',
+	'rhyhorn', 'clefairy', 'voltorb', 'hitmonchan',
+	'farfetchd', 'beedrill', 'shellder', 'gloom', 'kabuto',
+];
+
 /** ID, SearchType, index (if alias), offset (if offset alias) */
 declare const BattleSearchIndex: [ID, SearchType, number?, number?][];
 declare const BattleSearchIndexOffset: any;
@@ -1026,6 +1046,12 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (this.formatType === 'metronome') {
 			return pokemon.num >= 0 ? String(pokemon.num) : pokemon.tier;
 		}
+		// [Gen 1] 7U: mark the S-B viability picks as "7U" (see GEN1_7U_VIABLE). Other legal mons
+		// keep their natural gen1 tier label (LC/NFE/ZU).
+		if (this.dex.gen === 1 && this.format === '7u' &&
+			(GEN1_7U_VIABLE.includes(pokemon.id) || GEN1_7U_VIABLE.includes(toID(pokemon.baseSpecies)))) {
+			return '7U';
+		}
 		let table = window.BattleTeambuilderTable;
 		const gen = this.dex.gen;
 		const tableKey = this.formatType === 'doubles' ? `gen${gen}doubles` :
@@ -1344,7 +1370,25 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 		else if (format === 'zu') tierSet = tierSet.slice(slices.ZU);
 		else if (format === 'su') tierSet = tierSet.slice(slices.SU || slices.ZU);
 		else if (format === 'iu') tierSet = tierSet.slice(slices.IU || slices.SU || slices.ZU);
-		else if (
+		else if (dex.gen === 1 && format === '7u') {
+			// [Gen 1] 7U (Other): the server pins the roster to the Smogon 7U legality list (see
+			// config/formats.ts and GEN1_7U_ADDS/CUTS above). Reproduce that browse pool -- the LC
+			// slice minus the cut LC mons, plus the added NFE/ZU mons -- then group it by the 7U
+			// Viability Rankings: the S-B picks under a "7U" header on top (VR order), the remaining
+			// legal mons under an "Also legal" header below.
+			const addRows = tierSet.slice(0, slices.LC)
+				.filter(([type, id]) => type === 'pokemon' && GEN1_7U_ADDS.includes(id));
+			const lcRows = tierSet.slice(slices.LC)
+				.filter(([type, id]) => type === 'pokemon' && !GEN1_7U_CUTS.includes(id));
+			const legal = [...addRows, ...lcRows];
+			const viable = legal.filter(([, id]) => GEN1_7U_VIABLE.includes(id as string))
+				.sort((a, b) => GEN1_7U_VIABLE.indexOf(a[1] as string) - GEN1_7U_VIABLE.indexOf(b[1] as string));
+			const rest = legal.filter(([, id]) => !GEN1_7U_VIABLE.includes(id as string));
+			tierSet = [
+				['header', '7U'], ...viable,
+				['header', 'Also legal'], ...rest,
+			] as SearchRow[];
+		} else if (
 			format === 'lc' || format === 'lcuu' || format.startsWith('lc') || (format !== 'caplc' && format.endsWith('lc'))
 		) tierSet = tierSet.slice(slices.LC);
 		else if (format === 'cap' || format.endsWith('cap')) {
