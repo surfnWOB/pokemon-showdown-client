@@ -458,6 +458,7 @@ export class DexSearch {
 			// Keep those rows scoped to formats whose active dex can actually reconstruct them.
 			if (type === 'pokemon' && !this.dex.species.get(id).exists) continue;
 			if (type === 'item' && !this.dex.items.get(id).exists) continue;
+			if (type === 'ability' && !this.dex.abilities.get(id).exists) continue;
 
 			if (searchType && searchTypeIndex !== typeIndex) {
 				// This is a filter, set it as an instafilter candidate

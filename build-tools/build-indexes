@@ -100,9 +100,11 @@ function requireNoCache(pathSpec) {
 		for (const [type, table, getter] of [
 			['pokemon', modDex.data.Pokedex, id => modDex.species.get(id)],
 			['item', modDex.data.Items, id => modDex.items.get(id)],
+			['ability', modDex.data.Abilities, id => modDex.abilities.get(id)],
 		]) {
 			for (const id in table) {
-				const globalEntry = type === 'pokemon' ? Dex.species.get(id) : Dex.items.get(id);
+				const globalEntry = type === 'pokemon' ? Dex.species.get(id) :
+					type === 'item' ? Dex.items.get(id) : Dex.abilities.get(id);
 				const modEntry = getter(id);
 				const directEntry = `${id} ${type}`;
 				if (globalEntry.exists || !modEntry.exists || directSearchEntries.has(directEntry)) continue;
@@ -240,7 +242,7 @@ function requireNoCache(pathSpec) {
 		case 'pokemon': name = sourceDex.species.get(canonicalId).name; break;
 		case 'move': name = Dex.moves.get(id).name; break;
 		case 'item': name = sourceDex.items.get(canonicalId).name; break;
-		case 'ability': name = Dex.abilities.get(id).name; break;
+		case 'ability': name = sourceDex.abilities.get(canonicalId).name; break;
 		case 'article': name = BattleArticleTitles[id] || ''; break;
 		}
 		let res = '';
@@ -1461,6 +1463,9 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		'accuracy', 'basePower', 'category', 'desc', 'flags', 'isNonstandard', 'pp', 'priority', 'shortDesc', 'target', 'type',
 	];
 	const overrideAbilityKeys = ['desc', 'flags', 'gen', 'isNonstandard', 'rating', 'shortDesc'];
+	const modOnlyAbilityKeys = [
+		'exists', 'name', 'num', 'desc', 'shortDesc', 'flags', 'rating', 'gen', 'isNonstandard',
+	];
 	const overrideItemKeys = ['desc', 'fling', 'gen', 'isNonstandard', 'naturalGift', 'shortDesc'];
 	const modOnlyItemKeys = [
 		'exists', 'name', 'num', 'spritenum', 'desc', 'shortDesc', 'megaStone',
@@ -1599,8 +1604,11 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		for (const id in modData.Abilities) {
 			const modEntry = modDex.abilities.get(id);
 			const parentEntry = parentDex.abilities.get(id);
-			for (const key of overrideAbilityKeys) {
-				if (JSON.stringify(modEntry[key]) !== JSON.stringify(parentEntry[key])) {
+			const isModOnly = !parentEntry.exists && modEntry.exists;
+			const keys = isModOnly ? modOnlyAbilityKeys : overrideAbilityKeys;
+			for (const key of keys) {
+				if ((isModOnly && modEntry[key] !== undefined) ||
+					JSON.stringify(modEntry[key]) !== JSON.stringify(parentEntry[key])) {
 					if (!overrideAbilityData[id]) overrideAbilityData[id] = {};
 					overrideAbilityData[id][key] = modEntry[key];
 				}

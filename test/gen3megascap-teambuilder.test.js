@@ -8,6 +8,7 @@ global.Pokemon = class Pokemon {};
 global.PS = {prefs: {}};
 global.BattlePokedex = require('../play.pokemonshowdown.com/data/pokedex.js').BattlePokedex;
 global.BattleItems = require('../play.pokemonshowdown.com/data/items.js').BattleItems;
+global.BattleAbilities = require('../play.pokemonshowdown.com/data/abilities.js').BattleAbilities;
 global.BattleAliases = require('../play.pokemonshowdown.com/data/aliases.js').BattleAliases;
 global.BattleTeambuilderTable =
 	require('../play.pokemonshowdown.com/data/teambuilder-tables.js').BattleTeambuilderTable;
@@ -19,7 +20,7 @@ require('../play.pokemonshowdown.com/js/battle-dex-search.js');
 const latestCapMegas = {
 	venomothmega: ['venomoth', 'Venomoth', 'venomite', 'poison'],
 	quagsiremega: ['quagsire', 'Quagsire', 'quagsite', 'ground'],
-	corsolamega: ['corsola', 'Corsola', 'corsolite', 'steel'],
+	corsolamega: ['corsola', 'Corsola', 'corsolite', 'psychic'],
 	masquerainmega: ['masquerain', 'Masquerain', 'masquerite', 'water'],
 	shedinjamega: ['shedinja', 'Shedinja', 'shedinjite', 'ghost'],
 	volbeatmega: ['volbeat', 'Volbeat', 'volbeatite', 'electric'],
@@ -29,6 +30,21 @@ const latestCapMegas = {
 	solrockmega: ['solrock', 'Solrock', 'solerock', 'psychic'],
 	kecleonmegax: ['kecleon', 'Kecleon', 'kecleitex', 'normal'],
 	kecleonmegay: ['kecleon', 'Kecleon', 'kecleitey', 'normal'],
+};
+
+const authoritativeUpdatedMegas = {
+	corsolamega: [[90, 100, 120, 100, 95, 35], ['Water', 'Psychic'], 'Natural Cure'],
+	mightyenamegax: [[61, 110, 60, 119, 60, 110], ['Dark'], 'Serene Grace'],
+	mightyenamegay: [[100, 100, 100, 35, 110, 95], ['Dark', 'Poison'], 'Fur Coat'],
+	beautiflymega: [[90, 10, 90, 130, 90, 116], ['Grass', 'Flying'], 'Mega Sol'],
+	masquerainmega: [[91, 80, 84, 90, 110, 95], ['Bug', 'Water'], 'Water Bubble'],
+	volbeatmega: [[85, 65, 75, 90, 90, 125], ['Bug', 'Electric'], 'Teravolt'],
+	grumpigmega: [[100, 60, 80, 125, 125, 80], ['Psychic'], 'Opportunist'],
+	flygonmega: [[80, 100, 120, 100, 80, 110], ['Ground', 'Dragon'], 'Sandy'],
+	solrockmega: [[90, 115, 110, 90, 85, 90], ['Rock', 'Psychic'], 'High Noon'],
+	kecleonmegax: [[60, 120, 60, 110, 120, 105], ['Normal'], 'Color Change'],
+	kecleonmegay: [[100, 100, 120, 100, 100, 40], ['Normal'], 'Protean'],
+	walreinmega: [[125, 80, 100, 100, 115, 80], ['Water', 'Ice'], 'Snow Warning'],
 };
 
 describe('[Gen 3] Megas CAP teambuilder data', () => {
@@ -124,9 +140,16 @@ describe('[Gen 3] Megas CAP teambuilder data', () => {
 				`${stoneId} should be in the CAP item table`);
 		}
 		assert(builderDex.species.get('corsola').otherFormes.includes('Corsola-Galar'));
-		assert.deepEqual(builderDex.species.get('beautiflymega').baseStats,
-			{hp: 90, atk: 10, def: 90, spa: 110, spd: 90, spe: 110});
-		assert.deepEqual(builderDex.species.get('beautiflymega').types, ['Grass', 'Flying']);
+		for (const [id, [stats, types, ability]] of Object.entries(authoritativeUpdatedMegas)) {
+			const species = builderDex.species.get(id);
+			assert.deepEqual(
+				['hp', 'atk', 'def', 'spa', 'spd', 'spe'].map(stat => species.baseStats[stat]),
+				stats,
+				`${id} should expose the updated stats in the builder`
+			);
+			assert.deepEqual(species.types, types, `${id} should expose the updated typing in the builder`);
+			assert.equal(species.abilities[0], ability, `${id} should expose the updated ability in the builder`);
+		}
 		const flygon = builderDex.species.get('flygonmega');
 		assert.equal(flygon.name, 'Flygon-Mega');
 		assert.equal(flygon.forme, 'Mega');
@@ -141,6 +164,29 @@ describe('[Gen 3] Megas CAP teambuilder data', () => {
 			assert(itemIds.includes(stoneId), `${stoneId} should be visible in the CAP item picker`);
 		}
 
+	});
+
+	it('should reconstruct custom CAP abilities before applying cross-effect aliases', () => {
+		const builderDex = Dex.mod('gen3megascap');
+		const expectedAbilities = {
+			shady: ["Shady", 315, "This Pokemon's Ghost-type moves can hit Normal-type Pokemon."],
+			highnoon: ["High Noon", 320,
+				"On switch-in, this Pokemon summons Sunny Day indefinitely and is immune to Ground-type moves."],
+			sandy: ["Sandy", 321, "This Pokemon's Ground-type moves can hit Flying-type Pokemon."],
+		};
+
+		for (const [id, [name, num, shortDesc]] of Object.entries(expectedAbilities)) {
+			const ability = builderDex.abilities.get(name);
+			assert.equal(ability.id, id);
+			assert.equal(ability.name, name);
+			assert.equal(ability.exists, true);
+			assert.equal(ability.num, num);
+			assert.equal(ability.gen, 3);
+			assert.equal(ability.isNonstandard, false);
+			assert.equal(ability.shortDesc, shortDesc);
+		}
+		assert.equal(builderDex.species.get('sandy').name, 'Sandy Shocks',
+			'the Sandy Shocks species alias should remain available outside ability lookups');
 	});
 
 	it('should index the mod-only Megas, their Mega aliases, and their stones only in the CAP mod', () => {
@@ -172,6 +218,19 @@ describe('[Gen 3] Megas CAP teambuilder data', () => {
 		const standardItemSearch = new DexSearch('item', 'gen3ou');
 		standardItemSearch.find('flygonite');
 		assert(!standardItemSearch.results.some(row => row[0] === 'item' && row[1] === 'flygonite'));
+
+		for (const ability of ['highnoon', 'sandy']) {
+			assert(BattleSearchIndex.some(row => row.length === 2 && row[0] === ability && row[1] === 'ability'),
+				`${ability} should have a direct search-index row`);
+			const abilitySearch = new DexSearch('ability', 'gen3megascap');
+			abilitySearch.find(ability);
+			assert(abilitySearch.results.some(row => row[0] === 'ability' && row[1] === ability),
+				`${ability} should be searchable by name in the CAP mod`);
+			const standardAbilitySearch = new DexSearch('ability', 'gen3ou');
+			standardAbilitySearch.find(ability);
+			assert(!standardAbilitySearch.results.some(row => row[0] === 'ability' && row[1] === ability),
+				`${ability} should remain absent from standard Gen 3 ability searches`);
+		}
 	});
 });
 
@@ -183,7 +242,7 @@ describe('[Gen 3] Megas CAP procedural battle sprites', () => {
 		noctowlmega: ['noctowl', 'ghost'],
 		mantinemega: ['mantine', 'dragon'],
 		mightyenamegax: ['mightyena', 'dark'],
-		mightyenamegay: ['mightyena', 'dark'],
+		mightyenamegay: ['mightyena', 'poison'],
 		beautiflymega: ['beautifly', 'grass'],
 		walreinmega: ['walrein', 'ice'],
 		luvdiscmega: ['luvdisc', 'water'],
