@@ -3715,6 +3715,16 @@ export class Battle {
 			// reads its overrideSpeciesData instead of plain Gen 3 data.
 			if (this.tier === '[Gen 3] Megas CAP') {
 				this.dex = Dex.mod('gen3megascap' as ID);
+				// Tell the sprite scene to resolve battle sprites through the CAP mod, so the
+				// aura Megas render their base Gen 3 art + glow. getSpriteData keys the aura
+				// branch on the sprite dex's modid (spriteDex.modid === 'gen3megascap'), which
+				// is only reachable when a sprite call passes mod:this.scene.mod. Set here, not
+				// in updateGen(), because |tier| arrives before the first |switch| with no
+				// updateGen() call in between — updateGen would be too late for the opening
+				// sprites. Non-CAP [Gen 3] Mega formats are intentionally left on scene.mod ''
+				// (their Megas already render via Dex.customAniMega on the base Dex, and setting
+				// scene.mod there would gain no aura yet needlessly reroute species resolution).
+				this.scene.mod = 'gen3megascap';
 			} else if (this.tier.startsWith('[Gen 3]') && this.tier.includes('Mega')) {
 				this.dex = Dex.mod('gen3mega' as ID);
 			}

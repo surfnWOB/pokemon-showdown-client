@@ -322,10 +322,38 @@ describe('[Gen 3] Megas CAP procedural battle sprites', () => {
 		}
 	});
 
+	it('should keep standard cries for non-aura mons under the CAP scene mod', () => {
+		// Wiring scene.mod='gen3megascap' routes every battle sprite call through the CAP
+		// mod. The mod-cry block must NOT then divert ordinary cries to a per-mod audio dir
+		// that only the digimon mod ships — that would 404 cries format-wide. Seed a minimal
+		// BattlePokemonSprites so the standard cry path (gated on miscData.num) actually runs.
+		global.BattlePokemonSprites = {tyranitar: {num: 248}, skarmory: {num: 227}, magcargomega: {num: 219}};
+		try {
+			const expected = {
+				tyranitar: 'audio/cries/tyranitar.mp3',
+				skarmory: 'audio/cries/skarmory.mp3',
+				magcargomega: 'audio/cries/magcargo-mega.mp3',
+			};
+			for (const [id, cryurl] of Object.entries(expected)) {
+				const sprite = Dex.getSpriteData(id, true, {gen: 3, mod: 'gen3megascap'});
+				assert.equal(sprite.cryurl, cryurl,
+					`${id} should keep its standard audio/cries/ path, not a per-mod audio dir`);
+				assert.equal(sprite.cryurl.startsWith('sprites/'), false,
+					`${id} must not use a per-mod audio dir under gen3megascap`);
+			}
+		} finally {
+			delete global.BattlePokemonSprites;
+		}
+	});
+
 	it('should define palettes for every aura type newly introduced by this roster', () => {
 		const css = fs.readFileSync('play.pokemonshowdown.com/style/battle.css', 'utf8');
-		for (const type of ['electric', 'grass', 'ground', 'poison', 'steel']) {
-			assert.match(css, new RegExp(`\\.gen3megascap-aura-${type}\\s*\\{`));
+		// Every aura type actually assigned to a roster Mega must have a CSS palette,
+		// otherwise it silently falls back to the default purple aura (this caught the
+		// missing `.gen3megascap-aura-ghost` used by parasect/noctowl/shedinja Megas).
+		for (const type of new Set(Object.values(Dex.gen3MegasCapAuraTypes))) {
+			assert.match(css, new RegExp(`\\.gen3megascap-aura-${type}\\s*\\{`),
+				`missing CSS palette for aura type ${type}`);
 		}
 		const grassPalette = css.match(/\.gen3megascap-aura-grass\s*\{([^}]*)\}/)?.[1] || '';
 		for (const variable of ['inner-color', 'inner-alpha', 'outer-color', 'outer-alpha']) {
