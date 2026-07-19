@@ -8,6 +8,7 @@ export class BattleSceneStub {
 	animating = false;
 	acceleration = NaN;
 	gen = NaN;
+	mod = '';
 	activeCount = NaN;
 	numericId = NaN;
 	timeOffset = NaN;
