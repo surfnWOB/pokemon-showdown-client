@@ -12,6 +12,13 @@
 html {
 	scrollbar-width: none;
 	position: relative;
+	height: 100dvh;
+	/* failed attempt to fix mobile height */
+	/* height: 100lvh; */
+}
+html.scroll-frame-enabled,
+html.scroll-frame-enabled body {
+	overflow-x: hidden;
 }
 body {
 	color: white;
@@ -94,6 +101,25 @@ li::marker {
  * Header
  *********************************************************/
 
+.ps-frame,
+.ps-scroll-frame,
+.ps-scroll-content {
+	height: 100%;
+}
+.ps-frame {
+	position: relative;
+}
+.ps-scroll-content {
+	position: relative;
+}
+.scroll-frame-enabled .ps-scroll-frame {
+	width: 100%;
+	overflow: hidden;
+}
+.scroll-frame-enabled .ps-scroll-content {
+	width: calc(100vw + 280px);
+}
+
 .scroll-snap-enabled {
   scroll-snap-type: x mandatory;
 }
@@ -156,9 +182,6 @@ li::marker {
 	cursor: pointer;
 }
 @media (max-width: 500px) {
-	.usernametext {
-		display: none
-	}
 	.header-vertical .usernametext {
 		display: inline;
 	}
@@ -586,7 +609,6 @@ summary:hover .expandbutton,
 .scrollable {
 	overflow: auto;
 	-webkit-overflow-scrolling: touch;
-	overscroll-behavior-block: contain;
 }
 .ps-room.ps-room-light, .ps-room-light {
 	background: rgba(242,247,250,.85);
@@ -609,7 +631,6 @@ summary:hover .expandbutton,
 	overflow: auto;
 	-webkit-overflow-scrolling: touch;
 	z-index: 20;
-	overscroll-behavior-block: contain;
 }
 .dark .ps-overlay {
 	background: rgba(40, 40, 40, .5);
@@ -1090,6 +1111,22 @@ form.menugroup {
 .button.mainmenu6:hover { background: linear-gradient(to bottom,  hsl(270,40%,62%),  hsl(270,40%,42%)); }
 .button.mainmenu6:active { background: linear-gradient(to bottom,  hsl(270,40%,42%),  hsl(300,40%,58%)); }
 
+#ps-debug-menu {
+	display: none;
+	position: fixed;
+	left: 8px;
+	bottom: 8px;
+	z-index: 9999;
+	margin: 0;
+	padding: 6px 8px;
+	background: rgba(0,0,0,.75);
+	color: white;
+	font: 11px/1.35 monospace;
+	pointer-events: none;
+	white-space: pre-wrap;
+	border-radius: 4px;
+}
+
 /*********************************************************
  * Room list
  *********************************************************/
@@ -1190,7 +1227,6 @@ form.menugroup {
 	overflow: auto;
 	overflow-x: hidden;
 	-webkit-overflow-scrolling: touch;
-	overscroll-behavior-block: contain;
 }
 .chat-log, .readable-bg {
 	background: rgba(242,247,250,.5);
@@ -1209,6 +1245,10 @@ form.menugroup {
 	min-height: 36px;
 	padding: 3px 4px 0 4px;
 	border-top: 1px solid #AAAAAA;
+}
+.battle-log .chat-log-add {
+	position: static;
+	border-bottom: 1px solid #AAAAAA;
 }
 .mini-window-flex .chat-log, .mini-window-flex .chat-log-add {
 	position: static;
@@ -1250,11 +1290,11 @@ form.menugroup {
 }
 
 .chatbox {
-	margin: 0 10px 0 80px;
+	margin: 0 2px 0 80px;
 	padding: 5px 0 0 0;
 }
 .chatbox.nolabel {
-	margin: 0 10px 0 2px;
+	margin: 0 4px 0 4px;
 	padding: 5px 0 5px 0;
 }
 .chatbox label {
@@ -1273,24 +1313,19 @@ form.menugroup {
 	display: none;
 }
 .chatbox .textbox {
-	display: block;
-	height: 1.1em;
-	width: 100%;
-	resize: none;
-	font-size: 9pt;
-	font-family: Verdana, Helvetica, Arial, sans-serif;
 	overflow-x: hidden;
-	overflow-wrap: break-word;
 }
 .chatbox pre.textbox {
 	margin: 0;
 	height: auto;
+	overflow-wrap: break-word;
 }
 pre.textbox.textbox-empty[placeholder]:before {
 	content: attr(placeholder);
 	color: #777;
 	position: absolute;
 	cursor: text;
+	white-space: nowrap;
 }
 
 /* Tournaments */
@@ -1364,7 +1399,6 @@ pre.textbox.textbox-empty[placeholder]:before {
 	border-right: 1px #aaa solid;
 	background-color: rgba(242, 247, 250, 0.85);
 	overflow: auto;
-	overscroll-behavior-block: contain;
   transform-origin: top;
 	transform: scaleY(0);
 	touch-action: none;
@@ -1379,7 +1413,6 @@ pre.textbox.textbox-empty[placeholder]:before {
 	max-height: 200px;
 	overflow: auto;
 	-webkit-overflow-scrolling: touch;
-	overscroll-behavior-block: contain;
 	font-size: 8pt;
 }
 
@@ -1560,7 +1593,6 @@ pre.textbox.textbox-empty[placeholder]:before {
 	padding: 2px 0;
 }
 .chat-log.hasuserlist,
-.chat-log-add.hasuserlist,
 .tournament-wrapper.hasuserlist {
 	left: 146px;
 }
@@ -1769,11 +1801,36 @@ pre.textbox.textbox-empty[placeholder]:before {
 	top: 0;
 	position: static;
 	width: auto;
-	padding-bottom: 6px;
 }
-.battle-log .movecontrols, .battle-log .shiftcontrols, .battle-log .switchcontrols {
+.battle-log .inline-controls {
+	padding-bottom: 20px;
+	padding-top: 4px;
+	margin-top: 4px;
+	border-top: 1px solid #AAA;
+}
+.inline-battle .inline-controls {
+	margin-top: 0;
+}
+.battle-log .battle {
+	border-bottom: 0;
+}
+.movecontrols, .switchcontrols {
 	max-width: 330px;
 	margin: 0 auto;
+}
+.wide-controls .movecontrols, .wide-controls .switchcontrols {
+	max-width: 650px;
+}
+.scrollable-battle-container {
+	overflow: auto;
+	overflow-x: hidden;
+	scrollbar-width: thin;
+	height: auto;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 640px;
 }
 .timerbutton {
 	float: right;
@@ -1812,29 +1869,6 @@ pre.textbox.textbox-empty[placeholder]:before {
 	margin: 2px 0 8px 0;
 	padding: 0 8px;
 }
-.battle-controls .whatdo {
-	margin-top: -2px;
-	padding: 0 8px;
-	font-size: 9pt;
-	line-height: 2;
-	color: #555555;
-}
-.dark .battle-controls .whatdo {
-	color: #999999;
-}
-.battle-controls .whatdo small {
-	padding: 1px 2px;
-	border: 1px solid #999999;
-	border-radius: 4px;
-}
-.battle-controls .whatdo small.weak {
-	color: #AAAA22;
-	border-color: #AAAA22;
-}
-.battle-controls .whatdo small.critical {
-	color: #EE4433;
-	border-color: #EE4433;
-}
 .small-layout .battle-userlist,
 .small-layout .battle-log,
 .small-layout .battle-log-add {
@@ -1862,6 +1896,35 @@ pre.textbox.textbox-empty[placeholder]:before {
 	left: 0;
 	display: block;
 }
+
+/*********************************************************
+ * Player controls
+ *********************************************************/
+
+.battle-controls .whatdo {
+	margin-top: -2px;
+	padding: 0 8px;
+	font-size: 9pt;
+	line-height: 2;
+	color: #555555;
+}
+.dark .battle-controls .whatdo {
+	color: #999999;
+}
+.battle-controls .whatdo small {
+	padding: 1px 2px;
+	border: 1px solid #999999;
+	border-radius: 4px;
+}
+.battle-controls .whatdo small.weak {
+	color: #AAAA22;
+	border-color: #AAAA22;
+}
+.battle-controls .whatdo small.critical {
+	color: #EE4433;
+	border-color: #EE4433;
+}
+
 .shiftselect,
 .moveselect,
 .switchselect {
@@ -1965,6 +2028,11 @@ pre.textbox.textbox-empty[placeholder]:before {
 	background: #009AA4;
 }
 
+.has-tooltip {
+	-webkit-touch-callout: none;
+	user-select: none;
+	-webkit-user-select: none;
+}
 .movebutton {
 	float: left;
 	display: block;
@@ -1991,6 +2059,7 @@ pre.textbox.textbox-empty[placeholder]:before {
 .megaevo-box {
 	clear: both;
 	padding-top: 10px;
+	padding-right: 14px;
 	text-align: center;
 }
 .megaevo {
@@ -1998,9 +2067,6 @@ pre.textbox.textbox-empty[placeholder]:before {
 	display: block;
 	width: 180px;
 	margin: 0 auto 0;
-	position: relative;
-	top: 6px;
-	left: -7px;
 	padding: 2px;
 	line-height: 1em;
 	text-align: center;
@@ -2008,7 +2074,6 @@ pre.textbox.textbox-empty[placeholder]:before {
 	cursor: pointer;
 	border: 1px solid #BBB;
 	border-radius: 3px;
-	color: #333;
 	background: transparent;
 	font-size: 10pt;
 	font-weight: bold;
@@ -2048,8 +2113,11 @@ pre.textbox.textbox-empty[placeholder]:before {
 .megaevo input {
 	width: 16px;
 	height: 16px;
-	vertical-align: -1px;
+	vertical-align: -3px;
 	cursor: pointer;
+}
+.megaevo .typeicon {
+	vertical-align: 2px;
 }
 
 .switchmenu,
@@ -2108,13 +2176,157 @@ pre.textbox.textbox-empty[placeholder]:before {
 }
 
 /*********************************************************
+ * Overlay player controls
+ *********************************************************/
+
+.overlay-controls-list,
+.overlay-controls .movecontrols,
+.overlay-controls .switchcontrols,
+.overlay-controls .targetcontrols,
+.overlay-controls .teamcontrols,
+.overlay-controls .whatdo {
+	background: black;
+	background: rgba(0,0,0,.6);
+	backdrop-filter: blur(8px);
+	border-radius: 12px;
+	color: white;
+}
+
+.overlay-controls-skip {
+	position: absolute;
+	right: 5px;
+	bottom: 5px;
+}
+
+.overlay-controls-list {
+	width: 100px;
+
+	position: absolute;
+	right: 5px;
+	bottom: 5px;
+}
+.overlay-controls-list .button {
+	display: block;
+	width: 80px;
+	margin: 10px auto;
+	font-size: 16px;
+	font-style: italic;
+	padding: 4px 0;
+}
+/* doubled to fight the specificity of .dark .button:hover */
+.overlay-controls-list.overlay-controls-list .move-button,
+.overlay-controls-list.overlay-controls-list .move-button.cur {
+	color: #FFFFFF;
+	text-shadow: 0 -1px 0 hsl(20,60%,10%);
+	background: #884422;
+	background: linear-gradient(to bottom, hsl(20,60%,62%), hsl(20,60%,47%));
+	border-color: hsl(20,60%,37%);
+	box-shadow: 0 1px 2px rgba(0,0,0,.2), inset 0 1px 1px rgba(255,255,255,.3);
+}
+.overlay-controls-list.overlay-controls-list .move-button:hover {
+	color: #FFFFFF;
+	background: linear-gradient(to bottom, hsl(20,60%,57%), hsl(20,60%,42%));
+	border-color: hsl(20,60%,31%);
+}
+.overlay-controls-list.overlay-controls-list .move-button:active,
+.overlay-controls-list.overlay-controls-list .move-button.cur:active {
+	background: linear-gradient(to bottom, hsl(20,60%,42%), hsl(20,60%,59%));
+	box-shadow: 0 1px 2px rgba(0,0,0,.2), inset 0 -1px 1px rgba(255,255,255,.2), inset 0 1px 1px rgba(0,0,0,.4);
+}
+.overlay-controls-list.overlay-controls-list .switch-button,
+.overlay-controls-list.overlay-controls-list .switch-button.cur,
+.overlay-controls-list.overlay-controls-list .shift-button,
+.overlay-controls-list.overlay-controls-list .shift-button.cur {
+	color: #FFFFFF;
+	text-shadow: 0 -1px 0 hsl(228,33%,10%);
+	background: #445588;
+	background: linear-gradient(to bottom, hsl(228,33%,62%), hsl(228,33%,47%));
+	border-color: hsl(228,33%,37%);
+	box-shadow: 0 1px 2px rgba(0,0,0,.2), inset 0 1px 1px rgba(255,255,255,.3);
+}
+.overlay-controls-list.overlay-controls-list .switch-button:hover,
+.overlay-controls-list.overlay-controls-list .shift-button:hover {
+	color: #FFFFFF;
+	background: linear-gradient(to bottom, hsl(228,33%,57%), hsl(228,33%,42%));
+	border-color: hsl(228,33%,31%);
+}
+.overlay-controls-list.overlay-controls-list .switch-button:active,
+.overlay-controls-list.overlay-controls-list .switch-button.cur:active,
+.overlay-controls-list.overlay-controls-list .shift-button:active,
+.overlay-controls-list.overlay-controls-list .shift-button.cur:active {
+	background: linear-gradient(to bottom, hsl(228,33%,42%), hsl(228,33%,59%));
+	box-shadow: 0 1px 2px rgba(0,0,0,.2), inset 0 -1px 1px rgba(255,255,255,.2), inset 0 1px 1px rgba(0,0,0,.4);
+}
+.overlay-controls-list.overlay-controls-list .button.cur {
+	box-shadow: 0 1px 2px rgba(0,0,0,.2), inset 0 0 0 2px rgba(255,255,255,.35), inset 0 -1px 1px rgba(255,255,255,.2), inset 0 1px 1px rgba(0,0,0,.4);
+}
+.overlay-controls-list.overlay-controls-list .move-button.cur {
+	background: linear-gradient(to bottom, hsl(20,60%,42%), hsl(20,60%,59%));
+}
+.overlay-controls-list.overlay-controls-list .switch-button.cur,
+.overlay-controls-list.overlay-controls-list .shift-button.cur {
+	background: linear-gradient(to bottom, hsl(228,33%,42%), hsl(228,33%,59%));
+}
+.overlay-controls-list.overlay-controls-list .button.disabled {
+	color: #999;
+	text-shadow: none;
+	background: #EEEEEE;
+	border-color: #CCCCCC;
+	box-shadow: 0 1px 2px rgba(0,0,0,.1);
+	opacity: .5;
+}
+
+.overlay-controls .movecontrols,
+.overlay-controls .switchcontrols,
+.overlay-controls .targetcontrols,
+.overlay-controls .teamcontrols,
+.overlay-controls .whatdo {
+	position: absolute;
+	right: 110px;
+	bottom: 5px;
+	width: 172px;
+	padding: 10px 0 10px 9px;
+}
+.overlay-controls .switchcontrols {
+	width: 119px;
+}
+.overlay-controls .targetcontrols,
+.overlay-controls .teamcontrols {
+	width: 225px;
+}
+.overlay-controls .overlay-message {
+	margin: 0 0 6px 0;
+	padding-right: 9px;
+	font-size: 9pt;
+	line-height: 1.4;
+}
+.overlay-controls .switchselect,
+.overlay-controls .shiftselect {
+	color: #9AAEFF;
+}
+.overlay-controls .moveselect {
+	color: #D9916B;
+}
+.overlay-controls .megaevo-box {
+	padding-top: 0;
+	padding-bottom: 10px;
+}
+.overlay-controls .megaevo {
+	width: 149px;
+	margin: 0;
+}
+
+.overlay-controls .whatdo {
+	width: auto;
+	padding: 2px 8px;
+}
+
+/*********************************************************
  * Team Selector
  *********************************************************/
 
 .select, .team {
-	width: 246px;
-	height: 32px;
-	padding: 0 5px;
+	padding: 4px 22px 4px 8px;
 	font-size: 9pt;
 	text-align: left;
 	font-family: Verdana, Helvetica, Arial, sans-serif;
@@ -2131,20 +2343,56 @@ pre.textbox.textbox-empty[placeholder]:before {
 
 	position: relative;
 }
+.dark .select, .dark .team {
+	border-color: #34373b;
+	box-shadow: none;
+	background: linear-gradient(to bottom, #626971, #444950);
+	box-shadow: 0.5px 1px 2px rgba(255, 255, 255, 0.45), inset 0.5px 1px 1px rgba(255, 255, 255, 0.5);
+	color: white;
+}
+.select:hover, .select:hover .team, a.team:hover, button.team:hover {
+	border-color: #555555;
+	background: #FFFFFF;
+	background: linear-gradient(to bottom,  #dce4ec,  #c6d3e0);
+}
+.select:active, .select:active .team, a.team:active, button.team:active {
+	border-color: #777777;
+	background: #DDDDDD;
+	box-shadow: none;
+	background: linear-gradient(to bottom,  #bbc4cd,  #e7edf2);
+}
+.dark .select:hover, .dark .select:hover .team, .dark a.team:hover, .dark button.team:hover {
+	border-color: #34373b;
+	background: #FFFFFF;
+	color: white;
+	background: linear-gradient(to bottom, #8f98a1, #4a5057);
+}
+.dark .select:active, .dark .select:active .team, .dark a.team:active, .dark button.team:active {
+	border-color: #34373b;
+	box-shadow: none;
+	background: linear-gradient(to bottom, #4a5057, #8f98a1);
+}
+
+select.select {
+	padding: 3px 4px;
+}
+.label .select {
+	margin-top: 2px;
+	display: block;
+}
+select.select.base-select {
+	padding: 4px 22px 4px 8px;
+}
+.formatselect, .teamselect, .team {
+	width: 246px;
+	min-height: 32px;
+	padding: 0 5px;
+	height: auto;
+}
 .team {
 	height: 49px;
 	overflow: hidden;
 	white-space: nowrap;
-}
-.select {
-	min-height: 32px;
-	height: auto;
-}
-.dark .select, .dark .team {
-	border-color: #000000;
-	box-shadow: none;
-	background: linear-gradient(to bottom, rgba(227, 239, 251, 0.85), rgba(118, 128, 140, 0.85));
-	color: black;
 }
 .team.pc-box {
 	min-height: 74px;
@@ -2183,12 +2431,6 @@ pre.textbox.textbox-empty[placeholder]:before {
 	font-style: normal;
 	font-weight: normal;
 }
-.teamselect:disabled strong {
-	color: #777777;
-}
-.dark .teamselect:disabled strong {
-	color: #505050;
-}
 .team small {
 	display: block;
 	text-align: center;
@@ -2199,32 +2441,12 @@ pre.textbox.textbox-empty[placeholder]:before {
 .team small span {
 	margin-right: -4px;
 }
-.select:hover, .select:hover .team, a.team:hover, button.team:hover {
-	border-color: #555555;
-	background: #FFFFFF;
-	background: linear-gradient(to bottom,  #dce4ec,  #c6d3e0);
-}
-.select:active, .select:active .team, a.team:active, button.team:active {
-	border-color: #777777;
-	background: #DDDDDD;
-	box-shadow: none;
-	background: linear-gradient(to bottom,  #bbc4cd,  #e7edf2);
-}
-.dark .select:hover, .dark .select:hover .team, .dark a.team:hover, .dark button.team:hover {
-	border-color: #000000;
-	background: #FFFFFF;
-	color: black;
-	background: linear-gradient(to bottom, rgba(255, 255, 255, 0.85), rgba(161, 175, 189, 0.85));
-}
-.dark .select:active, .dark .select:active .team, .dark a.team:active, .dark button.team:active {
-	border-color: #000000;
-	box-shadow: none;
-	background: linear-gradient(to bottom, rgba(141, 153, 165, 0.85), rgba(255, 255, 255, 0.85));
-}
+
 .select:before {
 	position: absolute;
-	top: 8px;
+	top: 50%;
 	right: 6px;
+	margin-top: -7px;
 	padding: 0;
 
 	font-size: 14px;
@@ -2233,11 +2455,11 @@ pre.textbox.textbox-empty[placeholder]:before {
 	-webkit-font-smoothing: antialiased;
 	color: #777777;
 }
-.dark .select:before {
-	color: #000000;
+select.select::picker-icon {
+	display: none;
 }
-.select.teamselect:before {
-	top: 16px;
+.dark .select:before {
+	color: #cccccc;
 }
 .select:disabled {
 	border-color: #999999;
@@ -2246,9 +2468,9 @@ pre.textbox.textbox-empty[placeholder]:before {
 	box-shadow: none;
 }
 .dark .select:disabled {
-	border-color: #888888;
-	background: linear-gradient(to bottom, rgba(227, 239, 251, 0.6), rgba(193, 199, 207, 0.6));
-	color: #444444;
+	border-color: #888;
+	background: rgba(90,90,90,.65);
+	color: #BBB;
 	box-shadow: none;
 }
 .select:disabled .team, .select:disabled:hover .team, .select:disabled:active .team {
@@ -2267,6 +2489,10 @@ pre.textbox.textbox-empty[placeholder]:before {
 .select.preselected,
 .select:disabled.preselected {
 	color: black;
+}
+.dark .select.preselected,
+.dark .select:disabled.preselected {
+	color: white;
 }
 
 .teamlist .team, .teamdropdown .team {
@@ -2352,7 +2578,7 @@ pre.textbox.textbox-empty[placeholder]:before {
 	box-shadow: none;
 	background: transparent;
 }
-.avatarlist button {
+.avatarlist button, .dark .avatarlist button {
 	width: 80px;
 	height: 80px;
 	background: transparent url(https://play.pokemonshowdown.com/sprites/trainers-sheet.png) no-repeat scroll 0px 0px;
