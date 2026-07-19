@@ -870,8 +870,13 @@ export const Dex = new class implements ModdedDex {
 			return spriteData;
 		}
 
-		// Mod Cries
-		if (options.mod) {
+		// Mod Cries: only the digimon mod ships a per-mod audio dir. Other scene mods
+		// (e.g. gen3megascap) reuse the standard audio/cries/ path set above; without this
+		// guard, wiring scene.mod='gen3megascap' would rewrite every non-aura mon's cry to a
+		// nonexistent sprites/gen3megascap/audio/<base>.mp3 and 404 cries format-wide. (Aura
+		// Megas already return earlier with their own audio/cries/<base>.mp3, so this only
+		// affects ordinary mons and the single non-aura CAP Mega, Magcargo-Mega.)
+		if (options.mod === 'digimon') {
 			spriteData.cryurl = `sprites/${options.mod}/audio/${toID(species.baseSpecies)}`;
 			spriteData.cryurl += '.mp3';
 		}

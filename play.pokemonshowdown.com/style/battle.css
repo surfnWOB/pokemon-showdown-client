@@ -789,6 +789,12 @@ License: GPLv2
 	--g3mc-outer-color: #68606e;
 	--g3mc-outer-alpha: rgba(104, 96, 110, 0.40);
 }
+.gen3megascap-aura-ghost {
+	--g3mc-inner-color: #8a6fc4;
+	--g3mc-inner-alpha: rgba(138, 111, 196, 0.64);
+	--g3mc-outer-color: #746a94;
+	--g3mc-outer-alpha: rgba(116, 106, 148, 0.40);
+}
 .gen3megascap-aura-psychic {
 	--g3mc-inner-color: #ec4f9b;
 	--g3mc-inner-alpha: rgba(236, 79, 155, 0.64);
