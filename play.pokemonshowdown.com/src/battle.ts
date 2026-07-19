@@ -3394,8 +3394,7 @@ export class Battle {
 		// (e.g. the 'replace'/Illusion path) makes this a no-op.
 		if (condition && searchid) {
 			const candidates: Pokemon[] = [];
-			for (let i = 0; i < side.pokemon.length; i++) {
-				const pokemon = side.pokemon[i];
+			for (const pokemon of side.pokemon) {
 				if (pokemon.fainted) continue;
 				if (side.active.includes(pokemon)) continue;
 				if (pokemon === side.lastPokemon && !side.active[slot]) continue;
@@ -3460,7 +3459,7 @@ export class Battle {
 	 * enters at full HP, so this gates whether an HP-inconsistent switch-in is a new copy. */
 	isFullHP(condition: string) {
 		const hp = condition.split(' ')[0];
-		if (hp.indexOf('/') < 0) return false;
+		if (!hp.includes('/')) return false;
 		let [curhp, maxhp] = hp.split('/');
 		const colorchar = maxhp.slice(-1);
 		if (colorchar === 'r' || colorchar === 'y' || colorchar === 'g') maxhp = maxhp.slice(0, -1);
