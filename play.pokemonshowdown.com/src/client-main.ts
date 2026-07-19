@@ -72,6 +72,13 @@ export declare const Config: PSConfig;
  */
 export type RoomID = Lowercase<string> & { __isRoomID: true };
 export type TimestampOptions = 'minutes' | 'seconds' | undefined;
+/**
+ * * `side-by-side`: desktop layout, with battle on left and chat on right, controls below battle
+ * * `top-and-bottom`: vertical phone layout, with battle on top and chat/controls on bottom
+ * * `scrolling`: horizontal phone layout, fully scrollable
+ */
+export type BattlePanelLayout = 'side-by-side' | 'top-and-bottom' | 'scrolling';
+export type BattleLayoutPreference = BattlePanelLayout | `${BattlePanelLayout}-overlay`;
 
 const PSPrefsDefaults: { [key: string]: any } = {};
 
@@ -126,6 +133,7 @@ class PSPrefs extends PSStreamModel<string | null> {
 	autotimer: boolean | null = null;
 	autohardcore: boolean | null = null;
 	spectatefromstart: boolean | null = null;
+	battlelayout: BattleLayoutPreference | null = null;
 	rightpanelbattles: boolean | null = null;
 	disallowspectators: boolean | null = null;
 	starredformats: { [formatid: string]: true | undefined } | null = null;
@@ -329,21 +337,20 @@ class PSPrefs extends PSStreamModel<string | null> {
 			let rooms = autojoin[PS.server.id] || '';
 			for (let title of rooms.split(",")) {
 				const id = /[^a-z0-9-]/.test(title) ? toID(title) as any as RoomID : title as RoomID;
-				PS.addRoom({ id, title, connected: 'init', autofocus: false });
+				PS.addRoom({ id, title, connected: 'pending', autofocus: false });
 			}
 			const cmd = `/autojoin ${rooms}`;
-			if (PS.connection?.queue.includes(cmd)) {
-				// don't jam up the queue with autojoin requests
-				// sending autojoin again after a prior autojoin successfully resolves likely returns an error from the server
-				return;
-			}
-			// send even if `rooms` is empty, for server autojoins
+			// Don't jam up the queue with duplicate autojoin requests.
+			// Sending multiple autojoins is a server error.
+			if (PS.connection?.queue.includes(cmd)) return;
 			PS.send(cmd);
 		}
 
 		for (const roomid in PS.rooms) {
 			const room = PS.rooms[roomid]!;
-			if (room.type === 'battle') {
+			if (room.type === 'battle' && room.connectMode === 'pending-reconnect') {
+				// The server autojoins ongoing battles.
+				// Fortunately, joining a joined room is a no-op.
 				room.connect();
 			}
 		}
@@ -669,7 +676,7 @@ class PSUser extends PSStreamModel<PSLoginState | null> {
 		if (loggingIn) {
 			for (const roomid in PS.rooms) {
 				const room = PS.rooms[roomid]!;
-				if (room.connectWhenLoggedIn) room.connect();
+				if (room.connectMode === 'pending-login') room.connect();
 			}
 		}
 		this.updateRegExp();
@@ -956,6 +963,10 @@ class PSServer {
 
 type PSRoomLocation = 'left' | 'right' | 'popup' | 'mini-window' | 'modal-popup';
 
+export interface PSRoomFocusOptions {
+	preventScroll?: boolean;
+}
+
 export interface RoomOptions {
 	id: RoomID;
 	title?: string;
@@ -980,7 +991,8 @@ export interface RoomOptions {
 	parentRoomid?: RoomID | null;
 	/** Opens the popup to the right of its parent, instead of the default above/below (for userlists) */
 	rightPopup?: boolean;
-	connected?: 'autoreconnect' | 'client-only' | 'expired' | 'init' | boolean;
+	connected?: PSRoom['connected'];
+	connectMode?: PSRoom['connectMode'];
 	/** @see {PSRoomPanelSubclass#noURL} */
 	noURL?: boolean;
 	args?: Record<string, unknown> | null;
@@ -1029,6 +1041,7 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 	title = "";
 	type = '';
 	isPlaceholder = false;
+	/** unused??? */
 	readonly classType: string = '';
 	location: PSRoomLocation = 'left';
 	/**
@@ -1038,29 +1051,25 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 	 */
 	closable = true;
 	/**
-	 * Whether the room is connected to the server. This is _eager_,
-	 * we set it to `'init'` when we send `/join`, not when the server
-	 * tells us we're connected. That's because it tracks whether we
-	 * still need to send `/join` or `/leave`.
+	 * Whether the room is connected to the server.
 	 *
-	 * Set to 'init' during initialization, including while parsing
-	 * the lines after receiveing `'init'` from the server.
+	 * * `'pending'` after sending `/join`.
 	 *
-	 * Only connected to server when `=== true`. String options other
-	 * than `init` mean the room isn't connected to the game server
-	 * but to something else.
-	 *
-	 * 'client-only' for DMs
+	 * * `'init'` after getting a response from the server, while handling
+	 *   the lines after receiving `'init'` from the server.
 	 */
-	connected: 'autoreconnect' | 'client-only' | 'expired' | 'init' | boolean = false;
+	connected: boolean | 'pending' | 'init' = false;
 	/**
-	 * Can this room even be connected to at all?
-	 * `true` = pass messages from the server to subscribers
-	 * `false` = throw an error if we receive messages from the server
+	 * How this room connects to the server.
+	 * * `null` = client-only
+	 * * `'normal'` = can connect normally
+	 * * `'pending-reconnect'` = once connected, now not (flag to retry after reconnect)
+	 * * `'pending-login'` = failed to connect (flag to retry after login)
+	 * * `'expired'` = once connected, now expired
+	 * * `'not-found'` = got `noinit` from the server
 	 */
-	readonly canConnect: boolean = false;
-	connectWhenLoggedIn = false;
-	onParentFocus: ((e?: Event) => boolean | void) | null = null;
+	connectMode: null | 'normal' | 'expired' | 'not-found' | 'pending-reconnect' | 'pending-login' = null;
+	onRequestFocus: ((options?: PSRoomFocusOptions) => boolean | void) | null = null;
 	onParentKeyDown: ((e?: Event) => boolean | void) | null = null;
 
 	width = 0;
@@ -1072,7 +1081,7 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 	 * their width/height without flickering. But hidden HTML elements can't be
 	 * focused, so this is a note-to-self to focus the next time they can be.
 	 */
-	focusNextUpdate = false;
+	focusNextUpdate: boolean | PSRoomFocusOptions = false;
 	parentElem: HTMLElement | null = null;
 	parentRoomid: RoomID | null = null;
 	rightPopup = false;
@@ -1098,6 +1107,7 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 		if (this.location !== 'popup' && this.location !== 'modal-popup') this.parentElem = null;
 		if (options.rightPopup) this.rightPopup = true;
 		if (options.connected) this.connected = options.connected;
+		if (options.connectMode !== undefined) this.connectMode = options.connectMode;
 		if (options.backlog) this.backlog = options.backlog;
 		this.noURL = options.noURL || false;
 		this.args = options.args || null;
@@ -1211,11 +1221,7 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 			this.dismissNotification(id);
 			break;
 		} default: {
-			if (this.canConnect) {
-				this.update(args);
-			} else {
-				throw new Error(`This room is not designed to receive messages`);
-			}
+			this.update(args);
 		}
 		}
 	}
@@ -1299,7 +1305,8 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 			PS.user.logOut();
 		},
 		'reconnect,connect'() {
-			if (this.connected && this.connected !== 'autoreconnect') {
+			if (this.connected) {
+				if (this.connected !== true) return this.errorReply(`You are already connecting.`);
 				return this.errorReply(`You are already connected.`);
 			}
 
@@ -1794,11 +1801,16 @@ export class PSRoom extends PSStreamModel<Args | null> implements RoomOptions {
 		this.sendDirect(msg);
 	}
 	sendDirect(msg: string) {
-		if (this.connected === 'expired') return this.add(`This room has expired (you can't chat in it anymore)`);
+		if (this.connectMode === 'expired') {
+			return this.add(`This room has expired (you can't chat in it anymore)`);
+		}
+		if (this.connectMode === 'not-found') {
+			return this.add(`This room doesn't exist`);
+		}
 		PS.send(msg, this.id);
 	}
 	destroy() {
-		if (this.connected === true) {
+		if (this.connected) {
 			this.sendDirect(`/noreply /leave ${this.id}`);
 			this.connected = false;
 		}
@@ -1970,16 +1982,55 @@ export const PS = new class extends PSModel {
 	 * * 0 = only one panel visible
 	 * * null = vertical nav layout
 	 * n.b. Resizes only trigger a re-render if the panel layout or a
-	 * width-dependent layout breakpoint changes.
+	 * width/height-dependent layout breakpoint changes.
 	 */
 	leftPanelWidth: number | null = 0;
 	mainmenu: MainMenuRoom = null!;
 	layoutViewportWidth = 0;
 
-	roomWidthBreakpointPassed(oldWidth: number, newWidth: number) {
-		return (oldWidth < 550) !== (newWidth < 550) || // chat-room userlists, teambuilder
+	roomLayoutBreakpointPassed(room: PSRoom, newWidth: number, newHeight: number) {
+		const oldWidth = room.width;
+		const oldHeight = room.height;
+		if ((oldWidth < 550) !== (newWidth < 550) || // chat-room userlists, teambuilder
 			(oldWidth < 620) !== (newWidth < 620) || // main menu and teambuilder tiny-layout class
-			(oldWidth <= 700) !== (newWidth <= 700); // battle tiny-layout
+			(oldWidth <= 780) !== (newWidth <= 780)) { // battle tiny-layout
+			return true;
+		}
+		if (room.type === 'battle') {
+			const oldLayoutState = this.chooseBattleLayout(oldWidth, oldHeight, this.prefs.battlelayout);
+			const newLayoutState = this.chooseBattleLayout(newWidth, newHeight, this.prefs.battlelayout);
+			if (oldLayoutState.layout !== newLayoutState.layout ||
+				oldLayoutState.battleHeight !== newLayoutState.battleHeight ||
+				oldLayoutState.battleWidth !== newLayoutState.battleWidth ||
+				oldLayoutState.overlayControls !== newLayoutState.overlayControls) {
+				return true;
+			}
+		}
+		return false;
+	}
+	chooseBattleLayout(width: number, height: number, preference?: BattleLayoutPreference | null) {
+		let scale = Math.min(1, width / 640, height / 360);
+		const uncappedBattleHeight = Math.round(360 * scale);
+		let layout: BattlePanelLayout = width > 780 ? 'side-by-side' :
+			height < uncappedBattleHeight + 150 ? 'scrolling' : 'top-and-bottom';
+
+		const preferredLayout = preference?.replace(/-overlay$/, '') as BattlePanelLayout;
+		if (preferredLayout && (width >= 500 || preferredLayout !== 'side-by-side')) {
+			layout = preferredLayout;
+		}
+		if (layout === 'side-by-side') {
+			scale = Math.min(scale, Math.max(0, width - 180) / 640);
+		} else if (layout === 'top-and-bottom') {
+			scale = Math.min(scale, Math.max(0, height - 180) / 360);
+		}
+
+		const battleHeight = Math.round(360 * scale);
+		const battleWidth = Math.round(640 * scale);
+		let overlayControls = height < battleHeight + 180;
+		if (preferredLayout) {
+			overlayControls = !!preference?.endsWith('-overlay');
+		}
+		return { layout, battleHeight, battleWidth, overlayControls };
 	}
 
 	/**
@@ -2038,7 +2089,7 @@ export const PS = new class extends PSModel {
 			let rooms = autojoin[this.server.id] || '';
 			for (let title of rooms.split(",")) {
 				const id = /[^a-z0-9-]/.test(title) ? toID(title) as any as RoomID : title as RoomID;
-				this.addRoom({ id, title, connected: true, autofocus: false });
+				this.addRoom({ id, title, connected: 'pending', autofocus: false });
 			}
 		}
 
@@ -2111,29 +2162,31 @@ export const PS = new class extends PSModel {
 	/** @returns changed */
 	updateLayout(): boolean {
 		const leftPanelWidth = this.calculateLeftPanelWidth();
+		// `window.inner*` subtracts on-screen keyboards, but `document.body.offset*` doesn't
+		// we don't want the layout to jump around wildly when we open an OSK, so...
+		// `document.body.offset*` is the scrollable area, though, we want
+		// `document.documentElement.client*` for the viewport dimensions before OSK
 		const viewportWidth = document.documentElement.clientWidth;
-		const totalWidth = document.body.offsetWidth;
-		const totalHeight = document.body.offsetHeight;
-		const roomHeight = totalHeight - 56;
+		const viewportHeight = document.documentElement.clientHeight;
+		const roomHeight = viewportHeight - 56;
 		let needsUpdate = this.leftPanelWidth !== leftPanelWidth;
 		if (leftPanelWidth === null) {
-			const headerWidth = viewportWidth <= 700 ?
-				NARROW_MODE_HEADER_WIDTH : VERTICAL_HEADER_WIDTH;
-			const roomWidth = totalWidth + 1 - headerWidth;
-			needsUpdate ||= this.roomWidthBreakpointPassed(this.panel.width, roomWidth);
+			const headerWidthOffset = viewportWidth <= 700 ? 0 : VERTICAL_HEADER_WIDTH;
+			const roomWidth = viewportWidth + 1 - headerWidthOffset;
+			needsUpdate ||= this.roomLayoutBreakpointPassed(this.panel, roomWidth, viewportHeight - 30);
 			this.panel.width = roomWidth;
-			this.panel.height = totalHeight - 30;
+			this.panel.height = viewportHeight - 30;
 		} else if (leftPanelWidth) {
-			const rightPanelWidth = totalWidth + 1 - leftPanelWidth;
-			needsUpdate ||= this.roomWidthBreakpointPassed(this.leftPanel.width, leftPanelWidth);
-			needsUpdate ||= this.roomWidthBreakpointPassed(this.rightPanel!.width, rightPanelWidth);
+			const rightPanelWidth = viewportWidth + 1 - leftPanelWidth;
+			needsUpdate ||= this.roomLayoutBreakpointPassed(this.leftPanel, leftPanelWidth, roomHeight);
+			needsUpdate ||= this.roomLayoutBreakpointPassed(this.rightPanel!, rightPanelWidth, roomHeight);
 			this.leftPanel.width = leftPanelWidth;
 			this.leftPanel.height = roomHeight;
 			this.rightPanel!.width = rightPanelWidth;
 			this.rightPanel!.height = roomHeight;
 		} else {
-			needsUpdate ||= this.roomWidthBreakpointPassed(this.panel.width, totalWidth);
-			this.panel.width = totalWidth;
+			needsUpdate ||= this.roomLayoutBreakpointPassed(this.panel, viewportWidth, roomHeight);
+			this.panel.width = viewportWidth;
 			this.panel.height = roomHeight;
 		}
 
@@ -2214,12 +2267,16 @@ export const PS = new class extends PSModel {
 					}
 				} else {
 					room.type = type;
+					room.connected = 'init';
 					this.updateRoomTypes();
 				}
 				if (room) {
-					if (room.connected === 'autoreconnect') {
-						room.connected = true;
-						if (room.handleReconnect(msg)) return;
+					if (room.connectMode === 'pending-reconnect') {
+						room.connectMode = 'normal';
+						if (room.handleReconnect(msg)) {
+							room.connected = true;
+							return;
+						}
 					}
 					room.connected = true;
 				}
@@ -2228,12 +2285,12 @@ export const PS = new class extends PSModel {
 				continue;
 			} case 'deinit': {
 				room = PS.rooms[roomid2];
-				if (room && room.connected !== 'expired') {
+				if (room) {
 					room.connected = false;
-					this.removeRoom(room);
+					if (room.connectMode !== 'expired') this.removeRoom(room);
+					this.updateAutojoin();
+					this.update();
 				}
-				this.updateAutojoin();
-				this.update();
 				continue;
 			} case 'noinit': {
 				room = PS.rooms[roomid2];
@@ -2242,23 +2299,27 @@ export const PS = new class extends PSModel {
 					room = this.addRoom({
 						id: roomid2,
 						type: 'battle',
-						connected: false,
+						connectMode: null,
 					});
 					(room as BattleRoom).rejoining = false;
 				}
 				if (room) {
 					room.connected = false;
 					if (args[1] === 'namerequired') {
-						room.connectWhenLoggedIn = true;
+						room.connectMode = 'pending-login';
 						if (!PS.user.initializing) {
 							room.receiveLine(['error', args[2]]);
 						}
 					} else if (args[1] === 'nonexistent' || args[1] === 'joinfailed') {
 						// sometimes we assume a room is a chatroom when it's not
 						// when that happens, just ignore this error
-						if (room.type === 'chat' || room.type === 'battle') room.receiveLine(args);
+						if (room.type === 'chat' || room.type === 'battle') {
+							room.connectMode = 'not-found';
+							room.receiveLine(args);
+						}
 					} else if (args[1] === 'rename') {
 						room.connected = true;
+						room.connectMode = 'normal';
 						room.title = args[3] || room.title;
 						this.renameRoom(room, args[2] as RoomID);
 					}
@@ -2319,10 +2380,9 @@ export const PS = new class extends PSModel {
 	 * @see {@link leftPanelWidth} for return value meaning
 	 */
 	calculateLeftPanelWidth() {
-		const available = document.body.offsetWidth;
-		if (document.documentElement.clientWidth < 800 || this.prefs.onepanel === 'vertical') {
-			return null;
-		}
+		if (this.prefs.onepanel === 'vertical') return null;
+		if (!this.prefs.onepanel && document.documentElement.clientWidth < 700) return null;
+		if (!this.prefs.onepanel && document.documentElement.clientHeight < 430) return null;
 		// If we don't have both a left room and a right room, obviously
 		// just show one room
 		if (!this.leftPanel || !this.rightPanel || this.prefs.onepanel) {
@@ -2332,6 +2392,7 @@ export const PS = new class extends PSModel {
 		// The rest of this code can assume we have both a left room and a
 		// right room, and also want to show both if they fit
 
+		const available = document.documentElement.clientWidth;
 		const left = this.getWidthFor(this.leftPanel);
 		const right = this.getWidthFor(this.rightPanel);
 
@@ -2433,6 +2494,7 @@ export const PS = new class extends PSModel {
 			const options: RoomOptions = room;
 			if (RoomType.title) options.title = RoomType.title;
 			options.type = type;
+			options.connectMode = undefined;
 			const Model = RoomType.Model || PSRoom;
 			const newRoom = new Model(options);
 			this.rooms[roomid] = newRoom;
@@ -2442,21 +2504,23 @@ export const PS = new class extends PSModel {
 			if (roomid === '') this.mainmenu = newRoom as MainMenuRoom;
 			if (this.room === room) {
 				this.room = newRoom;
-				newRoom.focusNextUpdate = true;
+				newRoom.focusNextUpdate = { preventScroll: true };
 			}
 
 			updated = true;
 		}
 		if (updated) this.update();
 	}
-	setFocus(room: PSRoom) {
-		room.onParentFocus?.();
+	setFocus(room: PSRoom, options?: PSRoomFocusOptions) {
+		room.onRequestFocus?.(options);
 	}
 	focusRoom(roomid: RoomID) {
 		const room = this.rooms[roomid];
 		if (!room) return false;
 		if (this.room === room) {
-			this.setFocus(room);
+			const focusOptions = room.focusNextUpdate === true ? undefined : room.focusNextUpdate || undefined;
+			room.focusNextUpdate = false;
+			this.setFocus(room, focusOptions);
 			return true;
 		}
 		this.closePopupsAbove(room, true);
@@ -2837,19 +2901,23 @@ export const PS = new class extends PSModel {
 
 		if (this.popups.length && room.id === this.popups[this.popups.length - 1]) {
 			this.popups.pop();
-			if (this.popups.length) {
-				// focus topmost popup
-				PS.room = PS.rooms[this.popups[this.popups.length - 1]]!;
-			} else {
-				// if popup parent is a mini-window, focus popup parent
-				PS.room = PS.rooms[room.parentRoomid ?? PS.panel.id] || PS.panel;
-				// otherwise focus current panel
-				if (PS.room.location !== 'mini-window' || PS.panel !== PS.mainmenu) PS.room = PS.panel;
+			if (wasFocused) {
+				// the topmost popup must be focused while open, but if you focus
+				// while closing it, don't steal focus back.
+				if (this.popups.length) {
+					// focus topmost popup
+					PS.room = PS.rooms[this.popups[this.popups.length - 1]]!;
+				} else {
+					// if popup parent is a mini-window, focus popup parent
+					PS.room = PS.rooms[room.parentRoomid ?? PS.panel.id] || PS.panel;
+					// otherwise focus current panel
+					if (PS.room.location !== 'mini-window' || PS.panel !== PS.mainmenu) PS.room = PS.panel;
+				}
 			}
 		}
 
 		if (wasFocused) {
-			this.room.focusNextUpdate = true;
+			this.room.focusNextUpdate = { preventScroll: true };
 		}
 	}
 	/** do NOT use this in a while loop: see `closePopupsUntil */

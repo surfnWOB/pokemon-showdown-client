@@ -224,7 +224,7 @@ describe('offline build tooling', () => {
 		assert.ok(core.includes('/fx/client-bg-charizards.jpg'));
 		assert.ok(core.includes('/fx/client-bgsheet.png'));
 		assert.ok(core.includes('/pokemonshowdownbeta@2x.png'));
-		assert.ok(stylesheetImports.includes('/style/battle-log.css?v12.6'));
+		assert.ok(stylesheetImports.some(s => s.startsWith('/style/battle-log.css?v')));
 		assert.ok(!core.includes('/fx/angry.png'));
 		assert.ok(!core.includes('/js/panels.js'));
 		assert.ok(!core.some(asset => asset.startsWith('/showdex/')));
