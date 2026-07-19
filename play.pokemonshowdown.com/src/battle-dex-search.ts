@@ -1397,7 +1397,9 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			// to OU on 2026-07-08 (so they now sit in the OU bucket, above the UUBL slice). Browse
 			// like standard UUBL ((OU) and below), but surface those two on top so they stay visible.
 			const start = slices['(OU)'] || slices.UUBL;
-			const kept = tierSet.slice(0, start).filter(([type, id]) => type === 'pokemon' && (id === 'raikou' || id === 'registeel'));
+			const kept = tierSet.slice(0, start).filter(
+				([type, id]) => type === 'pokemon' && (id === 'raikou' || id === 'registeel')
+			);
 			tierSet = tierSet.slice(start);
 			if (kept.length) tierSet = [['header', 'OU'], ...kept, ...tierSet];
 		} else if (format === 'uu') tierSet = tierSet.slice(slices.UU);

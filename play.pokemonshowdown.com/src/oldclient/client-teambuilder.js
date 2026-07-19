@@ -3640,7 +3640,7 @@
 				// Per-species overrides that apply only to this metagame's boost ladder
 				// (Glalie sits at UU/+10 here, not its standard-gen3 NUBL/+15). Mirrors
 				// the tierOverrides map in data/mods/gen3/rulesets.ts `tiershiftmod`.
-				var tierOverrides = {glalie: 'uu'};
+				var tierOverrides = { glalie: 'uu' };
 				if (species.id in tierOverrides) return gen3Boosts[tierOverrides[species.id]];
 				// SU is a fork-only bottom tier that lives in the gen3subzu mod, not the
 				// standard gen3 tier this species carries; consult it so SU mons land on
@@ -3652,8 +3652,8 @@
 				// overrideSpeciesData, crashing the whole Tier Shift teambuilder search
 				// (see pokemon-showdown-client commit 8e786c26).
 				if (window.BattleTeambuilderTable && BattleTeambuilderTable['gen3subzu'] &&
-						BattleTeambuilderTable['gen3subzu'].overrideTier &&
-						BattleTeambuilderTable['gen3subzu'].overrideTier[species.id] === 'SU') {
+					BattleTeambuilderTable['gen3subzu'].overrideTier &&
+					BattleTeambuilderTable['gen3subzu'].overrideTier[species.id] === 'SU') {
 					return gen3Boosts.su;
 				}
 				return gen3Boosts[toID(species.tier)] || 0;
