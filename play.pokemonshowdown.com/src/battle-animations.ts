@@ -1603,7 +1603,11 @@ export class BattleScene implements BattleSceneStub {
 		this.preloadImage(Dex.resourcePrefix + 'sprites/ani-back/substitute.gif');
 	}
 	rollBgm() {
-		this.setBgm(1 + this.numericId % 15);
+		// Miror B's theme in every battle, all the time (community request). This is
+		// bgm -3 (audio/colosseum-miror-b.mp3), normally the easter egg that only
+		// plays when a side brings 2+ Ludicolo. Replaces the usual random roll over
+		// the 15 trainer/rival themes.
+		this.setBgm(-3);
 	}
 	setBgm(bgmNum: number) {
 		if (this.bgmNum === bgmNum) return;
