@@ -43,6 +43,8 @@ const GEN1_7U_VIABLE = [
 	'rhyhorn', 'clefairy', 'voltorb', 'hitmonchan',
 	'farfetchd', 'beedrill', 'shellder', 'gloom', 'kabuto',
 ];
+// [Gen 1] 10U (Other): the entire legal roster is just these six mons (see config/formats.ts).
+const GEN1_10U = ['caterpie', 'metapod', 'weedle', 'kakuna', 'magikarp', 'ditto'];
 
 /** ID, SearchType, index (if alias), offset (if offset alias) */
 declare const BattleSearchIndex: [ID, SearchType, number?, number?][];
@@ -1089,6 +1091,11 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			(GEN1_7U_VIABLE.includes(pokemon.id) || GEN1_7U_VIABLE.includes(toID(pokemon.baseSpecies)))) {
 			return '7U';
 		}
+		// [Gen 1] 10U: all six legal mons carry the "10U" label.
+		if (this.dex.gen === 1 && this.format === '10u' &&
+			(GEN1_10U.includes(pokemon.id) || GEN1_10U.includes(toID(pokemon.baseSpecies)))) {
+			return '10U';
+		}
 		let table = window.BattleTeambuilderTable;
 		const gen = this.dex.gen;
 		const tableKey = this.formatType === 'doubles' ? `gen${gen}doubles` :
@@ -1427,6 +1434,13 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 				['header', '7U'], ...viable,
 				['header', 'Also legal'], ...rest,
 			] as SearchRow[];
+		} else if (dex.gen === 1 && format === '10u') {
+			// [Gen 1] 10U (Other): only six Pokemon are legal (see config/formats.ts). Show exactly
+			// those, in GEN1_10U order, under a "10U" header.
+			const legal = tierSet
+				.filter(([type, id]) => type === 'pokemon' && GEN1_10U.includes(id as string))
+				.sort((a, b) => GEN1_10U.indexOf(a[1] as string) - GEN1_10U.indexOf(b[1] as string));
+			tierSet = [['header', '10U'], ...legal] as SearchRow[];
 		} else if (
 			format === 'lc' || format === 'lcuu' || format.startsWith('lc') || (format !== 'caplc' && format.endsWith('lc'))
 		) tierSet = tierSet.slice(slices.LC);
