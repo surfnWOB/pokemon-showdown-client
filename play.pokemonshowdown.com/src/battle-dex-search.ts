@@ -45,6 +45,13 @@ const GEN1_7U_VIABLE = [
 ];
 // [Gen 1] 10U (Other): the entire legal roster is just these six mons (see config/formats.ts).
 const GEN1_10U = ['caterpie', 'metapod', 'weedle', 'kakuna', 'magikarp', 'ditto'];
+// [Gen 1] SU (Sub-Zero Used, Other): the server bases SU on [Gen 1] ZU and bans these strongest
+// ZU mons out (see config/formats.ts). Filter them from the ZU browse pool.
+const GEN1_SU_BANS = [
+	'butterfree', 'dragonair', 'drowzee', 'flareon', 'kingler', 'machamp', 'muk', 'nidoqueen',
+	'omanyte', 'onix', 'parasect', 'pinsir', 'poliwag', 'sandslash', 'slowpoke', 'tentacool',
+	'vileplume', 'weezing', 'wigglytuff',
+];
 
 /** ID, SearchType, index (if alias), offset (if offset alias) */
 declare const BattleSearchIndex: [ID, SearchType, number?, number?][];
@@ -1414,7 +1421,16 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 		else if (format === 'nu') tierSet = tierSet.slice(slices.NU);
 		else if (format === 'pu') tierSet = tierSet.slice(slices.PU);
 		else if (format === 'zu') tierSet = tierSet.slice(slices.ZU);
-		else if (format === 'su') tierSet = tierSet.slice(slices.SU || slices.ZU);
+		else if (dex.gen === 1 && format === 'su') {
+			// [Gen 1] SU (Sub-Zero Used): the server bases this on [Gen 1] ZU and bans out the
+			// strongest ZU mons (GEN1_SU_BANS, see config/formats.ts). Browse the ZU pool (ZU
+			// and below), drop those bans, and relabel the leading ZU header as "SU".
+			tierSet = tierSet.slice(slices.ZU)
+				.filter(([type, id]) => type !== 'pokemon' || !GEN1_SU_BANS.includes(id as string));
+			if (tierSet.length && tierSet[0][0] === 'header') {
+				tierSet = [['header', 'SU'], ...tierSet.slice(1)] as SearchRow[];
+			}
+		} else if (format === 'su') tierSet = tierSet.slice(slices.SU || slices.ZU);
 		else if (format === 'iu') tierSet = tierSet.slice(slices.IU || slices.SU || slices.ZU);
 		else if (dex.gen === 1 && format === '7u') {
 			// [Gen 1] 7U (Other): the server pins the roster to the Smogon 7U legality list (see
