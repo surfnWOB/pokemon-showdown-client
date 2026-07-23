@@ -695,7 +695,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 
 	protected formatType: 'doubles' | 'bdsp' | 'bdspdoubles' | 'rs' | 'rslc' | 'frlg' | 'bw1' | 'letsgo' | 'metronome' |
 		'natdex' | 'nfe' | 'ssdlc1' | 'ssdlc1doubles' | 'predlc' | 'predlcdoubles' | 'predlcnatdex' | 'svdlc1' | 'svdlc1doubles' |
-		'svdlc1natdex' | 'stadium' | 'lc' | 'champions' | 'natdexchampions' | 'zangouse' | 'gen3mega' | 'gen3megascap' | 'gen3ubersuu' |
+		'svdlc1natdex' | 'stadium' | 'lc' | 'champions' | 'natdexchampions' | 'zangouse' | 'gen4mega' | 'gen3mega' | 'gen3megascap' | 'gen3ubersuu' |
 		'gen3subzu' | 'gen1rbyplus' | 'gen3advplus' | 'gen3tradebacks' | 'gen3puretradebacks' | 'gen3hoennification' | 'gen3frlgindigo' |
 		'gen3shadowcolosseum' | 'gen2sw97' | null = null;
 	isDoubles = false;
@@ -860,6 +860,10 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		} else if (this.dex.gen === 3 && format.includes('mega')) {
 			this.formatType = 'gen3mega';
 			this.dex = Dex.mod('gen3mega' as ID);
+		}
+		if (this.dex.gen === 4 && format === 'megas') {
+			this.formatType = 'gen4mega';
+			this.dex = Dex.mod('gen4mega' as ID);
 		}
 		if (this.dex.gen === 3 && format === 'ubersuu') {
 			// vanilla gen3 dex; custom builder table separates banned ("Uber") from legal ("Ubers UU")
@@ -1133,6 +1137,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType === 'champions' ? `champions` :
 			this.formatType === 'natdexchampions' ? `natdexchampions` :
 			this.formatType === 'zangouse' ? `gen3zangouse` :
+			this.formatType === 'gen4mega' ? `gen4mega` :
 			this.formatType === 'gen3mega' ? `gen3mega` :
 			this.formatType === 'gen3megascap' ? `gen3megascap` :
 			this.formatType === 'gen3ubersuu' ? `gen3ubersuu` :
@@ -1312,6 +1317,8 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			table = table[`gen${dex.gen}stadium${dex.gen > 1 ? dex.gen : ''}`];
 		} else if (this.formatType === 'zangouse') {
 			table = table['gen3zangouse'];
+		} else if (this.formatType === 'gen4mega') {
+			table = table['gen4mega'];
 		} else if (this.formatType === 'gen3mega') {
 			table = table['gen3mega'];
 		} else if (this.formatType === 'gen3megascap') {
@@ -1351,6 +1358,8 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			// Slice at the first legal tier (right after the "Banned" bucket) so the
 			// 38 banlist mons are excluded from the browse pool, leaving Uber → … → LC.
 			tierSet = tierSet.slice(slices.Uber);
+		} else if (this.formatType === 'gen4mega') {
+			tierSet = tierSet.slice(slices.OU);
 		} else if (this.formatType === 'gen3mega' && format === 'megasubers') {
 			// Ubers metagame on the Mega mod: keep the natural Uber → OU → … → LC order
 			// (Uber on top) instead of the OU-first default used by [Gen 3] Megas.
@@ -1794,6 +1803,8 @@ class BattleItemSearch extends BattleTypedSearch<'item'> {
 			table = table['gen3rs'];
 		} else if (this.formatType === 'frlg') {
 			table = table['gen3frlg'];
+		} else if (this.formatType === 'gen4mega') {
+			table = table['gen4mega'];
 		} else if (this.formatType === 'gen3mega') {
 			table = table['gen3mega'];
 		} else if (this.formatType === 'gen3megascap') {

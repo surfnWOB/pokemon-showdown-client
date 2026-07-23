@@ -262,15 +262,15 @@ export const Dex = new class implements ModdedDex {
 	moddedDexes: { [mod: string]: ModdedDex } = {};
 
 	/**
-	 * [Gen 3] Megas (custom fork): non-canon Mega/Primal formes that have NO static gen5 sprite
-	 * on the CDN, but DO have an XY-animated sprite in sprites/ani/ (the same art the Champions
-	 * pet-mod uses). The gen-floor (species.gen 6 -> spriteData.gen 5) otherwise keeps getSpriteData
-	 * on the gen5 static path, which 404s; this table routes them straight to ani/ at the gifs'
+	 * Backported Megas (custom fork): non-canon Mega/Primal formes that have NO static gen5
+	 * sprite on the CDN, but DO have an XY-animated sprite in sprites/ani/ (the same art the
+	 * Champions pet-mod uses). The gen-floor otherwise keeps getSpriteData on the gen5 static
+	 * path, which 404s; this table routes them straight to ani/ at the gifs'
 	 * exact native dimensions. Each entry is { front: [w, h], back?: [w, h] }: a `back` entry means
 	 * the full set (front/back/shiny/back-shiny) exists; front-only formes (raichu-megax/-megay,
 	 * chimecho-mega) have only an ani/ front gif on the CDN, so their back/shiny views reuse it.
 	 * Keep-ours on upstream rebase. Re-audit by curling sprites/{ani,ani-back,ani-shiny,
-	 * ani-back-shiny}/<spriteid>.gif for each Mega/Primal forme in data/mods/gen3mega/pokedex.ts.
+	 * ani-back-shiny}/<spriteid>.gif for each Mega/Primal forme in the gen3mega and gen4mega mods.
 	 */
 	readonly customAniMega: { [spriteid: string]: { front: [number, number], back?: [number, number] } } = {
 		'clefable-mega': { front: [188, 101], back: [181, 114] },
@@ -281,6 +281,8 @@ export const Dex = new class implements ModdedDex {
 		'raichu-megax': { front: [90, 89] },
 		'raichu-megay': { front: [89, 90] },
 		'chimecho-mega': { front: [90, 90] },
+		'staraptor-mega': { front: [90, 87] },
+		'froslass-mega': { front: [84, 124], back: [83, 121] },
 	};
 
 	/**
@@ -383,6 +385,9 @@ export const Dex = new class implements ModdedDex {
 			dex = Dex.mod('gen3megascap' as ID);
 		} else if (dex.gen === 3 && formatid.includes('mega')) {
 			dex = Dex.mod('gen3mega' as ID);
+		}
+		if (dex.gen === 4 && formatid === 'megas') {
+			dex = Dex.mod('gen4mega' as ID);
 		}
 		if (dex.gen === 4 && formatid.includes('nopss')) {
 			dex = Dex.mod('gen4nopss' as ID);
@@ -1038,6 +1043,20 @@ export const Dex = new class implements ModdedDex {
 			return {
 				spriteid: baseSpecies.spriteid,
 				spriteDir: 'sprites/gen3',
+				shiny: !!pokemon.shiny,
+				x: 10,
+				y: 5,
+				pixelated: true,
+			};
+		}
+		// Gen 4 Mega teams store the base species plus its stone. If a direct battle-only
+		// forme is loaded, borrow the base's DPP sprite instead of requesting a nonexistent
+		// gen4 Mega PNG.
+		if (dex.modid === 'gen4mega' && (species.isMega || species.isPrimal)) {
+			const baseSpecies = dex.species.get(species.baseSpecies);
+			return {
+				spriteid: baseSpecies.spriteid,
+				spriteDir: 'sprites/gen4',
 				shiny: !!pokemon.shiny,
 				x: 10,
 				y: 5,
