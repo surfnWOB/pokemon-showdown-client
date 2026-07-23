@@ -19,6 +19,13 @@ RUN cd caches/pokemon-showdown && npm ci && cd ../..
 COPY --from=showdown-server . ./caches/pokemon-showdown/
 RUN cd caches/pokemon-showdown && node build && cd ../..
 
+# Publish the fork-owned pkmn/randbats-compatible feed. The server repo owns
+# generation and schema validation; the client serves the committed artifacts
+# same-origin for native tooltips and the embedded standalone Showdex.
+RUN mkdir -p play.pokemonshowdown.com/randbats/data \
+    && cp -r caches/pokemon-showdown/data/random-battles/gen3mega/generated/. \
+        play.pokemonshowdown.com/randbats/data/
+
 RUN cat > config/config.js <<EOF
 var Config = Config || {};
 Config.version = "0";
