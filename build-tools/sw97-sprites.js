@@ -73,7 +73,7 @@ function decodeGrayPNG(buf) {
 		}
 		off += 12 + len;
 	}
-	const {width, height, bitDepth, colorType} = ihdr;
+	const { width, height, bitDepth, colorType } = ihdr;
 	if (colorType !== 0) return null; // not grayscale; caller passes it through verbatim
 	const raw = zlib.inflateSync(Buffer.concat(idat));
 	const bytesPerRow = Math.ceil((width * bitDepth) / 8);
@@ -89,17 +89,17 @@ function decodeGrayPNG(buf) {
 			const c = (x >= bpp && y > 0) ? out[(y - 1) * bytesPerRow + x - bpp] : 0;
 			let val;
 			switch (filter) {
-				case 0: val = rawByte; break;
-				case 1: val = rawByte + a; break;
-				case 2: val = rawByte + b; break;
-				case 3: val = rawByte + ((a + b) >> 1); break;
-				case 4: {
-					const pa = Math.abs(b - c), pb = Math.abs(a - c), pc = Math.abs(a + b - 2 * c);
-					const pr = (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c);
-					val = rawByte + pr;
-					break;
-				}
-				default: throw new Error('unsupported PNG filter ' + filter);
+			case 0: val = rawByte; break;
+			case 1: val = rawByte + a; break;
+			case 2: val = rawByte + b; break;
+			case 3: val = rawByte + ((a + b) >> 1); break;
+			case 4: {
+				const pa = Math.abs(b - c), pb = Math.abs(a - c), pc = Math.abs(a + b - 2 * c);
+				const pr = (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c);
+				val = rawByte + pr;
+				break;
+			}
+			default: throw new Error('unsupported PNG filter ' + filter);
 			}
 			out[y * bytesPerRow + x] = val & 0xff;
 		}
@@ -114,7 +114,7 @@ function decodeGrayPNG(buf) {
 			pixels[y * width + x] = (out[bytePos] >> shift) & maxval;
 		}
 	}
-	return {width, height, maxval, pixels};
+	return { width, height, maxval, pixels };
 }
 
 function crc32(buf) {
@@ -148,7 +148,7 @@ function encodeRGBA(width, height, rgba) {
 	ihdr.writeUInt32BE(height, 4);
 	ihdr[8] = 8; // bit depth
 	ihdr[9] = 6; // color type RGBA
-	const idat = zlib.deflateSync(raw, {level: 9});
+	const idat = zlib.deflateSync(raw, { level: 9 });
 	return Buffer.concat([
 		Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
 		chunk('IHDR', ihdr),
@@ -175,7 +175,7 @@ function parsePalettes(decompRoot) {
 	for (const line of superPal.split('\n')) {
 		const m = line.match(/RGB\s+([\d,\s]+?)\s*;\s*(\w+)/);
 		if (!m) continue;
-		const nums = m[1].split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+		const nums = m[1].split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
 		if (nums.length < 12) continue;
 		const quad = [];
 		for (let i = 0; i < 4; i++) quad.push([to8(nums[i * 3]), to8(nums[i * 3 + 1]), to8(nums[i * 3 + 2])]);
@@ -189,7 +189,7 @@ function parsePalettes(decompRoot) {
 		if (!m) continue;
 		speciesToPal[m[2].toLowerCase()] = m[1];
 	}
-	return {colors, speciesToPal};
+	return { colors, speciesToPal };
 }
 
 // --- Colorization ----------------------------------------------------------------
@@ -203,7 +203,7 @@ function parsePalettes(decompRoot) {
  * Gold/Silver (and Showdown's own gen2 sprites) render: colour 0 is white, not clear.
  */
 function colorizeNative(gray, quad) {
-	const {width, height, pixels} = gray;
+	const { width, height, pixels } = gray;
 	const isLight = i => pixels[i] === 3; // grayscale sample 3 = lightest shade
 	// Flood-fill the background: light pixels reachable from any image border pixel.
 	const bg = new Uint8Array(width * height);
@@ -228,9 +228,12 @@ function colorizeNative(gray, quad) {
 	for (let i = 0; i < pixels.length; i++) {
 		if (bg[i]) { rgba[i * 4 + 3] = 0; continue; } // exterior background -> transparent
 		const [r, g, b] = quad[3 - pixels[i]]; // 3(light)->quad[0] .. 0(dark)->quad[3]
-		rgba[i * 4] = r; rgba[i * 4 + 1] = g; rgba[i * 4 + 2] = b; rgba[i * 4 + 3] = 255;
+		rgba[i * 4] = r;
+		rgba[i * 4 + 1] = g;
+		rgba[i * 4 + 2] = b;
+		rgba[i * 4 + 3] = 255;
 	}
-	return {width, height, rgba};
+	return { width, height, rgba };
 }
 
 // Showdown's stock gen2 sprites sit centred in a fixed 96x96 frame (e.g. gen2/marill.png
@@ -239,7 +242,7 @@ function colorizeNative(gray, quad) {
 // its opaque content centred into a 96x96 canvas to match — this is the centring fix.
 const FRAME = 96;
 function frameTo96(native) {
-	const {width, height, rgba} = native;
+	const { width, height, rgba } = native;
 	let minX = width, minY = height, maxX = -1, maxY = -1;
 	for (let y = 0; y < height; y++) {
 		for (let x = 0; x < width; x++) {
@@ -260,7 +263,10 @@ function frameTo96(native) {
 			const si = (y * width + x) * 4;
 			if (!rgba[si + 3]) continue;
 			const di = ((y + dy) * FRAME + (x + dx)) * 4;
-			out[di] = rgba[si]; out[di + 1] = rgba[si + 1]; out[di + 2] = rgba[si + 2]; out[di + 3] = 255;
+			out[di] = rgba[si];
+			out[di + 1] = rgba[si + 1];
+			out[di + 2] = rgba[si + 2];
+			out[di + 3] = 255;
 		}
 	}
 	return encodeRGBA(FRAME, FRAME, out);
@@ -277,7 +283,7 @@ function main() {
 		process.exit(1);
 	}
 	const gfxRoot = path.join(decompRoot, 'gfx', 'pokemon');
-	const {colors, speciesToPal} = parsePalettes(decompRoot);
+	const { colors, speciesToPal } = parsePalettes(decompRoot);
 	const spritesRoot = path.join(__dirname, '..', 'custom-sprites', 'gen2sw97');
 	const dirs = {
 		front: path.join(spritesRoot, 'gen2'),
@@ -285,11 +291,11 @@ function main() {
 		frontShiny: path.join(spritesRoot, 'gen2-shiny'),
 		backShiny: path.join(spritesRoot, 'gen2-back-shiny'),
 	};
-	for (const d of Object.values(dirs)) fs.mkdirSync(d, {recursive: true});
+	for (const d of Object.values(dirs)) fs.mkdirSync(d, { recursive: true });
 
 	let done = 0;
 	const problems = [];
-	for (const {folder, id} of SW97_SPRITE_MAP) {
+	for (const { folder, id } of SW97_SPRITE_MAP) {
 		const frontSrc = path.join(gfxRoot, folder, 'front.png');
 		const backSrc = path.join(gfxRoot, folder, 'back.png');
 		// Palette is keyed by the beta name (folder), not the modern Showdown id.
@@ -313,4 +319,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = {decodeGrayPNG, encodeRGBA, colorize, parsePalettes, SW97_CUT_MON};
+module.exports = { decodeGrayPNG, encodeRGBA, colorize, parsePalettes, SW97_CUT_MON };
