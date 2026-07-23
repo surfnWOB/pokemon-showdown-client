@@ -3743,6 +3743,9 @@ export class Battle {
 				this.dex = Dex.mod('gen2sw97' as ID);
 				this.scene.mod = 'gen2sw97';
 			}
+			// Load possible-set data as soon as a Random Battle's format is known,
+			// so enhanced opponent tooltips are ready before the first hover.
+			(this.scene as BattleScene).tooltips?.loadRandomBattleData();
 			this.log(args);
 			break;
 		}
