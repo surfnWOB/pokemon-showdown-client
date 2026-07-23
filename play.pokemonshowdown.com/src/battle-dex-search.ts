@@ -523,6 +523,7 @@ export class DexSearch {
 			// The global index also contains entities defined only by supported teambuilder mods.
 			// Keep those rows scoped to formats whose active dex can actually reconstruct them.
 			if (type === 'pokemon' && !this.dex.species.get(id).exists) continue;
+			if (type === 'move' && !this.dex.moves.get(id).exists) continue;
 			if (type === 'item' && !this.dex.items.get(id).exists) continue;
 			if (type === 'ability' && !this.dex.abilities.get(id).exists) continue;
 
@@ -696,7 +697,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		'natdex' | 'nfe' | 'ssdlc1' | 'ssdlc1doubles' | 'predlc' | 'predlcdoubles' | 'predlcnatdex' | 'svdlc1' | 'svdlc1doubles' |
 		'svdlc1natdex' | 'stadium' | 'lc' | 'champions' | 'natdexchampions' | 'zangouse' | 'gen3mega' | 'gen3megascap' | 'gen3ubersuu' |
 		'gen3subzu' | 'gen1rbyplus' | 'gen3advplus' | 'gen3tradebacks' | 'gen3puretradebacks' | 'gen3hoennification' | 'gen3frlgindigo' |
-		'gen3shadowcolosseum' | null = null;
+		'gen3shadowcolosseum' | 'gen2sw97' | null = null;
 	isDoubles = false;
 
 	/**
@@ -873,6 +874,10 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType = 'gen1rbyplus';
 			this.dex = Dex.mod('gen1rbyplus' as ID);
 		}
+		if (this.dex.gen === 2 && format.includes('spaceworld97')) {
+			this.formatType = 'gen2sw97';
+			this.dex = Dex.mod('gen2sw97' as ID);
+		}
 		if (this.dex.gen === 3 && format.includes('advplus')) {
 			this.formatType = 'gen3advplus';
 			this.dex = Dex.mod('gen3advplus' as ID);
@@ -993,6 +998,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (this.formatType === 'champions') table = table['champions'];
 		if (this.formatType === 'natdexchampions') table = table['natdexchampions'];
 		if (this.formatType === 'gen1rbyplus') table = table['gen1rbyplus'];
+		if (this.formatType === 'gen2sw97') table = table['gen2sw97'];
 		if (this.formatType === 'gen3advplus') table = table['gen3advplus'];
 		if (this.formatType === 'gen3tradebacks') table = table['gen3tradebacks'];
 		if (this.formatType === 'gen3hoennification') table = table['gen3hoennification'];
@@ -1071,6 +1077,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			if (this.formatType === 'champions') table = table['champions'];
 			if (this.formatType === 'natdexchampions') table = table['natdexchampions'];
 			if (this.formatType === 'gen1rbyplus') table = table['gen1rbyplus'];
+			if (this.formatType === 'gen2sw97') table = table['gen2sw97'];
 			if (this.formatType === 'gen3advplus') table = table['gen3advplus'];
 			if (this.formatType === 'gen3tradebacks') table = table['gen3tradebacks'];
 			if (this.formatType === 'gen3hoennification') table = table['gen3hoennification'];
@@ -1131,6 +1138,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType === 'gen3ubersuu' ? `gen3ubersuu` :
 			this.formatType === 'gen3subzu' ? `gen3subzu` :
 			this.formatType === 'gen1rbyplus' ? `gen1rbyplus` :
+			this.formatType === 'gen2sw97' ? `gen2sw97` :
 			this.formatType === 'gen3advplus' ? `gen3advplus` :
 			this.formatType === 'gen3tradebacks' ? `gen3tradebacks` :
 			this.formatType === 'gen3puretradebacks' ? `gen3puretradebacks` :
@@ -1314,6 +1322,8 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			table = table['gen3subzu'];
 		} else if (this.formatType === 'gen1rbyplus') {
 			table = table['gen1rbyplus'];
+		} else if (this.formatType === 'gen2sw97') {
+			table = table['gen2sw97'];
 		} else if (this.formatType === 'gen3advplus') {
 			table = table['gen3advplus'];
 		} else if (this.formatType === 'gen3tradebacks') {
@@ -1354,6 +1364,10 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 		} else if (this.formatType === 'gen3megascap' && format === 'megascap') {
 			// [Gen 3] Megas CAP is OU-based. Uber and AG species stay name-searchable
 			// as illegal choices, but should not precede the legal roster when browsing.
+			tierSet = tierSet.slice(slices.OU);
+		} else if (this.formatType === 'gen2sw97') {
+			// Spaceworld '97 is GSC-OU-based (standard Uber banlist). Browse OU and below;
+			// Ubers stay name-searchable as illegal picks rather than leading the pool.
 			tierSet = tierSet.slice(slices.OU);
 		} else if (this.formatType === 'gen3mega' && format === 'megas') {
 			// [Gen 3] Megas (OU): browse OU → (OU) → straight to UU and below. AG
@@ -2197,6 +2211,7 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 		if (this.formatType?.startsWith('predlc')) lsetTable = lsetTable['gen9predlc'];
 		if (this.formatType?.startsWith('svdlc1')) lsetTable = lsetTable['gen9dlc1'];
 		if (this.formatType === 'gen1rbyplus') lsetTable = lsetTable['gen1rbyplus'];
+		if (this.formatType === 'gen2sw97') lsetTable = lsetTable['gen2sw97'];
 		if (this.formatType === 'gen3advplus') lsetTable = lsetTable['gen3advplus'];
 		if (this.formatType === 'gen3tradebacks') lsetTable = lsetTable['gen3tradebacks'];
 		if (this.formatType === 'gen3puretradebacks') lsetTable = lsetTable['gen3puretradebacks'];
