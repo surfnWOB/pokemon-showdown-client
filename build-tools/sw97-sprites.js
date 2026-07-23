@@ -187,24 +187,79 @@ function parsePalettes(decompRoot) {
 // --- Colorization ----------------------------------------------------------------
 
 /**
- * Apply a 4-colour GBC palette to a 4-shade grayscale sprite. The demo's lightest
- * shade (grayscale sample 3) is the sprite/background colour and becomes transparent,
- * matching Showdown's transparent-background convention. Remaining shades map onto the
- * palette darkest-to-lightest.
+ * Apply a 4-colour GBC palette to a 4-shade grayscale sprite, returning native-size
+ * RGBA. The demo's lightest shade (grayscale sample 3) is the paper/background colour;
+ * we make it transparent ONLY where it is connected to the image border (a flood fill
+ * from the edges). Interior light regions — bellies, eyes, highlights — stay opaque as
+ * palette colour 0, so they no longer punch see-through holes in the sprite. This is how
+ * Gold/Silver (and Showdown's own gen2 sprites) render: colour 0 is white, not clear.
  */
-function colorize(gray, quad) {
+function colorizeNative(gray, quad) {
 	const {width, height, pixels} = gray;
+	const isLight = i => pixels[i] === 3; // grayscale sample 3 = lightest shade
+	// Flood-fill the background: light pixels reachable from any image border pixel.
+	const bg = new Uint8Array(width * height);
+	const stack = [];
+	for (let x = 0; x < width; x++) {
+		for (const y of [0, height - 1]) { const i = y * width + x; if (isLight(i)) stack.push(i); }
+	}
+	for (let y = 0; y < height; y++) {
+		for (const x of [0, width - 1]) { const i = y * width + x; if (isLight(i)) stack.push(i); }
+	}
+	while (stack.length) {
+		const i = stack.pop();
+		if (bg[i]) continue;
+		bg[i] = 1;
+		const x = i % width, y = (i / width) | 0;
+		if (x > 0 && isLight(i - 1)) stack.push(i - 1);
+		if (x < width - 1 && isLight(i + 1)) stack.push(i + 1);
+		if (y > 0 && isLight(i - width)) stack.push(i - width);
+		if (y < height - 1 && isLight(i + width)) stack.push(i + width);
+	}
 	const rgba = new Uint8Array(width * height * 4);
 	for (let i = 0; i < pixels.length; i++) {
-		const idx = 3 - pixels[i]; // grayscale 3(light)->0(white), 0(dark)->3(black)
-		if (idx === 0) {
-			rgba[i * 4 + 3] = 0; // lightest colour -> transparent
-			continue;
-		}
-		const [r, g, b] = quad[idx];
+		if (bg[i]) { rgba[i * 4 + 3] = 0; continue; } // exterior background -> transparent
+		const [r, g, b] = quad[3 - pixels[i]]; // 3(light)->quad[0] .. 0(dark)->quad[3]
 		rgba[i * 4] = r; rgba[i * 4 + 1] = g; rgba[i * 4 + 2] = b; rgba[i * 4 + 3] = 255;
 	}
-	return encodeRGBA(width, height, rgba);
+	return {width, height, rgba};
+}
+
+// Showdown's stock gen2 sprites sit centred in a fixed 96x96 frame (e.g. gen2/marill.png
+// has ~28px margins on every side), and the battle scene positions every sprite by its
+// centre. The raw demo art is a tight, off-centre native box (40/48/56px), so composite
+// its opaque content centred into a 96x96 canvas to match — this is the centring fix.
+const FRAME = 96;
+function frameTo96(native) {
+	const {width, height, rgba} = native;
+	let minX = width, minY = height, maxX = -1, maxY = -1;
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			if (rgba[(y * width + x) * 4 + 3]) {
+				if (x < minX) minX = x;
+				if (x > maxX) maxX = x;
+				if (y < minY) minY = y;
+				if (y > maxY) maxY = y;
+			}
+		}
+	}
+	const out = new Uint8Array(FRAME * FRAME * 4);
+	if (maxX < 0) return encodeRGBA(FRAME, FRAME, out); // fully transparent (shouldn't happen)
+	const dx = Math.floor((FRAME - (maxX - minX + 1)) / 2) - minX;
+	const dy = Math.floor((FRAME - (maxY - minY + 1)) / 2) - minY;
+	for (let y = minY; y <= maxY; y++) {
+		for (let x = minX; x <= maxX; x++) {
+			const si = (y * width + x) * 4;
+			if (!rgba[si + 3]) continue;
+			const di = ((y + dy) * FRAME + (x + dx)) * 4;
+			out[di] = rgba[si]; out[di + 1] = rgba[si + 1]; out[di + 2] = rgba[si + 2]; out[di + 3] = 255;
+		}
+	}
+	return encodeRGBA(FRAME, FRAME, out);
+}
+
+function colorize(gray, quad) {
+	return frameTo96(colorizeNative(gray, quad));
 }
 
 function main() {
