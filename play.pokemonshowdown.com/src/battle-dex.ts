@@ -911,6 +911,10 @@ export const Dex = new class implements ModdedDex {
 			// There is no entry or enough data in pokedex-mini.js
 			// Handle these in case-by-case basis; either using BW sprites or matching the played gen.
 			dir = (baseDir || 'gen5') + dir;
+			// Spaceworld '97: serve the mod's beta sprites from sprites/gen2sw97/ so redesigned
+			// real species (Umbreon/Espeon/...) don't override standard [Gen 2]. Misses fall back
+			// to the official gen2 sprite via nginx (docker/nginx-client.conf strips the segment).
+			if (spriteDex.modid === 'gen2sw97') dir = 'gen2sw97/' + dir;
 
 			// Gender differences don't exist prior to Gen 4,
 			// so there are no sprites for it
@@ -1096,6 +1100,8 @@ export const Dex = new class implements ModdedDex {
 		else if (gen <= 2 && species.gen <= 2) spriteData.spriteDir = 'sprites/gen2';
 		else if (gen <= 3 && species.gen <= 3) spriteData.spriteDir = 'sprites/gen3';
 		else if (gen <= 4 && species.gen <= 4) spriteData.spriteDir = 'sprites/gen4';
+		// Spaceworld '97: builder sprites come from sprites/gen2sw97/ too (see getSpriteData).
+		if (dex.modid === 'gen2sw97') spriteData.spriteDir = spriteData.spriteDir.replace('sprites/', 'sprites/gen2sw97/');
 		spriteData.pixelated = true;
 		spriteData.x = 10;
 		spriteData.y = 5;
