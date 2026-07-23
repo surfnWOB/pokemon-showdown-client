@@ -32,7 +32,7 @@ console.log("DONE");
 // Mods whose data is reconstructed by BattleTeambuilderTable and can therefore safely
 // contribute otherwise-global search rows. DexSearch filters these rows through its active dex.
 const SUPPORTED_TEAMBUILDER_MODS = [
-	'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen3megascap', 'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
+	'gen2sw97', 'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen3megascap', 'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
 	'gen1rbyplus', 'gen3advplus', 'gen3tradebacks', 'gen3puretradebacks', 'gen3hoennification', 'gen3frlgindigo', 'gen3shadowcolosseum',
 ];
 
@@ -99,11 +99,13 @@ function requireNoCache(pathSpec) {
 		const modDex = Dex.mod(mod);
 		for (const [type, table, getter] of [
 			['pokemon', modDex.data.Pokedex, id => modDex.species.get(id)],
+			['move', modDex.data.Moves, id => modDex.moves.get(id)],
 			['item', modDex.data.Items, id => modDex.items.get(id)],
 			['ability', modDex.data.Abilities, id => modDex.abilities.get(id)],
 		]) {
 			for (const id in table) {
 				const globalEntry = type === 'pokemon' ? Dex.species.get(id) :
+					type === 'move' ? Dex.moves.get(id) :
 					type === 'item' ? Dex.items.get(id) : Dex.abilities.get(id);
 				const modEntry = getter(id);
 				const directEntry = `${id} ${type}`;
@@ -312,6 +314,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		7.1,
 		5.1,
 		3.1, 3.11, 3.02, 3.03, 3.15, 3.05, 3.06, 3.17, 3.07, 3.08, 3.09, 3.12, 3.13, 3.14,
+		2.01,
 		1.05,
 	];
 
@@ -350,6 +353,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		const isGen3FRLGIndigo = genIdent === 3.12;
 		const isGen3ShadowColosseum = genIdent === 3.13;
 		const isGen1RbyPlus = genIdent === 1.05;
+		const isGen2SW97 = genIdent === 2.01;
 		const gen = (() => {
 			let genStr = 'gen' + genNum;
 			if (isSSDLC1) genStr += 'dlc1';
@@ -375,6 +379,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			if (isGen3FRLGIndigo) genStr += 'frlgindigo';
 			if (isGen3ShadowColosseum) genStr += 'shadowcolosseum';
 			if (isGen1RbyPlus) genStr += 'rbyplus';
+			if (isGen2SW97) genStr += 'sw97';
 			if (isChampions || isNDChampions) genStr = 'champions';
 			return genStr;
 		})();
@@ -388,7 +393,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		// Gen 3 Megas CAP adds Mega Magcargo, which has no base-dex entry. Build
 		// this table from the mod's complete Pokedex so its custom species is
 		// included in the browsable tier list alongside the inherited species.
-		const pokemon = Object.keys(isGen3MegaCAP ? Dex.mod(modId).data.Pokedex : Dex.data.Pokedex);
+		const pokemon = Object.keys(isGen3MegaCAP || isGen2SW97 ? Dex.mod(modId).data.Pokedex : Dex.data.Pokedex);
 		pokemon.sort();
 		const tierTable = {};
 		const overrideTier = {};
@@ -726,6 +731,16 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			BattleTeambuilderTable[gen].items = items;
 			BattleTeambuilderTable[gen].formatSlices = formatSlices;
 		} else if (isGen1RbyPlus) {
+			BattleTeambuilderTable[gen] = {};
+			BattleTeambuilderTable[gen].overrideTier = overrideTier;
+			BattleTeambuilderTable[gen].tiers = tiers;
+			BattleTeambuilderTable[gen].items = items;
+			BattleTeambuilderTable[gen].formatSlices = formatSlices;
+			BattleTeambuilderTable[gen].learnsets = {};
+		} else if (isGen2SW97) {
+			// Spaceworld '97: beta GSC dex. The 36 cut 'mon (num 5000+) come from the mod's
+			// own Pokedex; species/move/learnset overrides (beta stats, typings, movepools,
+			// and the 14 beta moves) are attached in the past-gen block below.
 			BattleTeambuilderTable[gen] = {};
 			BattleTeambuilderTable[gen].overrideTier = overrideTier;
 			BattleTeambuilderTable[gen].tiers = tiers;
@@ -1161,6 +1176,16 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			if (minGen === 1) learnsets[id][moveid] = '12' + learnsets[id][moveid];
 		}
 	}
+	const SW97Learnsets = Dex.mod('gen2sw97').data.Learnsets;
+	for (const id in SW97Learnsets) {
+		const learnset = SW97Learnsets[id].learnset;
+		if (!learnset) continue;
+		BattleTeambuilderTable['gen2sw97'].learnsets[id] = {};
+		for (const moveid in learnset) {
+			// Every SW97 movepool entry is a beta level-up / TM-HM move learnable at gen 2.
+			BattleTeambuilderTable['gen2sw97'].learnsets[id][moveid] = '2';
+		}
+	}
 	const G3RSLearnsets = Dex.mod('gen3rs').data.Learnsets;
 	for (const id in G3RSLearnsets) {
 		const species = Dex.mod('gen3rs').species.get(id);
@@ -1463,6 +1488,10 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 	const overrideMoveKeys = [
 		'accuracy', 'basePower', 'category', 'desc', 'flags', 'isNonstandard', 'pp', 'priority', 'shortDesc', 'target', 'type',
 	];
+	const modOnlyMoveKeys = [
+		'exists', 'name', 'num', 'accuracy', 'basePower', 'category', 'desc', 'flags',
+		'isNonstandard', 'pp', 'priority', 'shortDesc', 'target', 'type', 'gen',
+	];
 	const overrideAbilityKeys = ['desc', 'flags', 'gen', 'isNonstandard', 'rating', 'shortDesc'];
 	const modOnlyAbilityKeys = [
 		'exists', 'name', 'num', 'desc', 'shortDesc', 'flags', 'rating', 'gen', 'isNonstandard',
@@ -1591,9 +1620,15 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		for (const id in modData.Moves) {
 			const modEntry = modDex.moves.get(id);
 			const parentEntry = parentDex.moves.get(id);
-			for (const key of overrideMoveKeys) {
-				if (key === 'category' && modDex.gen <= 3) continue;
-				if (JSON.stringify(modEntry[key]) !== JSON.stringify(parentEntry[key])) {
+			// A move defined only inside a mod (e.g. the Spaceworld '97 beta moves) has no
+			// global-data object to clone, so emit its full client-facing structure —
+			// including name/num/exists — rather than category-less stat deltas.
+			const isModOnly = !parentEntry.exists && modEntry.exists;
+			const keys = isModOnly ? modOnlyMoveKeys : overrideMoveKeys;
+			for (const key of keys) {
+				if (key === 'category' && modDex.gen <= 3 && !isModOnly) continue;
+				if ((isModOnly && modEntry[key] !== undefined) ||
+					JSON.stringify(modEntry[key]) !== JSON.stringify(parentEntry[key])) {
 					if (!overrideMoveData[id]) overrideMoveData[id] = {};
 					overrideMoveData[id][key] = modEntry[key];
 				}
