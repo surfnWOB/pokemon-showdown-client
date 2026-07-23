@@ -32,8 +32,16 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 
-// The 36 cut Spaceworld '97 designs. The decomp gfx/pokemon/<dir> names match the
-// Showdown species ids one-for-one, so id doubles as the source directory name.
+// Every demo species is extracted — not just the cut designs — so that real species
+// which were redesigned after 1997 (Umbreon = "Blacky", Espeon = "Eifie", …) render
+// their authentic beta sprite in the gen2sw97 mod instead of their modern GSC art.
+// Each entry pairs a decomp gfx/pokemon/<folder> with its Showdown species id: `folder`
+// is the beta name (and also keys the beta palette in data/pokemon/palettes.asm), while
+// `id` names the output PNG. Regenerate the map from a decomp checkout with the server
+// repo's tools/sw97-sprite-map.js (it reuses sw97-gen.js's id resolution).
+const SW97_SPRITE_MAP = require('./sw97-sprite-map.json');
+
+// The cut Spaceworld '97 designs (dex num >= 5000), kept for reference and back-compat.
 const SW97_CUT_MON = [
 	'pudie', 'baririna', 'tsubomitto', 'bombseeker', 'kotora', 'raitora', 'madame',
 	'norowara', 'kyonpan', 'purakkusu', 'wolfman', 'warwolf', 'nameil', 'honoguma',
@@ -281,12 +289,13 @@ function main() {
 
 	let done = 0;
 	const problems = [];
-	for (const id of SW97_CUT_MON) {
-		const frontSrc = path.join(gfxRoot, id, 'front.png');
-		const backSrc = path.join(gfxRoot, id, 'back.png');
-		const palName = speciesToPal[id];
-		if (!fs.existsSync(frontSrc) || !fs.existsSync(backSrc)) { problems.push(`${id}: missing art`); continue; }
-		if (!palName || !colors[palName]) { problems.push(`${id}: no palette (${palName})`); continue; }
+	for (const {folder, id} of SW97_SPRITE_MAP) {
+		const frontSrc = path.join(gfxRoot, folder, 'front.png');
+		const backSrc = path.join(gfxRoot, folder, 'back.png');
+		// Palette is keyed by the beta name (folder), not the modern Showdown id.
+		const palName = speciesToPal[folder] || speciesToPal[id];
+		if (!fs.existsSync(frontSrc) || !fs.existsSync(backSrc)) { problems.push(`${id} (${folder}): missing art`); continue; }
+		if (!palName || !colors[palName]) { problems.push(`${id} (${folder}): no palette (${palName})`); continue; }
 		const shinyName = 'SHINY_' + palName;
 		const normalQuad = colors[palName];
 		const shinyQuad = colors[shinyName] || normalQuad;
@@ -299,7 +308,7 @@ function main() {
 		fs.writeFileSync(path.join(dirs.backShiny, id + '.png'), colorize(back, shinyQuad));
 		done++;
 	}
-	console.log(`Wrote ${done}/${SW97_CUT_MON.length} Spaceworld '97 sprite sets (front/back + shiny) to ${spritesRoot}`);
+	console.log(`Wrote ${done}/${SW97_SPRITE_MAP.length} Spaceworld '97 sprite sets (front/back + shiny) to ${spritesRoot}`);
 	if (problems.length) console.log('Problems:\n  ' + problems.join('\n  '));
 }
 

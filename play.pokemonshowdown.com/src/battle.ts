@@ -3729,6 +3729,16 @@ export class Battle {
 			} else if (this.tier.startsWith('[Gen 3]') && this.tier.includes('Mega')) {
 				this.dex = Dex.mod('gen3mega' as ID);
 			}
+			// Spaceworld '97 (1997 Gold/Silver demo): resolve battle data + sprites through the
+			// gen2sw97 mod. The mod adds 36 cut demo species (dex num >= 5000) and, for real
+			// species redesigned after 1997 (Umbreon = "Blacky", Espeon = "Eifie", ...), swaps in
+			// their beta art. getSpriteData keys the beta-sprite dir on the sprite dex's modid
+			// (spriteDex.modid === 'gen2sw97'), only reachable when a sprite call passes
+			// mod:this.scene.mod -- so set scene.mod here (same reasoning as the CAP block above).
+			if (this.tier.includes(`Spaceworld '97`)) {
+				this.dex = Dex.mod('gen2sw97' as ID);
+				this.scene.mod = 'gen2sw97';
+			}
 			this.log(args);
 			break;
 		}
