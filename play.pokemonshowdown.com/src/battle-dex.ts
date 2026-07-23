@@ -405,6 +405,9 @@ export const Dex = new class implements ModdedDex {
 		if (dex.gen === 1 && formatid.includes('rbyplus')) {
 			dex = Dex.mod('gen1rbyplus' as ID);
 		}
+		if (dex.gen === 2 && formatid.includes('spaceworld97')) {
+			dex = Dex.mod('gen2sw97' as ID);
+		}
 		if (dex.gen === 3 && formatid.includes('advplus')) {
 			dex = Dex.mod('gen3advplus' as ID);
 		}
