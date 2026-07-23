@@ -32,7 +32,8 @@ console.log("DONE");
 // Mods whose data is reconstructed by BattleTeambuilderTable and can therefore safely
 // contribute otherwise-global search rows. DexSearch filters these rows through its active dex.
 const SUPPORTED_TEAMBUILDER_MODS = [
-	'gen2sw97', 'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen3megascap', 'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
+	'gen2sw97', 'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen3megascap', 'gen4mega',
+	'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
 	'gen1rbyplus', 'gen3advplus', 'gen3tradebacks', 'gen3puretradebacks', 'gen3hoennification', 'gen3frlgindigo', 'gen3shadowcolosseum',
 ];
 
@@ -313,6 +314,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		8.6, 8.4, 8.2, -8.4, -8.6,
 		7.1,
 		5.1,
+		4.03,
 		3.1, 3.11, 3.02, 3.03, 3.15, 3.05, 3.06, 3.17, 3.07, 3.08, 3.09, 3.12, 3.13, 3.14,
 		2.01,
 		1.05,
@@ -341,6 +343,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		const isRS = genIdent === 3.1;
 		const isRSLC = genIdent === 3.17;
 		const isFRLG = genIdent === 3.11;
+		const isGen4Mega = genIdent === 4.03;
 		const isZangOuSe = genIdent === 3.02;
 		const isGen3Mega = genIdent === 3.03;
 		const isGen3MegaCAP = genIdent === 3.15;
@@ -367,6 +370,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			if (isRS) genStr += 'rs';
 			if (isRSLC) genStr = 'gen3rslc';
 			if (isFRLG) genStr += 'frlg';
+			if (isGen4Mega) genStr += 'mega';
 			if (isZangOuSe) genStr += 'zangouse';
 			if (isGen3Mega) genStr += 'mega';
 			if (isGen3MegaCAP) genStr += 'megascap';
@@ -712,7 +716,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			BattleTeambuilderTable[gen].tiers = tiers;
 			BattleTeambuilderTable[gen].items = items;
 			BattleTeambuilderTable[gen].formatSlices = formatSlices;
-		} else if (isGen3Mega || isGen3MegaCAP) {
+		} else if (isGen4Mega || isGen3Mega || isGen3MegaCAP) {
 			BattleTeambuilderTable[gen] = {};
 			BattleTeambuilderTable[gen].overrideTier = overrideTier;
 			BattleTeambuilderTable[gen].tiers = tiers;

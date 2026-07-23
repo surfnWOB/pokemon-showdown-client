@@ -3729,6 +3729,10 @@ export class Battle {
 			} else if (this.tier.startsWith('[Gen 3]') && this.tier.includes('Mega')) {
 				this.dex = Dex.mod('gen3mega' as ID);
 			}
+			// Gen 4 Megas has its own no-Fairy typings, abilities, and forme metadata.
+			if (this.tier === '[Gen 4] Megas') {
+				this.dex = Dex.mod('gen4mega' as ID);
+			}
 			// Spaceworld '97 (1997 Gold/Silver demo): resolve battle data + sprites through the
 			// gen2sw97 mod. The mod adds 36 cut demo species (dex num >= 5000) and, for real
 			// species redesigned after 1997 (Umbreon = "Blacky", Espeon = "Eifie", ...), swaps in
