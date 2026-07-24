@@ -44,6 +44,48 @@ function es3stringify(obj) {
 	));
 }
 
+/**
+ * Plain-JS port of the server's mergeFormatLists (sim/dex-formats.ts:561-614).
+ * Kept algorithmically identical: sections are keyed by name, a repeat header
+ * appends into the existing bucket in place, an unknown header is pushed to the
+ * end, and a repeat header's `column` is discarded. Ported rather than imported
+ * because the server does not export it and this file is plain JS, not TS.
+ */
+function mergeFormatLists(main, custom) {
+	const result = [];
+	const build = [];
+	let current = { section: "", formats: [] };
+
+	for (const element of main) {
+		if (element.section) {
+			current = { section: element.section, column: element.column, formats: [] };
+			build.push(current);
+		} else if (element.name) {
+			current.formats.push(element);
+		}
+	}
+
+	if (custom !== undefined) {
+		for (const element of custom) {
+			if (element.section) {
+				current = build.find(e => e.section === element.section);
+				if (current === undefined) {
+					current = { section: element.section, column: element.column, formats: [] };
+					build.push(current);
+				}
+			} else if (element.name) {
+				current.formats.push(element);
+			}
+		}
+	}
+
+	for (const element of build) {
+		result.push({ section: element.section, column: element.column }, ...element.formats);
+	}
+
+	return result;
+}
+
 function requireNoCache(pathSpec) {
 	delete require.cache[require.resolve(pathSpec)];
 	return require(pathSpec);
@@ -1791,7 +1833,19 @@ process.stdout.write("Building `data/moves,items,abilities,typechart,learnsets.j
 
 {
 	const Formats = requireNoCache('../caches/pokemon-showdown/dist/config/formats.js').Formats;
-	const buf = 'exports.Formats = ' + es3stringify(Formats) + ';';
+	// The server splits its format list across two files and merges them at load
+	// (sim/dex-formats.ts:649). Reading only formats.js would emit a list missing
+	// every format the server actually serves from config/custom-formats.ts.
+	// Absent on a stock upstream checkout, so tolerate it the way the server does.
+	let customFormats;
+	try {
+		customFormats = requireNoCache('../caches/pokemon-showdown/dist/config/custom-formats.js').Formats;
+		if (!Array.isArray(customFormats)) customFormats = undefined;
+	} catch (e) {
+		if (e.code !== 'MODULE_NOT_FOUND' && e.code !== 'ENOENT') throw e;
+	}
+	const merged = customFormats ? mergeFormatLists(Formats, customFormats) : Formats;
+	const buf = 'exports.Formats = ' + es3stringify(merged) + ';';
 	fs.writeFileSync('play.pokemonshowdown.com/data/formats.js', buf);
 }
 
