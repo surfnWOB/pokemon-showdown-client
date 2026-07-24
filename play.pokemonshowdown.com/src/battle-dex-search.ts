@@ -693,7 +693,8 @@ abstract class BattleTypedSearch<T extends SearchType> {
 	 */
 	set: Dex.PokemonSet | null = null;
 
-	protected formatType: 'doubles' | 'bdsp' | 'bdspdoubles' | 'rs' | 'rslc' | 'frlg' | 'bw1' | 'letsgo' | 'metronome' |
+	protected formatType: 'doubles' | 'bdsp' | 'bdspdoubles' | 'rs' | 'rslc' | 'frlg' | 'bw1' | 'dreamworld' |
+		'letsgo' | 'metronome' |
 		'natdex' | 'nfe' | 'ssdlc1' | 'ssdlc1doubles' | 'predlc' | 'predlcdoubles' | 'predlcnatdex' | 'svdlc1' | 'svdlc1doubles' |
 		'svdlc1natdex' | 'stadium' | 'lc' | 'champions' | 'natdexchampions' | 'zangouse' | 'gen4mega' | 'gen3mega' | 'gen3megascap' | 'gen3ubersuu' |
 		'gen3subzu' | 'gen1rbyplus' | 'gen3advplus' | 'gen3tradebacks' | 'gen3puretradebacks' | 'gen3hoennification' | 'gen3frlgindigo' |
@@ -794,6 +795,10 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (format.includes('bw1')) {
 			this.formatType = 'bw1';
 			this.dex = Dex.mod('gen5bw1' as ID);
+		}
+		if (format.includes('dreamworld')) {
+			this.formatType = 'dreamworld';
+			this.dex = Dex.mod('gen5dw' as ID);
 		}
 		if (format.includes('adv200')) {
 			this.formatType = format.endsWith('lc') ? 'rslc' : 'rs';
@@ -997,6 +1002,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (this.formatType?.startsWith('bdsp')) table = table['gen8bdsp'];
 		if (this.formatType === 'letsgo') table = table['gen7letsgo'];
 		if (this.formatType === 'bw1') table = table['gen5bw1'];
+		if (this.formatType === 'dreamworld') table = table['gen5dw'];
 		if (this.formatType === 'rs' || this.formatType === 'rslc') table = table['gen3rs'];
 		if (this.formatType === 'frlg') table = table['gen3frlg'];
 		if (this.formatType === 'champions') table = table['champions'];
@@ -1076,6 +1082,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			if (this.formatType?.startsWith('bdsp')) table = table['gen8bdsp'];
 			if (this.formatType === 'letsgo') table = table['gen7letsgo'];
 			if (this.formatType === 'bw1') table = table['gen5bw1'];
+			if (this.formatType === 'dreamworld') table = table['gen5dw'];
 			if (this.formatType === 'rs' || this.formatType === 'rslc') table = table['gen3rs'];
 			if (this.formatType === 'frlg') table = table['gen3frlg'];
 			if (this.formatType === 'champions') table = table['champions'];
@@ -1121,6 +1128,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType === 'bdsp' ? 'gen8bdsp' :
 			this.formatType === 'bdspdoubles' ? 'gen8bdspdoubles' :
 			this.formatType === 'bw1' ? 'gen5bw1' :
+			this.formatType === 'dreamworld' ? 'gen5dw' :
 			this.formatType === 'rs' ? 'gen3rs' :
 			this.formatType === 'rslc' ? 'gen3rslc' :
 			this.formatType === 'frlg' ? 'gen3frlg' :
@@ -1277,6 +1285,8 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			table = table['gen7letsgo'];
 		} else if (this.formatType === 'bw1') {
 			table = table['gen5bw1'];
+		} else if (this.formatType === 'dreamworld') {
+			table = table['gen5dw'];
 		} else if (this.formatType === 'rs') {
 			table = table['gen3rs'];
 		} else if (this.formatType === 'rslc') {
@@ -1799,6 +1809,8 @@ class BattleItemSearch extends BattleTypedSearch<'item'> {
 			table = table['gen8bdsp'];
 		} else if (this.formatType === 'bw1') {
 			table = table['gen5bw1'];
+		} else if (this.formatType === 'dreamworld') {
+			table = table['gen5dw'];
 		} else if (this.formatType === 'rs' || this.formatType === 'rslc') {
 			table = table['gen3rs'];
 		} else if (this.formatType === 'frlg') {
@@ -2214,6 +2226,7 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 		if (this.formatType?.startsWith('bdsp')) lsetTable = lsetTable['gen8bdsp'];
 		if (this.formatType === 'letsgo') lsetTable = lsetTable['gen7letsgo'];
 		if (this.formatType === 'bw1') lsetTable = lsetTable['gen5bw1'];
+		if (this.formatType === 'dreamworld') lsetTable = lsetTable['gen5dw'];
 		if (this.formatType === 'rs' || this.formatType === 'rslc') lsetTable = lsetTable['gen3rs'];
 		if (this.formatType === 'frlg') lsetTable = lsetTable['gen3frlg'];
 		if (this.formatType === 'champions') lsetTable = lsetTable['champions'];
