@@ -381,7 +381,10 @@ export const Dex = new class implements ModdedDex {
 		if (dex.gen === 3 && formatid.includes('pss')) {
 			dex = Dex.mod('gen3pss' as ID);
 		}
-		if (dex.gen === 3 && formatid === 'megascap') {
+		// Includes megascaprandombattle (and any future megascap* ladder). Exact `===
+		// 'megascap'` missed those and fell through to gen3mega, so CAP-only formes
+		// like Kecleon-Mega-X resolved as nonexistent (??? type / no ability / no aura).
+		if (dex.gen === 3 && formatid.includes('megascap')) {
 			dex = Dex.mod('gen3megascap' as ID);
 		} else if (dex.gen === 3 && formatid.includes('mega')) {
 			dex = Dex.mod('gen3mega' as ID);
@@ -1016,6 +1019,20 @@ export const Dex = new class implements ModdedDex {
 		if (pokemon?.volatiles?.formechange && !pokemon.volatiles.transform) {
 			// @ts-expect-error safe, but too lazy to cast
 			id = toID(pokemon.volatiles.formechange[1]);
+		}
+		// Teambuilder passes sets / bare names, not Species. CAP aura Megas are absent from
+		// BattlePokedex / the icon sheet, so without this they paint the unknown (0) icon.
+		// Species instances already fell back above; re-check after speciesForme/species overwrite.
+		if (
+			this.gen3MegasCapAuraTypes[id] &&
+			!window.BattlePokemonIconIndexes?.[id] &&
+			!window.BattlePokemonSprites?.[id]?.num &&
+			!window.BattlePokedex?.[id]?.num
+		) {
+			const auraSpecies = Dex.mod('gen3megascap' as ID).species.get(id);
+			if (auraSpecies.exists && auraSpecies.baseSpecies) {
+				id = toID(auraSpecies.baseSpecies);
+			}
 		}
 		let num = this.getPokemonIconNum(id, pokemon?.gender === 'F', facingLeft);
 

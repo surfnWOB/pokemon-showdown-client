@@ -858,7 +858,8 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType = 'zangouse';
 			this.dex = Dex.mod('gen3zangouse' as ID);
 		}
-		if (this.dex.gen === 3 && format === 'megascap') {
+		// Includes megascaprandombattle; exact `=== 'megascap'` wrongly routed those to gen3mega.
+		if (this.dex.gen === 3 && format.includes('megascap')) {
 			this.formatType = 'gen3megascap';
 			this.dex = Dex.mod('gen3megascap' as ID);
 		} else if (this.dex.gen === 3 && format.includes('mega')) {
@@ -1374,7 +1375,7 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			// UU slice, so slicing there excludes them — matching the server banlist
 			// ['Uber', 'OU', 'UUBL'] ('OU' also covers the "(OU)" technicality Megas).
 			tierSet = tierSet.slice(slices.UU);
-		} else if (this.formatType === 'gen3megascap' && format === 'megascap') {
+		} else if (this.formatType === 'gen3megascap' && format.startsWith('megascap')) {
 			// [Gen 3] Megas CAP is OU-based. Uber and AG species stay name-searchable
 			// as illegal choices, but should not precede the legal roster when browsing.
 			tierSet = tierSet.slice(slices.OU);
