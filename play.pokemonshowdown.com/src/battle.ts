@@ -3714,7 +3714,10 @@ export class Battle {
 			// (e.g. Clefable-Mega = Normal/Flying since Gen 3 has no Fairy type).
 			// Switch the battle dex to the format's Mega mod so the replay/battle viewer
 			// reads its overrideSpeciesData instead of plain Gen 3 data.
-			if (this.tier === '[Gen 3] Megas CAP') {
+			// Match every [Gen 3] Megas CAP* tier (OU + Random Battle, …). Exact equality on
+			// '[Gen 3] Megas CAP' let Random Battle fall through to gen3mega below, so CAP-only
+			// formes (Kecleon-Mega-X, …) showed ??? type / unknown ability and skipped the aura.
+			if (this.tier.startsWith('[Gen 3]') && this.tier.includes('Megas CAP')) {
 				this.dex = Dex.mod('gen3megascap' as ID);
 				// Tell the sprite scene to resolve battle sprites through the CAP mod, so the
 				// aura Megas render their base Gen 3 art + glow. getSpriteData keys the aura
