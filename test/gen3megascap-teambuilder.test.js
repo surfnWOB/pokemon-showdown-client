@@ -33,18 +33,20 @@ const latestCapMegas = {
 };
 
 const authoritativeUpdatedMegas = {
-	corsolamega: [[90, 100, 120, 100, 95, 35], ['Water', 'Psychic'], 'Natural Cure'],
+	corsolamega: [[90, 70, 115, 120, 115, 30], ['Water', 'Psychic'], 'Natural Cure'],
 	mightyenamegax: [[61, 110, 60, 119, 60, 110], ['Dark'], 'Serene Grace'],
 	mightyenamegay: [[100, 100, 100, 35, 110, 95], ['Dark', 'Poison'], 'Fur Coat'],
 	beautiflymega: [[90, 10, 90, 130, 90, 116], ['Grass', 'Flying'], 'Mega Sol'],
 	masquerainmega: [[91, 80, 84, 90, 110, 95], ['Bug', 'Water'], 'Water Bubble'],
-	volbeatmega: [[85, 65, 75, 90, 90, 125], ['Bug', 'Electric'], 'Teravolt'],
+	volbeatmega: [[85, 65, 75, 90, 90, 125], ['Bug', 'Electric'], 'Polar Switch'],
 	grumpigmega: [[100, 60, 80, 125, 125, 80], ['Psychic'], 'Opportunist'],
 	flygonmega: [[80, 100, 120, 100, 80, 110], ['Ground', 'Dragon'], 'Sandy'],
 	solrockmega: [[90, 115, 110, 90, 85, 90], ['Rock', 'Psychic'], 'High Noon'],
 	kecleonmegax: [[60, 120, 60, 110, 120, 105], ['Normal'], 'Color Change'],
 	kecleonmegay: [[100, 100, 120, 100, 100, 40], ['Normal'], 'Protean'],
 	walreinmega: [[125, 80, 100, 100, 115, 80], ['Water', 'Ice'], 'Snow Warning'],
+	parasectmega: [[90, 135, 100, 50, 100, 30], ['Bug', 'Ghost'], 'Regenerator'],
+	venomothmega: [[85, 110, 80, 70, 80, 120], ['Bug', 'Poison'], 'Merciless'],
 };
 
 describe('[Gen 3] Megas CAP teambuilder data', () => {
@@ -57,6 +59,12 @@ describe('[Gen 3] Megas CAP teambuilder data', () => {
 			assert.equal(megaIcon, Dex.getPokemonIcon(builderDex.species.get(base)),
 				`${mega} should borrow ${base}'s compact icon`);
 			assert.notEqual(megaIcon, unknownIcon, `${mega} should not use the unknown compact icon`);
+
+			// Teambuilder / search pass bare names and sets, not Species instances.
+			assert.equal(Dex.getPokemonIcon(mega), megaIcon,
+				`${mega} string name should borrow ${base}'s compact icon`);
+			assert.equal(Dex.getPokemonIcon({species: builderDex.species.get(mega).name}), megaIcon,
+				`${mega} teambuilder set should borrow ${base}'s compact icon`);
 		}
 
 		// A globally indexed forme must keep its own icon instead of falling back.
@@ -69,6 +77,24 @@ describe('[Gen 3] Megas CAP teambuilder data', () => {
 		} finally {
 			delete global.BattlePokemonIconIndexes;
 		}
+	});
+
+	it('should route every Megas CAP format id and tier through the CAP mod', () => {
+		assert.equal(Dex.forFormat('gen3megascap').modid, 'gen3megascap');
+		assert.equal(Dex.forFormat('gen3megascaprandombattle').modid, 'gen3megascap');
+		assert.equal(Dex.forFormat('[Gen 3] Megas CAP Random Battle').modid, 'gen3megascap');
+		assert.equal(Dex.forFormat('gen3megarandombattle').modid, 'gen3mega');
+		assert.equal(Dex.forFormat('gen3megas').modid, 'gen3mega');
+
+		const capSearch = new DexSearch('pokemon', 'gen3megascaprandombattle');
+		assert.equal(capSearch.typedSearch.formatType, 'gen3megascap');
+		assert.equal(capSearch.dex.modid, 'gen3megascap');
+		assert.equal(capSearch.dex.species.get('kecleonmegax').types.join('/'), 'Normal');
+		assert.equal(capSearch.dex.species.get('kecleonmegax').abilities[0], 'Color Change');
+
+		const megaSearch = new DexSearch('pokemon', 'gen3megarandombattle');
+		assert.equal(megaSearch.typedSearch.formatType, 'gen3mega');
+		assert.equal(megaSearch.dex.species.get('kecleonmegax').exists, false);
 	});
 
 	it('should browse from OU while keeping Ubers text-searchable', () => {
