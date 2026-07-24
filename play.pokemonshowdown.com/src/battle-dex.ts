@@ -396,7 +396,7 @@ export const Dex = new class implements ModdedDex {
 			dex = Dex.mod('gen5bw1' as ID);
 		}
 		if (dex.gen === 5 && formatid.includes('dreamworld')) {
-			dex = Dex.mod('gen5dw' as ID);
+			dex = Dex.mod('gen5bw1' as ID);
 		}
 		// ADV 200 and RSLC are ladder/tier variants of RS — species data (types, stats,
 		// learnsets) is byte-identical to gen3rs, only the tier table differs (see

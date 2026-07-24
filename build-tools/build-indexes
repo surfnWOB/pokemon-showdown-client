@@ -33,7 +33,7 @@ console.log("DONE");
 // contribute otherwise-global search rows. DexSearch filters these rows through its active dex.
 const SUPPORTED_TEAMBUILDER_MODS = [
 	'gen2sw97', 'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen3megascap', 'gen4mega',
-	'gen5bw1', 'gen5dw', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
+	'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
 	'gen1rbyplus', 'gen3advplus', 'gen3tradebacks', 'gen3puretradebacks', 'gen3hoennification', 'gen3frlgindigo', 'gen3shadowcolosseum',
 ];
 
