@@ -425,6 +425,12 @@ export const Dex = new class implements ModdedDex {
 		if (dex.gen === 3 && formatid.includes('tradebacks')) {
 			dex = Dex.mod('gen3tradebacks' as ID);
 		}
+		// Checked after the generic 'tradebacks' branch above (which would otherwise
+		// route gen3puretradebacks to plain gen3tradebacks, since 'puretradebacks'
+		// contains 'tradebacks' — see battle-dex-search.ts's identical distinction).
+		if (dex.gen === 3 && formatid.includes('puretradebacks')) {
+			dex = Dex.mod('gen3puretradebacks' as ID);
+		}
 		if (dex.gen === 3 && formatid.includes('hoennification')) {
 			dex = Dex.mod('gen3hoennification' as ID);
 		}
