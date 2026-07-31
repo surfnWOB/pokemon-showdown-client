@@ -455,12 +455,15 @@ export const Dex = new class implements ModdedDex {
 		if (avatar.includes('.')) {
 			// previously checked `&& window.Config?.server?.registered`
 			// currently doesn't, bc server registration isn't a thing anymore
-			// custom avatar served by the server
-			// Some contexts (e.g. the replay viewer) have no server connection, so
-			// `Config.server` is undefined. A custom avatar can't be resolved there —
-			// fall through to the default trainer sprite instead of throwing (which
-			// would blow up the whole sidebar render). See getSidebarHTML.
-			const server = window.Config?.server;
+			// custom avatar served by the server.
+			// Live battles have `Config.server` (the connected sim). Contexts with no
+			// live connection — the replay viewer — don't, so fall back to
+			// `Config.defaultserver`, which still points at the sim host that serves
+			// /avatars/. That's what lets custom avatars render in replays.
+			// Only if neither is known do we drop to the default trainer sprite,
+			// rather than reading `.port` off undefined and blowing up the whole
+			// sidebar render (see getSidebarHTML).
+			const server = window.Config?.server || window.Config?.defaultserver;
 			if (server?.host) {
 				const protocol = (server.port === 443) ? 'https' : 'http';
 				const origin = `${protocol}://${server.host}:${server.port}`;
