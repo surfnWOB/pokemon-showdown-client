@@ -456,9 +456,17 @@ export const Dex = new class implements ModdedDex {
 			// previously checked `&& window.Config?.server?.registered`
 			// currently doesn't, bc server registration isn't a thing anymore
 			// custom avatar served by the server
-			const protocol = (Config.server.port === 443) ? 'https' : 'http';
-			const server = `${protocol}://${Config.server.host}:${Config.server.port}`;
-			return `${server}/avatars/${encodeURIComponent(avatar).replace(/%3F/g, '?')}`;
+			// Some contexts (e.g. the replay viewer) have no server connection, so
+			// `Config.server` is undefined. A custom avatar can't be resolved there —
+			// fall through to the default trainer sprite instead of throwing (which
+			// would blow up the whole sidebar render). See getSidebarHTML.
+			const server = window.Config?.server;
+			if (server?.host) {
+				const protocol = (server.port === 443) ? 'https' : 'http';
+				const origin = `${protocol}://${server.host}:${server.port}`;
+				return `${origin}/avatars/${encodeURIComponent(avatar).replace(/%3F/g, '?')}`;
+			}
+			avatar = 'unknown';
 		}
 		return Dex.resourcePrefix + 'sprites/trainers/' + Dex.sanitizeName(avatar || 'unknown') + '.png';
 	}
