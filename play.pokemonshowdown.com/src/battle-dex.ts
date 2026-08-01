@@ -628,7 +628,16 @@ export const Dex = new class implements ModdedDex {
 			} else if (window.BattlePokedex && !(id in BattlePokedex) && window.BattleBaseSpeciesChart) {
 				for (const baseSpeciesId of BattleBaseSpeciesChart) {
 					if (formid.startsWith(baseSpeciesId)) {
-						id = baseSpeciesId;
+						// Only collapse to the base species when `formid` is genuinely one of its
+						// cosmetic formes (e.g. unownb -> unown). A custom forme with its own data
+						// whose id merely starts with a charted base — like the fork's unownmega —
+						// must NOT be collapsed, or a mod's overrideSpeciesData never applies and it
+						// renders as the base species. Fall back to the old behaviour when the base
+						// has no cosmeticFormes list.
+						const cosmeticFormes = BattlePokedex[baseSpeciesId]?.cosmeticFormes;
+						if (!cosmeticFormes || cosmeticFormes.some((forme: string) => toID(forme) === formid)) {
+							id = baseSpeciesId;
+						}
 						break;
 					}
 				}
