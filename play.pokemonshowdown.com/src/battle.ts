@@ -1192,12 +1192,18 @@ export class Battle {
 		isReplay?: boolean,
 		debug?: boolean,
 		subscription?: Battle['subscription'],
+		createScene?: (battle: Battle) => BattleSceneStub,
 		/** autoresize `$frame` for browsers below 640px width (mobile) */
 		autoresize?: boolean,
 	} = {}) {
 		this.id = options.id || '';
 
-		if (options.$frame && options.$logFrame) {
+		if (options.createScene) {
+			if (options.$frame || options.$logFrame) {
+				throw new Error(`You cannot specify createScene with $frame or $logFrame`);
+			}
+			this.scene = options.createScene(this);
+		} else if (options.$frame && options.$logFrame) {
 			this.scene = new BattleScene(this, options.$frame, options.$logFrame);
 		} else if (!options.$frame && !options.$logFrame) {
 			this.scene = new BattleSceneStub();
@@ -3902,8 +3908,7 @@ export class Battle {
 		}
 		case 'player': {
 			let side = this.getSide(args[1]);
-			side.setName(args[2]);
-			if (args[3]) side.setAvatar(args[3]);
+			side.setName(args[2], args[3]);
 			if (args[4]) side.rating = args[4];
 			if (this.joinButtons) this.scene.hideJoinButtons();
 			this.log(args);

@@ -11,6 +11,67 @@ require('../play.pokemonshowdown.com/js/battle-text-parser.js');
 require('../play.pokemonshowdown.com/js/battle.js');
 
 describe('Battle', () => {
+	it('should construct an injected scene before replay parsing starts', () => {
+		let factoryBattle = null;
+		let sidesAtFactory = null;
+		let resetCalls = 0;
+		class RecordingScene extends BattleSceneStub {
+			constructor(battle) {
+				super();
+				this.battle = battle;
+			}
+			reset() {
+				resetCalls++;
+			}
+		}
+
+		let battle = new Battle({
+			paused: true,
+			log: ['|init|battle'],
+			createScene(currentBattle) {
+				factoryBattle = currentBattle;
+				sidesAtFactory = currentBattle.sides;
+				return new RecordingScene(currentBattle);
+			},
+		});
+
+		assert.equal(factoryBattle, battle);
+		assert.equal(sidesAtFactory, null);
+		assert.equal(battle.scene.battle, battle);
+		assert.equal(resetCalls, 1);
+	});
+
+	it('should reject injected scenes combined with DOM frame handles', () => {
+		for (const frameOptions of [{$frame: {}}, {$logFrame: {}}]) {
+			let factoryCalls = 0;
+			assert.throws(() => new Battle({
+				...frameOptions,
+				createScene() {
+					factoryCalls++;
+					return new BattleSceneStub();
+				},
+			}), /createScene.*frame/i);
+			assert.equal(factoryCalls, 0);
+		}
+	});
+
+	it('should not roll a trainer sprite when the protocol supplies an avatar', () => {
+		const originalRandom = Math.random;
+		Math.random = () => {
+			throw new Error('trainer sprite randomness was used');
+		};
+		try {
+			const battle = new Battle({
+				debug: true,
+				paused: true,
+				log: ['|player|p1|Alice|1', '|turn|1'],
+			});
+			assert.equal(battle.p1.name, 'Alice');
+			assert.equal(battle.p1.avatar, '1');
+		} finally {
+			Math.random = originalRandom;
+		}
+	});
 
 	it('should process a bunch of messages properly', () => {
 		let battle = new Battle({

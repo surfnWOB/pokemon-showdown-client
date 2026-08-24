@@ -1731,6 +1731,42 @@ export interface ScenePos {
 	time?: number;
 	display?: string;
 }
+
+export interface PokemonSummonMotion {
+	readonly delay: number;
+	readonly animations: readonly Readonly<{
+		end: ScenePos,
+		transition?: string,
+	}>[];
+}
+
+/**
+ * The authoritative motion after a Poké Ball opens. The delay is relative to
+ * the sprite's own queue; browser callers add any scene queue offset at their
+ * adapter boundary.
+ */
+export function getPokemonSummonMotion(
+	gen: number,
+	acceleration: number,
+	position: Readonly<{ x: number, y: number, z: number }>
+): PokemonSummonMotion {
+	const { x, y, z } = position;
+	const delay = 300 / acceleration;
+	if (gen <= 4) {
+		return {
+			delay,
+			animations: [{ end: { x, y, z, time: 400 / acceleration } }],
+		};
+	}
+	return {
+		delay,
+		animations: [
+			{ end: { x, y: y + 30, z, time: 400 / acceleration } },
+			{ end: { x, y, z, time: 300 / acceleration }, transition: 'accel' },
+		],
+	};
+}
+
 interface InitScenePos {
 	x: number;
 	y: number;
@@ -2337,25 +2373,10 @@ export class PokemonSprite extends Sprite {
 			z: this.z,
 			time: 300 / this.scene.acceleration,
 		}, 'ballistic2', 'fade');
-		if (this.scene.gen <= 4) {
-			this.delay(this.scene.timeOffset + 300 / this.scene.acceleration).anim({
-				x: this.x,
-				y: this.y,
-				z: this.z,
-				time: 400 / this.scene.acceleration,
-			});
-		} else {
-			this.delay(this.scene.timeOffset + 300 / this.scene.acceleration).anim({
-				x: this.x,
-				y: this.y + 30,
-				z: this.z,
-				time: 400 / this.scene.acceleration,
-			}).anim({
-				x: this.x,
-				y: this.y,
-				z: this.z,
-				time: 300 / this.scene.acceleration,
-			}, 'accel');
+		const summonMotion = getPokemonSummonMotion(this.scene.gen, this.scene.acceleration, this);
+		this.delay(this.scene.timeOffset + summonMotion.delay);
+		for (const animation of summonMotion.animations) {
+			this.anim(animation.end, animation.transition);
 		}
 		if (this.sp.shiny && this.scene.acceleration < 2) BattleOtherAnims.shiny.anim(this.scene, [this]);
 		this.scene.waitFor(this.$el);
