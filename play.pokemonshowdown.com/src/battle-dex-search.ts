@@ -52,6 +52,12 @@ const GEN1_SU_BANS = [
 	'omanyte', 'onix', 'parasect', 'pinsir', 'poliwag', 'sandslash', 'slowpoke', 'tentacool',
 	'vileplume', 'weezing', 'wigglytuff',
 ];
+// Moves [Gen 3] STABmons (config/formats.ts) lists under `restricted:`. The server's
+// STABmons Move Legality rule refuses to grant these by type-match, so they're legal only
+// if the Pokemon legitimately learns them. Acupressure is Gen 4, but is listed for parity.
+const GEN3_STABMONS_RESTRICTED = [
+	'acupressure', 'bellydrum', 'extremespeed', 'lovelykiss', 'spore',
+] as ID[] as readonly ID[];
 
 /** ID, SearchType, index (if alias), offset (if offset alias) */
 declare const BattleSearchIndex: [ID, SearchType, number?, number?][];
@@ -1102,7 +1108,50 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			}
 			learnsetid = this.nextLearnsetid(learnsetid, speciesid, true);
 		}
-		return false;
+		return this.canLearnBySTABmons(speciesid, moveid);
+	}
+	protected canLearnBySTABmons(speciesid: ID, moveid: ID) {
+		const format = this.format;
+		if (!format.includes('stabmons') && format !== 'staaabmons') return false;
+
+		const dex = this.dex;
+		const move = dex.moves.get(moveid);
+		if (!move.exists || move.gen > dex.gen) return false;
+		if (move.isZ || move.isMax || (move.isNonstandard && move.isNonstandard !== 'Unobtainable')) return false;
+		if (dex.gen === 3 && GEN3_STABMONS_RESTRICTED.includes(move.id)) return false;
+
+		let species = dex.species.get(speciesid);
+		const speciesTypes: string[] = [];
+		const moveTypes: string[] = [];
+		for (let i = dex.gen; i >= species.gen && i >= move.gen; i--) {
+			const genDex = Dex.forGen(i);
+			moveTypes.push(genDex.moves.get(move.name).type);
+
+			const pokemon = genDex.species.get(species.name);
+			const baseSpecies = genDex.species.get(pokemon.changesFrom || pokemon.name);
+			if (!pokemon.battleOnly) speciesTypes.push(...pokemon.types);
+			let prevo = pokemon.prevo;
+			while (prevo) {
+				const prevoSpecies = genDex.species.get(prevo);
+				speciesTypes.push(...prevoSpecies.types);
+				prevo = prevoSpecies.prevo;
+			}
+			if (pokemon.battleOnly && typeof pokemon.battleOnly === 'string') {
+				species = dex.species.get(pokemon.battleOnly);
+			}
+			const excludedForme = (forme: Dex.Species) => [
+				'Alola', 'Alola-Totem', 'Galar', 'Galar-Zen', 'Hisui', 'Paldea',
+				'Paldea-Combat', 'Paldea-Blaze', 'Paldea-Aqua',
+			].includes(forme.forme);
+			if (baseSpecies.otherFormes && !['Wormadam', 'Urshifu'].includes(baseSpecies.baseSpecies)) {
+				if (!excludedForme(species)) speciesTypes.push(...baseSpecies.types);
+				for (const formeName of baseSpecies.otherFormes) {
+					const forme = dex.species.get(formeName);
+					if (!forme.battleOnly && !excludedForme(forme)) speciesTypes.push(...forme.types);
+				}
+			}
+		}
+		return moveTypes.some(type => speciesTypes.includes(type));
 	}
 	getTier(pokemon: Dex.Species) {
 		if (this.formatType === 'metronome') {
@@ -2188,14 +2237,6 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 	static readonly GOOD_DOUBLES_MOVES = [
 		'allyswitch', 'bulldoze', 'coaching', 'electroweb', 'faketears', 'fling', 'followme', 'healpulse', 'helpinghand', 'junglehealing', 'lifedew', 'lunarblessing', 'muddywater', 'pollenpuff', 'psychup', 'ragepowder', 'safeguard', 'skillswap', 'snipeshot', 'wideguard', 'decorate', 'snarl',
 	] as ID[] as readonly ID[];
-	// Moves [Gen 3] STABmons (config/formats.ts) lists under `restricted:`. The server's
-	// STABmons Move Legality rule refuses to grant these by type-match (ruleTable.isRestricted),
-	// so they're legal only if the Pokemon legitimately learns them. The builder must mirror
-	// this or it offers them to every Normal-/Grass-type. (Acupressure is gen 4 and already
-	// filtered by the move.gen > dex.gen guard, but is listed for parity with the server.)
-	static readonly GEN3_STABMONS_RESTRICTED = [
-		'acupressure', 'bellydrum', 'extremespeed', 'lovelykiss', 'spore',
-	] as ID[] as readonly ID[];
 	getBaseResults() {
 		if (!this.species) return this.getDefaultResults();
 		const dex = this.dex;
@@ -2203,8 +2244,6 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 		const format = this.format;
 		const isHackmons = (format.includes('hackmons') || format.endsWith('bh'));
 		const isSTABmons = (format.includes('stabmons') || format === 'staaabmons');
-		// [Gen 3] STABmons restricts a handful of moves from being granted by STAB (see below).
-		const isGen3STABmons = isSTABmons && dex.gen === 3;
 		const isTradebacks = format.includes('tradebacks');
 		const regionBornLegality = dex.gen >= 6 &&
 			(/^battle(spot|stadium|festival)/.test(format) || format.startsWith('bss') ||
@@ -2314,49 +2353,7 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 			for (let id in this.getTable()) {
 				const move = dex.moves.get(id);
 				if (moves.includes(move.id)) continue;
-				if (move.gen > dex.gen) continue;
-				if (move.isZ || move.isMax || (move.isNonstandard && move.isNonstandard !== 'Unobtainable')) continue;
-				// Don't STAB-grant moves the format restricts; they only stay if learned legitimately
-				// (already added by the learnset loop above and skipped by the moves.includes guard).
-				if (isGen3STABmons && BattleMoveSearch.GEN3_STABMONS_RESTRICTED.includes(move.id)) continue;
-
-				const speciesTypes: string[] = [];
-				const moveTypes: string[] = [];
-				for (let i = dex.gen; i >= species.gen && i >= move.gen; i--) {
-					const genDex = Dex.forGen(i);
-					moveTypes.push(genDex.moves.get(move.name).type);
-
-					const pokemon = genDex.species.get(species.name);
-					let baseSpecies = genDex.species.get(pokemon.changesFrom || pokemon.name);
-					if (!pokemon.battleOnly) speciesTypes.push(...pokemon.types);
-					let prevo = pokemon.prevo;
-					while (prevo) {
-						const prevoSpecies = genDex.species.get(prevo);
-						speciesTypes.push(...prevoSpecies.types);
-						prevo = prevoSpecies.prevo;
-					}
-					if (pokemon.battleOnly && typeof pokemon.battleOnly === 'string') {
-						species = dex.species.get(pokemon.battleOnly);
-					}
-					const excludedForme = (s: Dex.Species) => [
-						'Alola', 'Alola-Totem', 'Galar', 'Galar-Zen', 'Hisui', 'Paldea', 'Paldea-Combat', 'Paldea-Blaze', 'Paldea-Aqua',
-					].includes(s.forme);
-					if (baseSpecies.otherFormes && !['Wormadam', 'Urshifu'].includes(baseSpecies.baseSpecies)) {
-						if (!excludedForme(species)) speciesTypes.push(...baseSpecies.types);
-						for (const formeName of baseSpecies.otherFormes) {
-							const forme = dex.species.get(formeName);
-							if (!forme.battleOnly && !excludedForme(forme)) speciesTypes.push(...forme.types);
-						}
-					}
-				}
-				let valid = false;
-				for (let type of moveTypes) {
-					if (speciesTypes.includes(type)) {
-						valid = true;
-						break;
-					}
-				}
-				if (valid) moves.push(id);
+				if (this.canLearnBySTABmons(species.id, move.id)) moves.push(id);
 			}
 		}
 
