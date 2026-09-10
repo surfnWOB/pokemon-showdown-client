@@ -34,7 +34,7 @@ console.log("DONE");
 const SUPPORTED_TEAMBUILDER_MODS = [
 	'gen2sw97', 'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen3megascap', 'gen4mega',
 	'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
-	'gen1rbyplus', 'gen3advplus', 'gen3tradebacks', 'gen3puretradebacks', 'gen3hoennification', 'gen3frlgindigo', 'gen3shadowcolosseum',
+	'gen1rbyplus', 'gen3adv200box', 'gen3advplus', 'gen3tradebacks', 'gen3puretradebacks', 'gen3hoennification', 'gen3frlgindigo', 'gen3shadowcolosseum',
 ];
 
 function es3stringify(obj) {
@@ -357,7 +357,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		7.1,
 		5.1,
 		4.03,
-		3.1, 3.11, 3.02, 3.03, 3.15, 3.05, 3.06, 3.17, 3.07, 3.08, 3.09, 3.12, 3.13, 3.14,
+		3.1, 3.11, 3.02, 3.03, 3.15, 3.05, 3.06, 3.16, 3.17, 3.07, 3.08, 3.09, 3.12, 3.13, 3.14,
 		2.01,
 		1.05,
 	];
@@ -391,6 +391,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		const isGen3MegaCAP = genIdent === 3.15;
 		const isGen3UbersUU = genIdent === 3.05;
 		const isGen3SubZU = genIdent === 3.06;
+		const isGen3Adv200Box = genIdent === 3.16;
 		const isGen3AdvPlus = genIdent === 3.07;
 		const isGen3Tradebacks = genIdent === 3.08;
 		const isGen3PureTradebacks = genIdent === 3.14;
@@ -418,6 +419,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			if (isGen3MegaCAP) genStr += 'megascap';
 			if (isGen3UbersUU) genStr += 'ubersuu';
 			if (isGen3SubZU) genStr += 'subzu';
+			if (isGen3Adv200Box) genStr += 'adv200box';
 			if (isGen3AdvPlus) genStr += 'advplus';
 			if (isGen3Tradebacks) genStr += 'tradebacks';
 			if (isGen3PureTradebacks) genStr += 'puretradebacks';
@@ -515,7 +517,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 					if (species.tier === 'LC') return 'LC';
 					return 'Regular';
 				}
-				if (isRS) {
+				if (isRS || isGen3Adv200Box) {
 					if (species.isNonstandard) {
 						if (species.isNonstandard === 'Unobtainable') return 'Unreleased';
 						return 'Illegal';
@@ -525,7 +527,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 					// A handful of NFE mons (Kadabra, Pikachu, Clamperl) sit in UU there
 					// because their held-item niches earn a real tier — no special-casing
 					// here, the data is authoritative.
-					return species.tier;
+					return Dex.mod('gen3adv200').species.get(id).tier;
 				}
 				if (isRSLC) {
 					// Every legal mon in a Little Cup table is, by definition, LC — so force
@@ -799,7 +801,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			BattleTeambuilderTable['gen3rslc'].overrideTier = overrideTier;
 			BattleTeambuilderTable['gen3rslc'].formatSlices = formatSlices;
 		} else if (
-			isBW1 || isRS || isFRLG || isGen3AdvPlus ||
+			isBW1 || isRS || isFRLG || isGen3Adv200Box || isGen3AdvPlus ||
 			isGen3Tradebacks || isGen3PureTradebacks || isGen3Hoennification || isGen3FRLGIndigo
 		) {
 			BattleTeambuilderTable[gen] = {};
@@ -1241,6 +1243,17 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		BattleTeambuilderTable['gen3rs'].learnsets[id] = {};
 		for (const moveid in learnset) {
 			BattleTeambuilderTable['gen3rs'].learnsets[id][moveid] = '3';
+		}
+	}
+	const G3Adv200BoxLearnsets = Dex.mod('gen3adv200box').data.Learnsets;
+	for (const id in G3Adv200BoxLearnsets) {
+		const species = Dex.mod('gen3adv200box').species.get(id);
+		if (species.isNonstandard && !['Unobtainable', 'CAP'].includes(species.isNonstandard)) continue;
+		const learnset = G3Adv200BoxLearnsets[id].learnset;
+		if (!learnset) continue;
+		BattleTeambuilderTable['gen3adv200box'].learnsets[id] = {};
+		for (const moveid in learnset) {
+			BattleTeambuilderTable['gen3adv200box'].learnsets[id][moveid] = '3';
 		}
 	}
 	const G3FRLGLearnsets = Dex.mod('gen3frlg').data.Learnsets;

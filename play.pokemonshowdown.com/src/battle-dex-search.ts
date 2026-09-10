@@ -702,7 +702,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 	protected formatType: 'doubles' | 'bdsp' | 'bdspdoubles' | 'rs' | 'rslc' | 'frlg' | 'bw1' | 'letsgo' | 'metronome' |
 		'natdex' | 'nfe' | 'ssdlc1' | 'ssdlc1doubles' | 'predlc' | 'predlcdoubles' | 'predlcnatdex' | 'svdlc1' | 'svdlc1doubles' |
 		'svdlc1natdex' | 'stadium' | 'lc' | 'champions' | 'natdexchampions' | 'zangouse' | 'gen4mega' | 'gen3mega' | 'gen3megascap' | 'gen3ubersuu' |
-		'gen3subzu' | 'gen1rbyplus' | 'gen3advplus' | 'gen3tradebacks' | 'gen3puretradebacks' | 'gen3hoennification' | 'gen3frlgindigo' |
+		'gen3subzu' | 'gen1rbyplus' | 'gen3adv200box' | 'gen3advplus' | 'gen3tradebacks' | 'gen3puretradebacks' | 'gen3hoennification' | 'gen3frlgindigo' |
 		'gen3shadowcolosseum' | 'gen2sw97' | null = null;
 	isDoubles = false;
 
@@ -805,7 +805,10 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType = 'bw1';
 			this.dex = Dex.mod('gen5bw1' as ID);
 		}
-		if (format.includes('adv200')) {
+		if (format.includes('adv200box')) {
+			this.formatType = 'gen3adv200box';
+			this.dex = Dex.mod('gen3adv200box' as ID);
+		} else if (format.includes('adv200')) {
 			this.formatType = format.endsWith('lc') ? 'rslc' : 'rs';
 			this.dex = Dex.mod('gen3rs' as ID);
 		}
@@ -1009,6 +1012,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (this.formatType === 'letsgo') table = table['gen7letsgo'];
 		if (this.formatType === 'bw1') table = table['gen5bw1'];
 		if (this.formatType === 'rs' || this.formatType === 'rslc') table = table['gen3rs'];
+		if (this.formatType === 'gen3adv200box') table = table['gen3adv200box'];
 		if (this.formatType === 'frlg') table = table['gen3frlg'];
 		if (this.formatType === 'champions') table = table['champions'];
 		if (this.formatType === 'natdexchampions') table = table['natdexchampions'];
@@ -1088,6 +1092,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			if (this.formatType === 'letsgo') table = table['gen7letsgo'];
 			if (this.formatType === 'bw1') table = table['gen5bw1'];
 			if (this.formatType === 'rs' || this.formatType === 'rslc') table = table['gen3rs'];
+			if (this.formatType === 'gen3adv200box') table = table['gen3adv200box'];
 			if (this.formatType === 'frlg') table = table['gen3frlg'];
 			if (this.formatType === 'champions') table = table['champions'];
 			if (this.formatType === 'natdexchampions') table = table['natdexchampions'];
@@ -1191,6 +1196,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType === 'champions' ? `champions` :
 			this.formatType === 'natdexchampions' ? `natdexchampions` :
 			this.formatType === 'zangouse' ? `gen3zangouse` :
+			this.formatType === 'gen3adv200box' ? `gen3adv200box` :
 			this.formatType === 'gen4mega' ? `gen4mega` :
 			this.formatType === 'gen3mega' ? `gen3mega` :
 			this.formatType === 'gen3megascap' ? `gen3megascap` :
@@ -1333,6 +1339,8 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			table = table['gen5bw1'];
 		} else if (this.formatType === 'rs') {
 			table = table['gen3rs'];
+		} else if (this.formatType === 'gen3adv200box') {
+			table = table['gen3adv200box'];
 		} else if (this.formatType === 'rslc') {
 			table = table['gen3rslc'];
 		} else if (this.formatType === 'frlg') {
@@ -1559,7 +1567,7 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			tierSet = tierSet.slice(slices.Uber);
 		} else if (this.formatType === 'rslc') {
 			tierSet = tierSet.slice(slices.LC);
-		} else if (this.formatType === 'rs') {
+		} else if (this.formatType === 'rs' || this.formatType === 'gen3adv200box') {
 			tierSet = tierSet.slice(format === 'adv200uu' ? slices.UU : slices.OU);
 		} else if (this.formatType === 'frlg') {
 			tierSet = tierSet.slice(slices.Regular);
@@ -1855,6 +1863,8 @@ class BattleItemSearch extends BattleTypedSearch<'item'> {
 			table = table['gen5bw1'];
 		} else if (this.formatType === 'rs' || this.formatType === 'rslc') {
 			table = table['gen3rs'];
+		} else if (this.formatType === 'gen3adv200box') {
+			table = table['gen3adv200box'];
 		} else if (this.formatType === 'frlg') {
 			table = table['gen3frlg'];
 		} else if (this.formatType === 'gen4mega') {
@@ -2259,6 +2269,7 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 		if (this.formatType === 'letsgo') lsetTable = lsetTable['gen7letsgo'];
 		if (this.formatType === 'bw1') lsetTable = lsetTable['gen5bw1'];
 		if (this.formatType === 'rs' || this.formatType === 'rslc') lsetTable = lsetTable['gen3rs'];
+		if (this.formatType === 'gen3adv200box') lsetTable = lsetTable['gen3adv200box'];
 		if (this.formatType === 'frlg') lsetTable = lsetTable['gen3frlg'];
 		if (this.formatType === 'champions') lsetTable = lsetTable['champions'];
 		if (this.formatType === 'natdexchampions') lsetTable = lsetTable['natdexchampions'];
