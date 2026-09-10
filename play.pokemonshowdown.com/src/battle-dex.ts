@@ -401,10 +401,12 @@ export const Dex = new class implements ModdedDex {
 		if (dex.gen === 5 && formatid.includes('dreamworld')) {
 			dex = Dex.mod('gen5bw1' as ID);
 		}
-		// ADV 200 and RSLC are ladder/tier variants of RS — species data (types, stats,
-		// learnsets) is byte-identical to gen3rs, only the tier table differs (see
-		// battle-dex-search.ts's identical rs/rslc handling and build-indexes' modId comment).
-		if (dex.gen === 3 && formatid.includes('adv200')) {
+		if (dex.gen === 3 && formatid.includes('adv200box')) {
+			dex = Dex.mod('gen3adv200box' as ID);
+		} else if (dex.gen === 3 && formatid.includes('adv200')) {
+			// ADV 200 and RSLC are ladder/tier variants of RS — species data (types, stats,
+			// learnsets) is byte-identical to gen3rs, only the tier table differs (see
+			// battle-dex-search.ts's identical rs/rslc handling and build-indexes' modId comment).
 			dex = Dex.mod('gen3rs' as ID);
 		}
 		if (dex.gen === 3 && formatid.includes('frlg')) {
