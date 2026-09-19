@@ -28,6 +28,9 @@ const buildArgs = ['build'];
 if (args.includes('--full')) buildArgs.push('full');
 if (args.includes('--no-update')) buildArgs.push('--no-update');
 run('', buildArgs);
+run('offline tools... ', ['node_modules/typescript/bin/tsc', '-p', 'build-tools/offline']);
+run('', ['node_modules/typescript/bin/tsc', '-p', 'build-tools/offline/classic']);
+run('', ['node_modules/typescript/bin/tsc', '-p', 'build-tools/offline/worker']);
 
 const required = [
 	'caches/pokemon-showdown/tools/tl-calls.mts',

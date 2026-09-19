@@ -33,7 +33,6 @@ if (fs.existsSync('caches/pokemon-showdown/dist/sim/dex.js')) {
 console.log("DONE");
 
 const Dex = require('../caches/pokemon-showdown/dist/sim/dex').Dex;
-const { CLIENT_MODS } = require('./build-translations');
 const CompoundWordNames = require('../caches/pokemon-showdown/dist/data/aliases').CompoundWordNames;
 const toID = Dex.toID;
 process.stdout.write("Loading gen 6 data... ");

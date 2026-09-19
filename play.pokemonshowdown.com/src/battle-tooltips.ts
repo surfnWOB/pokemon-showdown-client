@@ -280,7 +280,7 @@ export class RandomBattleTooltip {
 				data.ivs?.[statName] !== undefined || data.evs?.[statName] !== undefined;
 			const statLabel = gen === 1 && statName === 'spa' ? 'spc' : statName;
 			buf += statName === 'atk' ? '<small>' : '<small> / ';
-			buf += `${BattleText[statLabel].statShortName}&nbsp;</small>`;
+			buf += `${BattleTextParser.statShortName(statLabel)}&nbsp;</small>`;
 			const italic = !known && (statName === 'atk' || statName === 'spe');
 			buf += `${italic ? '<em>' : ''}${stats[statName]}${italic ? '</em>' : ''}`;
 		}

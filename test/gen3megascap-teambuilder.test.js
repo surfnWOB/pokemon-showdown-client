@@ -33,20 +33,20 @@ const latestCapMegas = {
 };
 
 const authoritativeUpdatedMegas = {
-	corsolamega: [[90, 70, 115, 120, 115, 30], ['Water', 'Psychic'], 'Natural Cure'],
+	corsolamega: [[105, 55, 115, 120, 115, 30], ['Water', 'Psychic'], 'Natural Cure'],
 	mightyenamegax: [[61, 110, 60, 119, 60, 110], ['Dark'], 'Serene Grace'],
 	mightyenamegay: [[100, 100, 100, 35, 110, 95], ['Dark', 'Poison'], 'Fur Coat'],
 	beautiflymega: [[90, 10, 90, 130, 90, 116], ['Grass', 'Flying'], 'Mega Sol'],
 	masquerainmega: [[91, 80, 84, 90, 110, 95], ['Bug', 'Water'], 'Water Bubble'],
 	volbeatmega: [[85, 65, 75, 90, 90, 125], ['Bug', 'Electric'], 'Polar Switch'],
-	grumpigmega: [[100, 60, 80, 125, 125, 80], ['Psychic'], 'Opportunist'],
+	grumpigmega: [[100, 60, 80, 125, 125, 80], ['Psychic', 'Dark'], 'Opportunist'],
 	flygonmega: [[80, 100, 120, 100, 80, 110], ['Ground', 'Dragon'], 'Sandy'],
 	solrockmega: [[90, 115, 110, 90, 85, 90], ['Rock', 'Psychic'], 'High Noon'],
 	kecleonmegax: [[60, 120, 60, 110, 120, 105], ['Normal'], 'Color Change'],
 	kecleonmegay: [[100, 100, 120, 100, 100, 40], ['Normal'], 'Protean'],
 	walreinmega: [[125, 80, 100, 100, 115, 80], ['Water', 'Ice'], 'Snow Warning'],
 	parasectmega: [[90, 135, 100, 50, 100, 30], ['Bug', 'Ghost'], 'Regenerator'],
-	venomothmega: [[85, 110, 80, 70, 80, 120], ['Bug', 'Poison'], 'Merciless'],
+	venomothmega: [[85, 130, 80, 50, 80, 120], ['Bug', 'Poison'], 'Merciless'],
 };
 
 describe('[Gen 3] Megas CAP teambuilder data', () => {

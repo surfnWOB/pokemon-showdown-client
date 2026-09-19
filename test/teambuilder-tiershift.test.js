@@ -36,7 +36,7 @@ describe('[Gen 3] Tier Shift teambuilder boosts', () => {
 		['Glalie', 10],    // NUBL in gen3 but tierOverride -> UU +10
 		['Charmeleon', 30], // PU +30
 		['Ivysaur', 35],   // ZU +35 (held out of SU)
-		['Grovyle', 35],   // ZU +35 (held out of SU)
+		['Grovyle', 30],   // PU +30
 		['Sunflora', 40],  // SU +40 (gen3subzu-only tier)
 		['Parasect', 40],  // SU +40
 		['Bulbasaur', 40], // LC +40

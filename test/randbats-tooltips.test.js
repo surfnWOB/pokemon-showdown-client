@@ -8,9 +8,33 @@ Config = {routes: {client: 'play.example.test'}};
 
 require('../play.pokemonshowdown.com/js/battle-dex-data.js');
 require('../play.pokemonshowdown.com/js/battle-dex.js');
+require('../play.pokemonshowdown.com/js/battle-text-parser.js');
 require('../play.pokemonshowdown.com/js/battle-tooltips.js');
 
 describe('Random Battle tooltips', () => {
+	it('renders translated stat labels with English fallback', () => {
+		const originalText = global.BattleText;
+		const originalLanguage = Dex.text.getLanguage;
+		global.BattleText = {
+			en: {StatShortNames: {atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe'}},
+			fr: {StatShortNames: {atk: 'Att'}},
+		};
+		Dex.text.getLanguage = () => 'fr';
+		try {
+			const html = RandomBattleTooltip.renderStats(
+				9, false, {baseStats: {hp: 100, atk: 100, def: 100, spa: 100, spd: 100, spe: 100}}, {}, 100, false
+			);
+			assert.match(html, /<small>Att&nbsp;<\/small>/);
+			for (const label of ['Def', 'SpA', 'SpD', 'Spe']) {
+				assert.ok(html.includes(`${label}&nbsp;</small>`));
+			}
+			assert.doesNotMatch(html, /undefined|\?\?\?/);
+		} finally {
+			global.BattleText = originalText;
+			Dex.text.getLanguage = originalLanguage;
+		}
+	});
+
 	it('recognizes the Gen 3 Mega Random Battle format', () => {
 		const format = RandomBattleTooltip.resolveFormat({
 			tier: '[Gen 3] Mega Random Battle',
