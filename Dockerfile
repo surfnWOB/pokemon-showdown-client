@@ -1,4 +1,4 @@
-FROM node:20-bookworm-slim AS build
+FROM node:22-bookworm-slim AS build
 
 ARG SERVER_HOST=sim.example.com
 ARG CLIENT_HOST=play.example.com

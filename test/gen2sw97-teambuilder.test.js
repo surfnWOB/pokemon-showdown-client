@@ -19,7 +19,7 @@ require('../play.pokemonshowdown.com/js/battle-dex-search.js');
 
 const FORMAT = 'gen2spaceworld97';
 
-// A representative slice of the 36 cut Spaceworld '97 designs, covering standalone
+// A representative slice of the 38 cut Spaceworld '97 designs, covering standalone
 // mon, single-stage evolutions, and evolution chains that thread through multiple
 // cut mon (Manbo1 -> Ikari -> Grotess). Values are the beta demo stats/typings.
 const cutRoster = {
@@ -29,18 +29,18 @@ const cutRoster = {
 		prevo: 'Kotora', evos: [], nfe: false},
 	norowara: {num: 5008, name: 'Norowara', types: ['Ghost'], baseStats: [55, 40, 50, 75, 50, 45],
 		prevo: '', evos: ['Kyonpan'], nfe: true},
-	manbo1: {num: 5024, name: 'Manbo1', types: ['Water'], baseStats: [50, 50, 50, 50, 50, 30],
+	manbo1: {num: 5025, name: 'Manbo1', types: ['Water'], baseStats: [50, 50, 50, 50, 50, 30],
 		prevo: '', evos: ['Ikari'], nfe: true},
-	ikari: {num: 5025, name: 'Ikari', types: ['Water', 'Steel'], baseStats: [90, 110, 50, 55, 50, 110],
+	ikari: {num: 5026, name: 'Ikari', types: ['Water', 'Steel'], baseStats: [90, 110, 50, 55, 50, 110],
 		prevo: 'Manbo1', evos: ['Grotess'], nfe: true},
-	grotess: {num: 5026, name: 'Grotess', types: ['Water', 'Steel'], baseStats: [60, 65, 60, 80, 50, 30],
+	grotess: {num: 5027, name: 'Grotess', types: ['Water', 'Steel'], baseStats: [60, 65, 60, 80, 50, 30],
 		prevo: 'Ikari', evos: [], nfe: false},
 	tsubomitto: {num: 5003, name: 'Tsubomitto', types: ['Grass', 'Poison'], baseStats: [50, 50, 50, 50, 50, 50],
-		prevo: '', evos: [], nfe: false},
-	twinz: {num: 5030, name: 'Twinz', types: ['Dark', 'Normal'], baseStats: [50, 50, 50, 50, 50, 50],
-		prevo: '', evos: [], nfe: false},
-	betbaby: {num: 5036, name: 'Betbaby', types: ['Poison'], baseStats: [50, 50, 50, 50, 50, 50],
-		prevo: '', evos: [], nfe: false},
+		prevo: 'Weepinbell', evos: [], nfe: false},
+	twinz: {num: 5031, name: 'Twinz', types: ['Dark', 'Normal'], baseStats: [50, 50, 50, 50, 50, 50],
+		prevo: '', evos: ['Girafarig'], nfe: true},
+	betbaby: {num: 5037, name: 'Betbaby', types: ['Poison'], baseStats: [50, 50, 50, 50, 50, 50],
+		prevo: '', evos: ['Grimer'], nfe: true},
 };
 
 // The 14 beta-only moves cut from the final games. Ids are the Showdown ids; each is a
@@ -64,11 +64,11 @@ const betaMoves = {
 };
 
 describe("[Gen 2] Spaceworld '97 teambuilder data", () => {
-	it('should reconstruct the 36 cut Spaceworld mon with their beta stats, typings, and evo chains', () => {
+	it('should reconstruct the 38 cut Spaceworld mon with their beta stats, typings, and evo chains', () => {
 		const builderDex = Dex.mod('gen2sw97');
 		const overrideSpeciesData = BattleTeambuilderTable.gen2sw97.overrideSpeciesData;
 		const cutIds = Object.keys(overrideSpeciesData).filter(id => overrideSpeciesData[id].num >= 5000);
-		assert.equal(cutIds.length, 36, 'all 36 cut designs should be present as mod-only species');
+		assert.equal(cutIds.length, 38, 'all 38 cut designs should be present as mod-only species');
 
 		for (const [id, want] of Object.entries(cutRoster)) {
 			const species = builderDex.species.get(id);
