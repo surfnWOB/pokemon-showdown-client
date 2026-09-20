@@ -64,6 +64,7 @@
 			buf += '<p><button class="button mainmenu7" name="joinRoom" value="resources">Info & Resources</button></p></div>';
 
 			this.$('.mainmenu').html(buf);
+			if (window.BotChallenges) window.BotChallenges.initialize(this);
 
 			// right menu
 			if (document.location.hostname === Config.routes.client) {
@@ -896,6 +897,9 @@
 		},
 
 		// challenge buttons
+		playBot: function (i, button) {
+			if (window.BotChallenges) window.BotChallenges.challenge(this, button);
+		},
 		challenge: function (name, format, team) {
 			var userid = toID(name);
 			var $challenge = this.$('.pm-window-' + userid + ' .challenge');

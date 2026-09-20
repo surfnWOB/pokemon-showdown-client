@@ -42,6 +42,9 @@ Config.bannedHosts = [];
 Config.whitelist = [];
 EOF
 
+# The bot directory is opt-in and scoped to this deployment's simulator host.
+RUN node -e "const fs = require('fs'); fs.appendFileSync('config/config.js', '\nConfig.botChallenges = {host: Config.defaultserver.host, bots: ' + JSON.stringify(require('./docker/bot-challenges.json')) + '};\n');"
+
 # Upstream's Preact refactor renamed the classic testclient.html to
 # testclient-old.html. The offline finalizer derives the self-hosted production
 # shell from it without mutating the upstream entrypoint.

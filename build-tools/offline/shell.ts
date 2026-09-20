@@ -17,10 +17,12 @@ const HEAD_INTEGRATION = [
 	'\t\t<link rel="manifest" href="/offline.webmanifest" />',
 	'\t\t<link rel="apple-touch-icon" href="/favicon-192.png" />',
 	'\t\t<link rel="stylesheet" href="/style/offline.css" />',
+	'\t\t<link rel="stylesheet" href="/style/bot-challenges.css" />',
 	'',
 ].join('\n');
 
 const RUNTIME_INTEGRATION = [
+	'\t\t<script src="/js/oldclient/bot-challenges.js"></script>',
 	'\t\t<!-- Generated fork-local offline integration. Modern browsers only. -->',
 	'\t\t<script type="module" src="/data/offline-formats.js"></script>',
 	'\t\t<script type="module" src="/js/oldclient/offline.js"></script>',

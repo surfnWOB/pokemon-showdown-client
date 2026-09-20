@@ -1,0 +1,81 @@
+/** Bot challenge controls for the classic main menu. */
+(function ($) {
+	'use strict';
+
+	function getBots() {
+		var config = Config.botChallenges;
+		if (!config || !Config.server || Config.server.host !== config.host) return [];
+		return config.bots;
+	}
+
+	function renderControls() {
+		var bots = getBots();
+		if (!bots.length) return '';
+		var buf = '<p><button type="button" class="button mainmenu2 onlineonly disabled" name="playBot"><strong>Play a bot</strong></button></p>';
+		buf += '<details class="bot-choice"><summary>Choose bot</summary><label>Opponent: <select name="challengebot">';
+		buf += '<option value="">Default bot</option>';
+		for (var i = 0; i < bots.length; i++) {
+			buf += '<option value="' + toID(bots[i].name) + '">' + BattleLog.escapeHTML(bots[i].name) + '</option>';
+		}
+		return buf + '</select></label></details>';
+	}
+
+	function initialize(room) {
+		var controls = renderControls();
+		if (!controls) return;
+		var $form = room.$('.mainmenu form.battleform');
+		$form.append(controls);
+		$form.on('change', 'select[name=challengebot]', function () {
+			Storage.prefs('challengebot', this.value);
+		});
+		Storage.whenPrefsLoaded(function () {
+			$form.find('select[name=challengebot]').val(Storage.prefs('challengebot') || '');
+		});
+		if (window.BattleFormats && !app.isDisconnected) {
+			$form.find('button[name=playBot]').removeClass('disabled');
+		}
+	}
+
+	function challenge(room, button) {
+		if (app.isDisconnected || !window.BattleFormats) {
+			app.addPopupMessage("Connect to the server before challenging a bot.");
+			return;
+		}
+		if (!app.user.get('named')) {
+			app.addPopup(LoginPopup);
+			return;
+		}
+		var $form = $(button).closest('form');
+		var format = $form.find('button[name=format]').val();
+		var teamIndex = $form.find('button[name=team]').val();
+		var preferred = $form.find('select[name=challengebot]').val();
+		var bots = getBots();
+		var bot = null;
+		for (var j = 0; j < bots.length; j++) {
+			if (preferred && toID(bots[j].name) !== preferred) continue;
+			if (toID(bots[j].name) === app.user.get('userid')) continue;
+			if (bots[j].formats.indexOf(format) < 0) continue;
+			bot = bots[j];
+			break;
+		}
+		if (!bot || !BattleFormats[format] || !BattleFormats[format].challengeShow) {
+			app.addPopupMessage(preferred ? "This bot cannot play the selected format. Choose Default bot or another format." : "No bot supports the selected format. Please choose another format.");
+			return;
+		}
+		if (!BattleFormats[format].team && (!Storage.teams || teamIndex === '' || !Storage.teams[teamIndex])) {
+			app.addPopupMessage("Please select a team.");
+			return;
+		}
+		// Reuse the normal challenge submission, including validation and cancellation.
+		room.challenge(bot.name, format);
+		var $challenge = room.$('.pm-window-' + toID(bot.name) + ' .challenge');
+		var $submit = $challenge.find('button[name=makeChallenge]');
+		if (!$submit.length) return;
+		$challenge.find('button[name=team]').val(teamIndex);
+		$challenge.find('input[name=private]').prop('checked', $form.find('input[name=private]').is(':checked'));
+		room.makeChallenge(null, $submit[0]);
+	}
+
+	window.BotChallenges = { initialize: initialize, challenge: challenge };
+
+})(jQuery);

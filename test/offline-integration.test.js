@@ -12,6 +12,15 @@ function read(relativePath) {
 }
 
 describe('offline production integration', () => {
+	it('loads the bot module before the app starts without changing the upstream shell', () => {
+		const source = read('play.pokemonshowdown.com/testclient-old.html');
+		const shell = renderOfflineShell(source);
+		assert.doesNotMatch(source, /bot-challenges/);
+		const moduleIndex = shell.indexOf('<script src="/js/oldclient/bot-challenges.js"></script>');
+		assert.ok(moduleIndex >= 0 && moduleIndex < shell.indexOf('window.app = new App()'));
+		assert.match(shell, /href="\/style\/bot-challenges.css"/);
+	});
+
 	it('derives one offline entrypoint from the unmodified classic shell', () => {
 		const source = read('play.pokemonshowdown.com/testclient-old.html');
 		const shell = renderOfflineShell(source);

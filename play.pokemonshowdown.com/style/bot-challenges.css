@@ -1,0 +1,15 @@
+.bot-choice {
+	margin: 0 auto 10px;
+	width: 230px;
+	text-align: center;
+}
+.bot-choice summary {
+	cursor: pointer;
+}
+.bot-choice label {
+	display: block;
+	margin-top: 8px;
+}
+.bot-choice select {
+	max-width: 100%;
+}
