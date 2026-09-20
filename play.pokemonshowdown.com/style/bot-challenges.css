@@ -1,15 +1,27 @@
+/* Match the Battle button without its .big class, which also drives ladder UI updates. */
+.menugroup .button.bot-battle {
+	width: 230px;
+	height: 50px;
+	padding: 0;
+	font-size: 14pt;
+}
+.menugroup .button.bot-battle small {
+	display: block;
+	font-size: 9pt;
+}
+
 .bot-choice {
 	margin: 0 auto 10px;
 	width: 230px;
-	text-align: center;
+	text-align: left;
 }
 .bot-choice summary {
 	cursor: pointer;
 }
-.bot-choice label {
+.bot-choice select {
 	display: block;
 	margin-top: 8px;
-}
-.bot-choice select {
+	box-sizing: border-box;
+	width: 100%;
 	max-width: 100%;
 }

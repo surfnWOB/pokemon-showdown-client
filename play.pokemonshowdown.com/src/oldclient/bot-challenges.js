@@ -11,13 +11,13 @@
 	function renderControls() {
 		var bots = getBots();
 		if (!bots.length) return '';
-		var buf = '<p><button type="button" class="button mainmenu2 onlineonly disabled" name="playBot"><strong>Play a bot</strong></button></p>';
-		buf += '<details class="bot-choice"><summary>Choose bot</summary><label>Opponent: <select name="challengebot">';
+		var buf = '<p><button type="button" class="button mainmenu2 bot-battle onlineonly disabled" name="playBot"><strong>Play a bot</strong><br /><small>Practice in your selected format</small></button></p>';
+		buf += '<details class="bot-choice"><summary>Choose bot</summary><select class="select" name="challengebot" aria-label="Bot opponent">';
 		buf += '<option value="">Default bot</option>';
 		for (var i = 0; i < bots.length; i++) {
 			buf += '<option value="' + toID(bots[i].name) + '">' + BattleLog.escapeHTML(bots[i].name) + '</option>';
 		}
-		return buf + '</select></label></details>';
+		return buf + '</select></details>';
 	}
 
 	function initialize(room) {
