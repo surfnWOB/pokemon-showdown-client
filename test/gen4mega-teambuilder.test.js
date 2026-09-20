@@ -17,6 +17,9 @@ require('../play.pokemonshowdown.com/js/battle-dex.js');
 require('../play.pokemonshowdown.com/js/battle-dex-search.js');
 
 const GEN4_ADDITIONS = {
+	absolmegaz: 'absolitez',
+	lucariomegaz: 'lucarionitez',
+	garchompmegaz: 'garchompitez',
 	staraptormega: 'staraptite',
 	lopunnymega: 'lopunnite',
 	garchompmega: 'garchompite',
@@ -77,6 +80,9 @@ describe('[Gen 4] Megas teambuilder data', () => {
 		assert(ou.pokemon.has('gallademega'));
 		assert(!ou.pokemon.has('garchompmega'));
 		assert(!ou.pokemon.has('salamencemega'));
+		assert(ou.pokemon.has('absolmegaz'));
+		assert(ou.pokemon.has('lucariomegaz'));
+		assert(!ou.pokemon.has('garchompmegaz'));
 	});
 
 	it('offers selected stones and only Gen 4-legal moves', () => {
@@ -85,6 +91,9 @@ describe('[Gen 4] Megas teambuilder data', () => {
 			.map(row => row[1]);
 		assert(items.includes('garchompite'));
 		assert(items.includes('staraptite'));
+		assert(items.includes('absolitez'));
+		assert(items.includes('lucarionitez'));
+		assert(items.includes('garchompitez'));
 		assert(!items.includes('heatranite'));
 
 		const moves = new DexSearch('move', 'gen4megas', {species: 'Lucario', moves: []});
@@ -107,5 +116,20 @@ describe('[Gen 4] Megas teambuilder data', () => {
 		const builderSprite = Dex.getTeambuilderSpriteData(dex.species.get('garchompmega'), dex);
 		assert.equal(builderSprite.spriteDir, 'sprites/gen4');
 		assert.equal(builderSprite.spriteid, 'garchomp');
+	});
+
+	it('tries Z Mega back art first and supplies matching front art only as a fallback', () => {
+		for (const name of ['Absol-Mega-Z', 'Lucario-Mega-Z', 'Garchomp-Mega-Z']) {
+			for (const shiny of [false, true]) {
+				for (const gen of [3, 4, 9]) {
+					const front = Dex.getSpriteData(name, true, {gen, shiny});
+					const back = Dex.getSpriteData(name, false, {gen, shiny});
+					assert.notEqual(back.url, front.url);
+					assert(back.url.includes(`/gen5-back${shiny ? '-shiny' : ''}/`));
+					assert.equal(back.fallbackUrl, front.url);
+					assert.equal(front.fallbackUrl, undefined);
+				}
+			}
+		}
 	});
 });

@@ -1797,7 +1797,9 @@ interface InitScenePos {
 
 export function getPokemonSpriteHTML(sp: SpriteData, style: string) {
 	if (!sp.gen3MegasCapAura) {
-		return `<img src="${sp.url!}" style="${style}"${sp.pixelated ? ' class="pixelated"' : ''} />`;
+		const fallback = sp.fallbackUrl ? ` data-fallback-src="${BattleLog.escapeHTML(sp.fallbackUrl)}" ` +
+			`onerror="this.onerror=null;this.src=this.getAttribute('data-fallback-src')"` : '';
+		return `<img src="${sp.url!}" style="${style}"${sp.pixelated ? ' class="pixelated"' : ''}${fallback} />`;
 	}
 
 	const aura = sp.gen3MegasCapAura;
@@ -2076,7 +2078,8 @@ export class PokemonSprite extends Sprite {
 		this.oldsp = null;
 
 		let $el = this.isSubActive ? this.$sub! : this.$el;
-		if (!this.isSubActive && (sp.gen3MegasCapAura || $el.hasClass('gen3megascap-aura'))) {
+		if (!this.isSubActive && (sp.gen3MegasCapAura || sp.fallbackUrl ||
+			$el.hasClass('gen3megascap-aura') || $el.attr('data-fallback-src'))) {
 			const $newEl = $(getPokemonSpriteHTML(sp, 'display:block;position:absolute'));
 			$el.replaceWith($newEl);
 			this.$el = $newEl;

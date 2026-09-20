@@ -440,6 +440,7 @@ export interface SpriteData {
 	y?: number;
 	gen?: number;
 	url?: string;
+	fallbackUrl?: string;
 	rawHTML?: string;
 	pixelated?: boolean;
 	isFrontSprite?: boolean;
@@ -1126,6 +1127,7 @@ export const Dex = new class implements ModdedDex {
 			h: 96,
 			y: 0,
 			url: Dex.resourcePrefix + 'sprites/',
+			fallbackUrl: undefined as string | undefined,
 			pixelated: true,
 			isFrontSprite: false,
 			cryurl: '',
@@ -1277,6 +1279,12 @@ export const Dex = new class implements ModdedDex {
 			// so there are no sprites for it
 			if (spriteData.gen >= 4 && miscData['frontf'] && options.gender === 'F') {
 				name += '-f';
+			}
+			// Try the real backsprite first, so newly published art works automatically.
+			// These Z Megas currently have only front PNGs (including shinies).
+			if (!isFront && ['absol-megaz', 'lucario-megaz', 'garchomp-megaz'].includes(name)) {
+				const frontDir = `gen5${options.shiny && mechanicsGen > 1 ? '-shiny' : ''}`;
+				spriteData.fallbackUrl = `${Dex.resourcePrefix}sprites/${frontDir}/${name}.png`;
 			}
 
 			spriteData.url += dir + '/' + name + '.png';
