@@ -29,7 +29,9 @@
 			Storage.prefs('challengebot', this.value);
 		});
 		Storage.whenPrefsLoaded(function () {
-			$form.find('select[name=challengebot]').val(Storage.prefs('challengebot') || '');
+			var $select = $form.find('select[name=challengebot]');
+			$select.val(Storage.prefs('challengebot') || '');
+			if ($select.val() === null) $select.val('');
 		});
 		if (window.BattleFormats && !app.isDisconnected) {
 			$form.find('button[name=playBot]').removeClass('disabled');
