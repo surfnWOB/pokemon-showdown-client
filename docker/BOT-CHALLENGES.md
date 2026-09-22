@@ -4,6 +4,10 @@ The classic main menu delegates initialization and its `playBot` action to
 `src/oldclient/bot-challenges.js`. The module owns the controls, preference,
 supported-format filtering, and preparation of the existing challenge form.
 The standard client still owns team validation, submission, replies, and cancellation.
+While a challenge is being sent or awaiting the bot, the home-screen button shows
+a spinner and is disabled. It follows the existing challenge form with a temporary
+DOM observer, restoring the button on acceptance, rejection, cancellation, validation
+errors, or disconnection.
 
 `build-tools/offline/shell.ts` loads the module and its stylesheet in the
 self-hosted page. The upstream test-client page is unchanged. The Dockerfile

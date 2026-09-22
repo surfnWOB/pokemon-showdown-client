@@ -9,6 +9,10 @@
 	display: block;
 	font-size: 9pt;
 }
+.menugroup .button.bot-battle:disabled {
+	cursor: wait;
+	opacity: 0.7;
+}
 
 .bot-choice {
 	margin: 0 auto 10px;

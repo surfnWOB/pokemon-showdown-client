@@ -39,6 +39,7 @@
 	}
 
 	function challenge(room, button) {
+		if ($(button).prop('disabled')) return;
 		if (app.isDisconnected || !window.BattleFormats) {
 			app.addPopupMessage("Connect to the server before challenging a bot.");
 			return;
@@ -72,10 +73,41 @@
 		room.challenge(bot.name, format);
 		var $challenge = room.$('.pm-window-' + toID(bot.name) + ' .challenge');
 		var $submit = $challenge.find('button[name=makeChallenge]');
-		if (!$submit.length) return;
-		$challenge.find('button[name=team]').val(teamIndex);
-		$challenge.find('input[name=private]').prop('checked', $form.find('input[name=private]').is(':checked'));
-		room.makeChallenge(null, $submit[0]);
+		if ($submit.length) {
+			$challenge.find('button[name=team]').val(teamIndex);
+			$challenge.find('input[name=private]').prop('checked', $form.find('input[name=private]').is(':checked'));
+			room.makeChallenge(null, $submit[0]);
+		}
+		showPending(room, bot.name, button);
+	}
+
+	function showPending(room, name, button) {
+		var selector = '.pm-window-' + toID(name) + ' .challenge';
+		if (!room.$(selector).find('button[name=cancelChallenge]').length) return;
+		var $button = $(button);
+		var originalHTML = $button.html();
+		$button.prop('disabled', true).attr('aria-busy', 'true');
+		// Follow the existing challenge UI through replies, errors, and cancellation.
+		var observer = new MutationObserver(update);
+		observer.observe(room.$('.pmbox')[0], { childList: true, subtree: true });
+		app.on('init:socketclosed', reset);
+		update();
+
+		function update() {
+			var $challenge = room.$(selector);
+			if (!$challenge.find('button[name=cancelChallenge]').length) {
+				reset();
+				return;
+			}
+			var label = $challenge.find('form.pending').length ? 'Challenging...' : 'Waiting for bot...';
+			$button.html('<strong><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> ' + label + '</strong><br /><small>' + BattleLog.escapeHTML(name) + '</small>');
+		}
+
+		function reset() {
+			observer.disconnect();
+			app.off('init:socketclosed', reset);
+			$button.prop('disabled', false).attr('aria-busy', 'false').html(originalHTML);
+		}
 	}
 
 	window.BotChallenges = { initialize: initialize, challenge: challenge };
