@@ -45,6 +45,18 @@ const GEN1_7U_VIABLE = [
 ];
 // [Gen 1] 10U (Other): the entire legal roster is just these six mons (see config/formats.ts).
 const GEN1_10U = ['caterpie', 'metapod', 'weedle', 'kakuna', 'magikarp', 'ditto'];
+// [Gen 3] EU ("Early Used", surfnWOB Customs; see the server's config/custom-formats.ts). The
+// pool is the Emerald + FRLG pre-badge-1 land encounters at any in-game-reachable evolution
+// (no stone evolutions), minus the Slaking/Alakazam quickbans. Keep in sync with the server
+// unbanlist. Fully evolved (or highest reachable) forms first, then the rest of each line.
+const GEN3_EU = [
+	'breloom', 'gardevoir', 'swellow', 'linoone', 'kadabra', 'primeape', 'ninjask', 'fearow', 'exploud',
+	'azumarill', 'vigoroth', 'pidgeot', 'mightyena', 'pelipper', 'raticate', 'shedinja', 'lombre', 'nuzleaf',
+	'pikachu', 'beautifly', 'dustox', 'butterfree', 'beedrill', 'skitty',
+	'poochyena', 'zigzagoon', 'wurmple', 'silcoon', 'cascoon', 'lotad', 'seedot', 'ralts', 'kirlia', 'taillow',
+	'wingull', 'shroomish', 'slakoth', 'marill', 'abra', 'nincada', 'whismur', 'loudred',
+	'pidgey', 'pidgeotto', 'rattata', 'spearow', 'caterpie', 'metapod', 'weedle', 'kakuna', 'mankey',
+];
 // [Gen 1] SU (Sub-Zero Used, Other): the server bases SU on [Gen 1] ZU and bans these strongest
 // ZU mons out (see config/formats.ts). Filter them from the ZU browse pool.
 const GEN1_SU_BANS = [
@@ -1198,6 +1210,11 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			(GEN1_10U.includes(pokemon.id) || GEN1_10U.includes(toID(pokemon.baseSpecies)))) {
 			return '10U';
 		}
+		// [Gen 3] EU: every legal mon carries the "EU" label.
+		if (this.dex.gen === 3 && this.format === 'eu' &&
+			(GEN3_EU.includes(pokemon.id) || GEN3_EU.includes(toID(pokemon.baseSpecies)))) {
+			return 'EU';
+		}
 		let table = window.BattleTeambuilderTable;
 		const gen = this.dex.gen;
 		const tableKey = this.formatType === 'doubles' ? `gen${gen}doubles` :
@@ -1568,6 +1585,13 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 				.filter(([type, id]) => type === 'pokemon' && GEN1_10U.includes(id as string))
 				.sort((a, b) => GEN1_10U.indexOf(a[1] as string) - GEN1_10U.indexOf(b[1] as string));
 			tierSet = [['header', '10U'], ...legal] as SearchRow[];
+		} else if (dex.gen === 3 && format === 'eu') {
+			// [Gen 3] EU (surfnWOB Customs): show exactly the legal pool, in GEN3_EU order
+			// (evolved forms first), under an "EU" header. See config/custom-formats.ts.
+			const legal = tierSet
+				.filter(([type, id]) => type === 'pokemon' && GEN3_EU.includes(id as string))
+				.sort((a, b) => GEN3_EU.indexOf(a[1] as string) - GEN3_EU.indexOf(b[1] as string));
+			tierSet = [['header', 'EU'], ...legal] as SearchRow[];
 		} else if (
 			format === 'lc' || format === 'lcuu' || format.startsWith('lc') || (format !== 'caplc' && format.endsWith('lc'))
 		) tierSet = tierSet.slice(slices.LC);
