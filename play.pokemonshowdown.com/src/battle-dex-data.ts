@@ -21,6 +21,159 @@ import { Dex, toID } from "./battle-dex";
  */
 export type ID = string & { __isID: true };
 
+export interface FormatData {
+	id: ID;
+	name: string;
+	team?: 'preset' | null;
+	section: string;
+	column: number;
+	searchShow?: boolean;
+	challengeShow?: boolean;
+	tournamentShow?: boolean;
+	bestOfDefault?: boolean;
+	teraPreviewDefault?: boolean;
+	itemClauseDefault?: boolean;
+	rated: boolean;
+	teambuilderLevel?: number | null;
+	partner?: boolean;
+	teambuilderFormat?: ID;
+	battleFormat?: string;
+	isTeambuilderFormat: boolean;
+	effectType: 'Format';
+}
+
+export class Format implements FormatData {
+	id: ID;
+	name: string;
+	readonly effectType = 'Format';
+	gen: number;
+	mod: ID;
+	team: 'preset' | null = null;
+	section = '';
+	column = 0;
+	searchShow?: boolean = undefined;
+	challengeShow?: boolean = undefined;
+	tournamentShow?: boolean = undefined;
+	bestOfDefault?: boolean = undefined;
+	teraPreviewDefault?: boolean = undefined;
+	itemClauseDefault?: boolean = undefined;
+	rated = false;
+	teambuilderLevel?: number | null = undefined;
+	partner?: boolean = undefined;
+	teambuilderFormat?: ID = undefined;
+	battleFormat?: string = undefined;
+	isTeambuilderFormat = false;
+	isLetsGo: boolean;
+	isNatDex: boolean;
+	isBDSP: boolean;
+	isChampions: boolean;
+	isBadNBoosted: boolean;
+	allowMultipleMegas: boolean;
+	formeLegality: 'normal' | 'hackmons' | 'custom' = 'normal';
+	abilityLegality: 'normal' | 'hackmons' = 'normal';
+	defaultLevel = 100;
+
+	constructor(name: string, data?: FormatData) {
+		this.id = toID(name);
+		this.name = name;
+		const id = this.id;
+		this.gen = !id ? Dex.gen : id.startsWith('gen') ? parseInt(id.charAt(3)) || Dex.gen : 6;
+		this.isLetsGo = id.includes('letsgo');
+		this.isNatDex = id.includes('nationaldex') || id.includes('natdex');
+		this.isBDSP = id.includes('bdsp');
+		this.isChampions = id.includes('champions');
+		this.isBadNBoosted = id.includes('badnboosted');
+		this.allowMultipleMegas = id.includes('mega');
+		this.mod = `gen${this.gen}` as ID;
+		if (this.gen === 7 && this.isLetsGo) this.mod = 'gen7letsgo' as ID;
+		if (this.gen === 8 && this.isBDSP) this.mod = 'gen8bdsp' as ID;
+		if (this.gen === 9 && this.isChampions) this.mod = 'champions' as ID;
+		// Keep fork mod routing shared by the editor, battle client, and Showdex.
+		const formatid = id.slice(4);
+		if (this.gen === 3 && formatid.includes('pss')) {
+			this.mod = 'gen3pss' as ID;
+		}
+		// Includes megascaprandombattle (and any future megascap* ladder). Exact `===
+		// 'megascap'` missed those and fell through to gen3mega, so CAP-only formes
+		// like Kecleon-Mega-X resolved as nonexistent (??? type / no ability / no aura).
+		if (this.gen === 3 && formatid.includes('megascap')) {
+			this.mod = 'gen3megascap' as ID;
+		} else if (this.gen === 3 && formatid.includes('mega')) {
+			this.mod = 'gen3mega' as ID;
+		}
+		if (this.gen === 4 && formatid === 'megas') {
+			this.mod = 'gen4mega' as ID;
+		}
+		if (this.gen === 4 && formatid.includes('nopss')) {
+			this.mod = 'gen4nopss' as ID;
+		}
+		if (this.gen === 5 && formatid.includes('bw1')) {
+			this.mod = 'gen5bw1' as ID;
+		}
+		if (this.gen === 5 && formatid.includes('dreamworld')) {
+			this.mod = 'gen5bw1' as ID;
+		}
+		if (this.gen === 3 && formatid.includes('adv200box')) {
+			this.mod = 'gen3adv200box' as ID;
+		} else if (this.gen === 3 && formatid.includes('adv200')) {
+			// ADV 200 and RSLC are ladder/tier variants of RS — species data (types, stats,
+			// learnsets) is byte-identical to gen3rs, only the tier table differs (see
+			// battle-dex-search.ts's identical rs/rslc handling and build-indexes' modId comment).
+			this.mod = 'gen3rs' as ID;
+		}
+		if (this.gen === 3 && formatid.includes('frlg')) {
+			this.mod = 'gen3frlg' as ID;
+		}
+		if (this.gen === 3 && formatid.includes('zangouse')) {
+			this.mod = 'gen3zangouse' as ID;
+		}
+		if (this.gen === 1 && formatid.includes('rbyplus')) {
+			this.mod = 'gen1rbyplus' as ID;
+		}
+		if (this.gen === 2 && formatid.includes('spaceworld97')) {
+			this.mod = 'gen2sw97' as ID;
+		}
+		if (this.gen === 3 && formatid.includes('advplus')) {
+			this.mod = 'gen3advplus' as ID;
+		}
+		if (this.gen === 3 && formatid.includes('tradebacks')) {
+			this.mod = 'gen3tradebacks' as ID;
+		}
+		// Checked after the generic 'tradebacks' branch above (which would otherwise
+		// route gen3puretradebacks to plain gen3tradebacks, since 'puretradebacks'
+		// contains 'tradebacks' — see battle-dex-search.ts's identical distinction).
+		if (this.gen === 3 && formatid.includes('puretradebacks')) {
+			this.mod = 'gen3puretradebacks' as ID;
+		}
+		if (this.gen === 3 && formatid.includes('hoennification')) {
+			this.mod = 'gen3hoennification' as ID;
+		}
+		// Checked after the generic 'frlg' branch above (which would otherwise route
+		// FRLG Indigo to plain gen3frlg, since 'frlgindigo' contains 'frlg').
+		if (this.gen === 3 && formatid.includes('frlgindigo')) {
+			this.mod = 'gen3frlgindigo' as ID;
+		}
+		if (this.gen === 3 && formatid.includes('shadowcolosseum')) {
+			this.mod = 'gen3shadowcolosseum' as ID;
+		}
+		if (id.includes('almostanyability') || id.includes('aaa')) this.abilityLegality = 'hackmons';
+		if (id.includes('hackmons') || id.includes('bh')) {
+			this.formeLegality = 'hackmons';
+			this.abilityLegality = 'hackmons';
+		} else if (id.includes('metronome') || id.includes('customgame')) {
+			this.formeLegality = 'custom';
+			this.abilityLegality = 'hackmons';
+		}
+		if (
+			id.includes('vgc') || id.includes('bss') || id.includes('ultrasinnohclassic') ||
+			id.includes('battlespot') || id.includes('battlestadium') || id.includes('battlefestival') ||
+			this.isLetsGo || this.isChampions
+		) this.defaultLevel = 50;
+		if (id.includes('lc')) this.defaultLevel = 5;
+		if (data) Object.assign(this, data);
+	}
+}
+
 export interface Nature {
 	plus?: StatNameExceptHP;
 	minus?: StatNameExceptHP;
@@ -1700,4 +1853,5 @@ if (typeof require === 'function') {
 	global.Ability = Ability;
 	global.Item = Item;
 	global.Move = Move;
+	global.Format = Format;
 }

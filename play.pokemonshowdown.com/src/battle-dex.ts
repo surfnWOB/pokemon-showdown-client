@@ -21,7 +21,7 @@
 import { Pokemon, type ServerPokemon } from "./battle";
 import {
 	BattleAvatarNumbers, BattleBaseSpeciesChart, BattlePokemonIconIndexes, BattlePokemonIconIndexesLeft,
-	Ability, Item, Move, Species, PureEffect, type ID, type NatureEffect, type Type,
+	Ability, Item, Move, Species, PureEffect, Format, type FormatData, type ID, type NatureEffect, type Type,
 } from "./battle-dex-data";
 import type * as DexData from "./battle-dex-data";
 import type { Teams } from "./battle-teams";
@@ -34,6 +34,7 @@ export declare namespace Dex {
 	export type Item = DexData.Item;
 	export type Move = DexData.Move;
 	export type Species = DexData.Species;
+	export type Format = DexData.Format;
 	export type Type = DexData.Type;
 	export type Nature = DexData.Nature;
 	export type PureEffect = DexData.PureEffect;
@@ -607,92 +608,31 @@ export const Dex = new class implements ModdedDex {
 		if (!gen) return this;
 		return this.mod(`gen${gen}` as ID);
 	}
+	formats = {
+		cache: Object.create(null) as { [id: string]: Format },
+		get(name: string): Format {
+			const id = toID(name);
+			this.cache[id] ||= new Format(name, window.BattleFormats?.[id]);
+			return this.cache[id];
+		},
+		load(data: { [id: string]: FormatData }): { [id: string]: Format } {
+			// Update in-place so retained references get updated too
+			for (const id in this.cache) {
+				Object.assign(this.cache[id], new Format(this.cache[id].name, data[id]));
+			}
+			const formats: { [id: string]: Format } = {};
+			for (const id in data) {
+				const format = this.cache[id] ||= new Format(data[id].name, data[id]);
+				formats[id] = format;
+			}
+			return formats;
+		},
+	};
 	formatGen(format: string) {
-		const formatid = toID(format);
-		if (!formatid) return Dex.gen;
-		if (!formatid.startsWith('gen')) return 6;
-		return parseInt(formatid.charAt(3)) || Dex.gen;
+		return this.formats.get(format).gen;
 	}
 	forFormat(format: string) {
-		let dex = Dex.forGen(Dex.formatGen(format));
-
-		const formatid = toID(format).slice(4);
-		if (dex.gen === 7 && formatid.includes('letsgo')) {
-			dex = Dex.mod('gen7letsgo' as ID);
-		}
-		if (dex.gen === 8 && formatid.includes('bdsp')) {
-			dex = Dex.mod('gen8bdsp' as ID);
-		}
-		if (dex.gen === 9 && formatid.includes('champions')) {
-			dex = Dex.mod('champions' as ID);
-		}
-		if (dex.gen === 3 && formatid.includes('pss')) {
-			dex = Dex.mod('gen3pss' as ID);
-		}
-		// Includes megascaprandombattle (and any future megascap* ladder). Exact `===
-		// 'megascap'` missed those and fell through to gen3mega, so CAP-only formes
-		// like Kecleon-Mega-X resolved as nonexistent (??? type / no ability / no aura).
-		if (dex.gen === 3 && formatid.includes('megascap')) {
-			dex = Dex.mod('gen3megascap' as ID);
-		} else if (dex.gen === 3 && formatid.includes('mega')) {
-			dex = Dex.mod('gen3mega' as ID);
-		}
-		if (dex.gen === 4 && formatid === 'megas') {
-			dex = Dex.mod('gen4mega' as ID);
-		}
-		if (dex.gen === 4 && formatid.includes('nopss')) {
-			dex = Dex.mod('gen4nopss' as ID);
-		}
-		if (dex.gen === 5 && formatid.includes('bw1')) {
-			dex = Dex.mod('gen5bw1' as ID);
-		}
-		if (dex.gen === 5 && formatid.includes('dreamworld')) {
-			dex = Dex.mod('gen5bw1' as ID);
-		}
-		if (dex.gen === 3 && formatid.includes('adv200box')) {
-			dex = Dex.mod('gen3adv200box' as ID);
-		} else if (dex.gen === 3 && formatid.includes('adv200')) {
-			// ADV 200 and RSLC are ladder/tier variants of RS — species data (types, stats,
-			// learnsets) is byte-identical to gen3rs, only the tier table differs (see
-			// battle-dex-search.ts's identical rs/rslc handling and build-indexes' modId comment).
-			dex = Dex.mod('gen3rs' as ID);
-		}
-		if (dex.gen === 3 && formatid.includes('frlg')) {
-			dex = Dex.mod('gen3frlg' as ID);
-		}
-		if (dex.gen === 3 && formatid.includes('zangouse')) {
-			dex = Dex.mod('gen3zangouse' as ID);
-		}
-		if (dex.gen === 1 && formatid.includes('rbyplus')) {
-			dex = Dex.mod('gen1rbyplus' as ID);
-		}
-		if (dex.gen === 2 && formatid.includes('spaceworld97')) {
-			dex = Dex.mod('gen2sw97' as ID);
-		}
-		if (dex.gen === 3 && formatid.includes('advplus')) {
-			dex = Dex.mod('gen3advplus' as ID);
-		}
-		if (dex.gen === 3 && formatid.includes('tradebacks')) {
-			dex = Dex.mod('gen3tradebacks' as ID);
-		}
-		// Checked after the generic 'tradebacks' branch above (which would otherwise
-		// route gen3puretradebacks to plain gen3tradebacks, since 'puretradebacks'
-		// contains 'tradebacks' — see battle-dex-search.ts's identical distinction).
-		if (dex.gen === 3 && formatid.includes('puretradebacks')) {
-			dex = Dex.mod('gen3puretradebacks' as ID);
-		}
-		if (dex.gen === 3 && formatid.includes('hoennification')) {
-			dex = Dex.mod('gen3hoennification' as ID);
-		}
-		// Checked after the generic 'frlg' branch above (which would otherwise route
-		// FRLG Indigo to plain gen3frlg, since 'frlgindigo' contains 'frlg').
-		if (dex.gen === 3 && formatid.includes('frlgindigo')) {
-			dex = Dex.mod('gen3frlgindigo' as ID);
-		}
-		if (dex.gen === 3 && formatid.includes('shadowcolosseum')) {
-			dex = Dex.mod('gen3shadowcolosseum' as ID);
-		}
-		return dex;
+		return this.mod(this.formats.get(format).mod);
 	}
 
 	resolveAvatar(avatar: string): string {

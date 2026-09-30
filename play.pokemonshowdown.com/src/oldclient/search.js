@@ -814,6 +814,7 @@
 	};
 
 	Search.gen = 9;
+	Search.dex = Search.prototype.dex;
 	Search.renderRow = Search.prototype.renderRow;
 	Search.renderPokemonRow = Search.prototype.renderPokemonRow;
 	Search.renderTaggedPokemonRowInner = Search.prototype.renderTaggedPokemonRowInner;
