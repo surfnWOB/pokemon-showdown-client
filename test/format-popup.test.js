@@ -17,11 +17,17 @@ function render(options = {}) {
 		effectType: 'Format', challengeShow: true, searchShow: index !== 2, isTeambuilderFormat: index !== 3,
 	}]));
 	const context = vm.createContext({
+		window: {},
+		app: {supports: {formatColumns: !options.legacyColumns}},
 		Popup: {extend: definition => definition},
 		BattleFormats: formats,
 		BattleLog: {escapeHTML: text => text, escapeFormat: text => text},
 		toID: text => text.toLowerCase().replace(/[^a-z0-9]/g, ''),
 	});
+	if (!options.upstream) {
+		vm.runInContext(fs.readFileSync(path.join(__dirname,
+			'../play.pokemonshowdown.com/src/oldclient/format-picker.js'), 'utf8'), context);
+	}
 	vm.runInContext(popupSource, context);
 	const popup = Object.assign({}, context.FormatPopup, {
 		data: {format: 'format0'}, selectType: 'challenge', starred: {}, open: {}, search: '',
@@ -30,7 +36,7 @@ function render(options = {}) {
 }
 
 function columns(html) {
-	return [...html.matchAll(/<ul class="popupmenu">([\s\S]*?)<\/ul>/g)].map(match => match[1]);
+	return [...html.matchAll(/<ul class="popupmenu"[^>]*>([\s\S]*?)<\/ul>/g)].map(match => match[1]);
 }
 
 describe('Classic format popup', () => {
@@ -43,9 +49,7 @@ describe('Classic format popup', () => {
 		assert.match(other, /section="Yak Attack"/);
 		assert.match(other, /section="Past Generations"/);
 		for (let i = 0; i < 8; i++) assert.equal(html.split(`value="format${i}"`).length - 1, 1);
-		for (const column of [primary, other]) {
-			assert.equal((column.match(/<details/g) || []).length, (column.match(/<\/details>/g) || []).length);
-		}
+		assert.match(html, /^<div class="fork-format-columns">/);
 	});
 
 	it('keeps favorites first without duplicating them in category lists', () => {
@@ -67,5 +71,13 @@ describe('Classic format popup', () => {
 		assert.doesNotMatch(render({selectType: 'search'}), /value="format2"/);
 		assert.doesNotMatch(render({selectType: 'teambuilder'}), /value="format3"/);
 		assert.match(columns(render({selectType: 'watch'}))[0], /\(All formats\)/);
+	});
+
+	it('retains server columns and legacy fallback when the fork module is absent', () => {
+		const html = render({upstream: true});
+		assert.equal(columns(html).length, 4);
+		assert.doesNotMatch(html, /fork-format-columns/);
+		assert.equal(columns(render({upstream: true, legacyColumns: true})).length, 2);
+		assert.equal(columns(render({legacyColumns: true})).length, 2);
 	});
 });

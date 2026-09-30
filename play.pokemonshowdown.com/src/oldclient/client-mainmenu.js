@@ -1373,9 +1373,9 @@
 			if (!this.selectType) this.selectType = (this.$form.data('search') ? 'search' : 'challenge');
 
 			var html = '<p><ul class="popupmenu"><li><input name="search" placeholder="Search formats" value="' + this.search + '" class="textbox autofocus" autocomplete="off" />';
-			html += '</li></ul></p><div name="formats" class="formatcolumns">';
+			html += '</li></ul></p><span name="formats">';
 			html += this.renderFormats();
-			html += '</div><p></p>';
+			html += '</span><div style="clear:left"></div><p></p>';
 			this.$el.html(html);
 		},
 		renderFormats: function () {
@@ -1417,8 +1417,12 @@
 				if (format.section && format.section !== curSection) {
 					if (curSection) bufs[curBuf] += '</details></p>';
 					curSection = format.section;
-					// Keep the fork's main categories together; other formats share a second column.
-					curBuf = (curSection === 'Gen 3 Megas' || curSection === 'surfnWOB Customs') ? 1 : 2;
+					if (!app.supports['formatColumns']) {
+						curBuf = (curSection === 'Doubles' || curSection === 'Past Generations') ? 2 : 1;
+					} else {
+						curBuf = format.column || 1;
+					}
+					if (window.FormatPickerLayout) curBuf = window.FormatPickerLayout.column(curSection);
 					if (!bufs[curBuf]) {
 						bufs[curBuf] = '';
 					}
@@ -1434,20 +1438,27 @@
 					'<i class="fa fa-star subtle" style="float: right;"></i></button></li>'
 				);
 			}
-			if (curSection) bufs[curBuf] += '</details></p>';
 			var html = '';
 			if (bufs.every(function (buf) { return !buf; })) {
 				html = '<ul class="popupmenu"><em>No formats found</em></ul>';
 			} else {
 				for (var i = 1, l = bufs.length; i < l; i++) {
 					if (!bufs[i]) continue;
-					html += '<ul class="popupmenu">' + bufs[i] + '</ul>';
+					html += '<ul class="popupmenu"';
+					if (l > 1) {
+						html += ' style="float:left';
+						if (i > 0) {
+							html += ';padding-left:5px';
+						}
+						html += '"';
+					}
+					html += '>' + bufs[i] + '</ul>';
 				}
 			}
-			return html;
+			return window.FormatPickerLayout ? window.FormatPickerLayout.wrap(html) : html;
 		},
 		update: function () {
-			var $formatEl = this.$el.find('[name=formats]');
+			var $formatEl = this.$el.find('span[name=formats]');
 			$formatEl.empty();
 			$formatEl.html(this.renderFormats());
 		},

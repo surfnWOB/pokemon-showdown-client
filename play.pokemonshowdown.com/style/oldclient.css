@@ -489,33 +489,6 @@ p.or:after {
 .popupmenu .option {
 	width: 204px;
 }
-.formatcolumns {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 12px 24px;
-	width: 584px;
-	max-width: calc(100vw - 48px);
-}
-.formatcolumns > .popupmenu {
-	flex: 1 1 260px;
-	min-width: 0;
-}
-.formatcolumns summary {
-	padding: 3px 0;
-}
-.formatcolumns .option {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	width: 100%;
-	white-space: normal;
-	overflow-wrap: anywhere;
-	text-align: left;
-}
-.formatcolumns .option i {
-	flex: none;
-	margin-left: auto;
-}
 .popupmenu i {
 	display: inline-block;
 	width: 16px;

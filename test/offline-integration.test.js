@@ -12,6 +12,15 @@ function read(relativePath) {
 }
 
 describe('offline production integration', () => {
+	it('loads the fork format layout only through the generated deployment shell', () => {
+		const source = read('play.pokemonshowdown.com/testclient-old.html');
+		const shell = renderOfflineShell(source);
+		assert.doesNotMatch(source, /format-picker/);
+		const moduleIndex = shell.indexOf('<script src="/js/oldclient/format-picker.js"></script>');
+		assert.ok(moduleIndex >= 0 && moduleIndex < shell.indexOf('window.app = new App()'));
+		assert.match(shell, /href="\/style\/format-picker.css"/);
+	});
+
 	it('loads the bot module before the app starts without changing the upstream shell', () => {
 		const source = read('play.pokemonshowdown.com/testclient-old.html');
 		const shell = renderOfflineShell(source);
