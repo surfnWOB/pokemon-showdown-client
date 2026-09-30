@@ -740,7 +740,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		'natdex' | 'nfe' | 'ssdlc1' | 'ssdlc1doubles' | 'predlc' | 'predlcdoubles' | 'predlcnatdex' | 'svdlc1' | 'svdlc1doubles' |
 		'svdlc1natdex' | 'stadium' | 'lc' | 'champions' | 'natdexchampions' | 'zangouse' | 'gen4mega' | 'gen3mega' | 'gen3megascap' | 'gen3ubersuu' |
 		'gen3subzu' | 'gen1rbyplus' | 'gen3adv200box' | 'gen3advplus' | 'gen3tradebacks' | 'gen3puretradebacks' | 'gen3hoennification' | 'gen3frlgindigo' |
-		'gen3shadowcolosseum' | 'gen2sw97' | null = null;
+		'gen3colodoubles' | 'gen3shadowcolosseum' | 'gen2sw97' | null = null;
 	isDoubles = false;
 
 	/**
@@ -841,6 +841,11 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (format.includes('dreamworld')) {
 			this.formatType = 'bw1';
 			this.dex = Dex.mod('gen5bw1' as ID);
+		}
+		if (this.dex.gen === 3 && format === 'coloonlydoubles') {
+			this.formatType = 'gen3colodoubles';
+			this.dex = Dex.mod('gen3colodoubles' as ID);
+			this.isDoubles = true;
 		}
 		if (format.includes('adv200box')) {
 			this.formatType = 'gen3adv200box';
@@ -1049,6 +1054,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (this.formatType === 'letsgo') table = table['gen7letsgo'];
 		if (this.formatType === 'bw1') table = table['gen5bw1'];
 		if (this.formatType === 'rs' || this.formatType === 'rslc') table = table['gen3rs'];
+		if (this.formatType === 'gen3colodoubles') table = table['gen3colodoubles'];
 		if (this.formatType === 'gen3adv200box') table = table['gen3adv200box'];
 		if (this.formatType === 'frlg') table = table['gen3frlg'];
 		if (this.formatType === 'champions') table = table['champions'];
@@ -1129,6 +1135,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			if (this.formatType === 'letsgo') table = table['gen7letsgo'];
 			if (this.formatType === 'bw1') table = table['gen5bw1'];
 			if (this.formatType === 'rs' || this.formatType === 'rslc') table = table['gen3rs'];
+			if (this.formatType === 'gen3colodoubles') table = table['gen3colodoubles'];
 			if (this.formatType === 'gen3adv200box') table = table['gen3adv200box'];
 			if (this.formatType === 'frlg') table = table['gen3frlg'];
 			if (this.formatType === 'champions') table = table['champions'];
@@ -1238,6 +1245,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType === 'champions' ? `champions` :
 			this.formatType === 'natdexchampions' ? `natdexchampions` :
 			this.formatType === 'zangouse' ? `gen3zangouse` :
+			this.formatType === 'gen3colodoubles' ? `gen3colodoubles` :
 			this.formatType === 'gen3adv200box' ? `gen3adv200box` :
 			this.formatType === 'gen4mega' ? `gen4mega` :
 			this.formatType === 'gen3mega' ? `gen3mega` :
@@ -1382,6 +1390,8 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			table = table['gen5bw1'];
 		} else if (this.formatType === 'rs') {
 			table = table['gen3rs'];
+		} else if (this.formatType === 'gen3colodoubles') {
+			table = table['gen3colodoubles'];
 		} else if (this.formatType === 'gen3adv200box') {
 			table = table['gen3adv200box'];
 		} else if (this.formatType === 'rslc') {
@@ -1913,6 +1923,8 @@ class BattleItemSearch extends BattleTypedSearch<'item'> {
 			table = table['gen5bw1'];
 		} else if (this.formatType === 'rs' || this.formatType === 'rslc') {
 			table = table['gen3rs'];
+		} else if (this.formatType === 'gen3colodoubles') {
+			table = table['gen3colodoubles'];
 		} else if (this.formatType === 'gen3adv200box') {
 			table = table['gen3adv200box'];
 		} else if (this.formatType === 'frlg') {
@@ -2319,6 +2331,7 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 		if (this.formatType === 'letsgo') lsetTable = lsetTable['gen7letsgo'];
 		if (this.formatType === 'bw1') lsetTable = lsetTable['gen5bw1'];
 		if (this.formatType === 'rs' || this.formatType === 'rslc') lsetTable = lsetTable['gen3rs'];
+		if (this.formatType === 'gen3colodoubles') lsetTable = lsetTable['gen3colodoubles'];
 		if (this.formatType === 'gen3adv200box') lsetTable = lsetTable['gen3adv200box'];
 		if (this.formatType === 'frlg') lsetTable = lsetTable['gen3frlg'];
 		if (this.formatType === 'champions') lsetTable = lsetTable['champions'];
