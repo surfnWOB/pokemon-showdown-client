@@ -36,6 +36,7 @@ describe('Shared format metadata', () => {
 			gen3megascaprandombattle: 'gen3megascap',
 			gen3adv200: 'gen3rs',
 			gen3adv200box: 'gen3adv200box',
+			gen3coloonlydoubles: 'gen3colodoubles',
 			gen3frlg: 'gen3frlg',
 			gen3frlgindigo: 'gen3frlgindigo',
 			gen3zangouse: 'gen3zangouse',

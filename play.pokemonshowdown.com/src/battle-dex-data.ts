@@ -113,6 +113,9 @@ export class Format implements FormatData {
 		if (this.gen === 5 && formatid.includes('dreamworld')) {
 			this.mod = 'gen5bw1' as ID;
 		}
+		if (this.gen === 3 && formatid === 'coloonlydoubles') {
+			this.mod = 'gen3colodoubles' as ID;
+		}
 		if (this.gen === 3 && formatid.includes('adv200box')) {
 			this.mod = 'gen3adv200box' as ID;
 		} else if (this.gen === 3 && formatid.includes('adv200')) {
