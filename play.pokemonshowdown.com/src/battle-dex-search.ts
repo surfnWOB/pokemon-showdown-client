@@ -1543,7 +1543,15 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 				});
 			}
 		} else if (format === 'ou') tierSet = tierSet.slice(slices.OU);
-		else if (format === 'uubl') tierSet = tierSet.slice(slices['(OU)'] || slices.UUBL);
+		else if (dex.gen === 3 && format === 'uubluu') {
+			// No tier slice: UUBL explicitly allows some OU-tagged species (Porygon2).
+			// The generated server ban map also keeps the VR cutoff out of client source.
+			const bans = table.metagameBans?.uubluu || {};
+			tierSet = [
+				['header', 'UUBL UU'],
+				...tierSet.filter(([type, id]) => type === 'pokemon' && !(id in bans)),
+			];
+		} else if (format === 'uubl') tierSet = tierSet.slice(slices['(OU)'] || slices.UUBL);
 		else if (format === 'uublclassic26') {
 			// [Gen 3] UUBL Classic 26 keeps Raikou and Registeel legal even though they were raised
 			// to OU on 2026-07-08 (so they now sit in the OU bucket, above the UUBL slice). Browse
