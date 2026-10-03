@@ -1760,6 +1760,19 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		}
 	}
 
+	// Derive the UUBL UU roster from the server, including inherited UUBL exceptions.
+	const uublUU = Dex.formats.get('gen3uubluu');
+	if (uublUU.exists) {
+		const dex = Dex.mod(uublUU.mod);
+		const rules = dex.formats.getRuleTable(uublUU);
+		const bans = {};
+		for (const species of dex.species.all()) {
+			if (species.isNonstandard || rules.isBannedSpecies(species)) bans[species.id] = 1;
+		}
+		BattleTeambuilderTable.gen3.metagameBans ||= {};
+		BattleTeambuilderTable.gen3.metagameBans.uubluu = bans;
+	}
+
 	buf += `exports.BattleTeambuilderTable = JSON.parse('${JSON.stringify(BattleTeambuilderTable).replace(/['\\]/g, "\\$&")}');\n\n`;
 
 	fs.writeFileSync('play.pokemonshowdown.com/data/teambuilder-tables.js', buf);
