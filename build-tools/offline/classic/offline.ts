@@ -9,12 +9,6 @@ type LegacyListener = (...args: unknown[]) => unknown;
 
 interface LegacySocket {
 	onclose?: ((this: LegacySocket, ...args: unknown[]) => unknown) | null;
-	// SockJS and WebSocket share the readyState constant set (OPEN === 1).
-	readyState?: number;
-}
-
-interface LegacyRoom {
-	type?: string;
 }
 
 type LegacyPopup = object;
@@ -37,7 +31,6 @@ interface LegacyClient {
 	popups?: LegacyPopup[] | null;
 	reconnectPending?: unknown;
 	closePopup?: () => unknown;
-	rooms?: Record<string, LegacyRoom | undefined> | null;
 	send?: (...args: unknown[]) => unknown;
 	sendQueue?: unknown;
 	socket?: LegacySocket | null;
@@ -118,7 +111,6 @@ let registrationResult: Promise<ServiceWorkerRegistration> | null = null;
 let controlledAtInitialization = false;
 let offlineMode = false;
 let reconnecting = false;
-let everConnected = false;
 let networkAvailable = true;
 let lastNetworkFeedback = 0;
 let reloadOnControllerChange = false;
@@ -660,25 +652,6 @@ function closeLegacyReconnectPopup(client: LegacyClient): void {
 	} catch {}
 }
 
-// A reconnected socket is a fresh server session that has joined no rooms. The
-// classic client only autojoins once at startup (App.initialize), and chat
-// rooms have no rejoin() hook, so without this a soft reconnect leaves open
-// chatrooms un-joined until a full page reload. Re-issue the same '/join <id>'
-// the client uses natively (ChatRoom.join) for every open chat room.
-function reissueRoomJoins(client: LegacyClient | undefined): void {
-	const rooms = client?.rooms;
-	if (!rooms || !client?.send) return;
-	for (const id in rooms) {
-		if (!Object.hasOwn(rooms, id)) continue;
-		const room = rooms[id];
-		if (id && room?.type === 'chat') {
-			try {
-				client.send('/join ' + id);
-			} catch {}
-		}
-	}
-}
-
 function restoreWith(client: LegacyClient | undefined, rawFormats: string[] | null): boolean {
 	if (!client?.parseFormats || !rawFormats) return false;
 	const previous = restoringFormats;
@@ -707,21 +680,7 @@ function navigatorIsOffline(): boolean {
 	return false;
 }
 
-// navigator.onLine is only an early hint (see docs/offline-support.md): an
-// OPEN socket is the authoritative connection state. A still-open socket
-// survives transient onLine flaps (VPN change, wifi handoff, OS suspend) and
-// will fire init:socketclosed itself if it genuinely dies.
-function clientHasLiveSocket(client: LegacyClient | undefined): boolean {
-	const socket = client?.socket;
-	return !!socket && socket.readyState === 1 && !client?.isDisconnected && !client?.offlineMode;
-}
-
 function handleOfflineEvent(): void {
-	const client = attachedClient ?? root.app;
-	// Do not tear down a healthy live session on a hint. If the socket really
-	// dropped, init:socketclosed/init:connectionerror drive the offline
-	// transition authoritatively.
-	if (attachedClient && clientHasLiveSocket(client)) return;
 	const shouldProbeConnection = !attachedClient;
 	networkAvailable = false;
 	OfflineClient.enterOffline(root.app, 'network');
@@ -793,10 +752,7 @@ function attachClient(client: LegacyClient | undefined): boolean {
 	};
 
 	client.send = function (this: LegacyClient, ...args: unknown[]): unknown {
-		// While a reconnect probe is in flight, delegate to the native send so it
-		// queues to sendQueue and replays on socket.onopen (as the native client
-		// does), instead of dropping the first post-reconnect messages.
-		if ((offlineMode || this.offlineMode || this.isDisconnected) && !reconnecting) {
+		if (offlineMode || this.offlineMode || this.isDisconnected) {
 			OfflineClient.notifyNetworkRequired();
 			return false;
 		}
@@ -817,15 +773,7 @@ function attachClient(client: LegacyClient | undefined): boolean {
 		OfflineClient.enterOffline(client, 'connectionerror');
 		closeLegacyReconnectPopup(client);
 	});
-	client.on?.('init:socketopened', () => {
-		// First-ever open is the normal boot (App.initialize already autojoins);
-		// any later open is a reconnect whose fresh server session has joined no
-		// rooms, so re-issue the open chat rooms' joins.
-		const wasReconnect = everConnected;
-		everConnected = true;
-		OfflineClient.setConnected(client);
-		if (wasReconnect) reissueRoomJoins(client);
-	});
+	client.on?.('init:socketopened', () => OfflineClient.setConnected(client));
 	client.on?.('init:formats', () => syncNetworkControls(client));
 	syncNetworkControls(client);
 	return true;
