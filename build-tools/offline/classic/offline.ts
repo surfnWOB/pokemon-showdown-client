@@ -22,6 +22,7 @@ interface LegacyFormat {
 }
 
 interface LegacyClient {
+	addPopupMessage?: (message: string) => unknown;
 	connect?: (...args: unknown[]) => unknown;
 	initializeConnection?: (...args: unknown[]) => unknown;
 	isDisconnected?: boolean;
@@ -90,7 +91,6 @@ interface OfflineWindow extends Window {
 	ReconnectPopup?: LegacyPopupConstructor;
 	app?: LegacyClient;
 	jQuery?: JQueryFactory;
-	MutationObserver?: new (callback: MutationCallback) => MutationObserver;
 }
 
 const root = window as OfflineWindow;
@@ -124,7 +124,6 @@ let statusActionMode: 'dismiss' | 'reconnect' | 'reload' = 'reload';
 let updateElement: HTMLElement | null = null;
 let attachedClient: LegacyClient | null = null;
 let restoringFormats = false;
-let networkControlObserver: MutationObserver | null = null;
 
 function listen(target: EventTarget | null | undefined, eventName: string, listener: EventListener): void {
 	target?.addEventListener(eventName, listener);
@@ -356,7 +355,6 @@ function ensureStatusElement(): HTMLElement | null {
 	if (statusElement) {
 		statusMessage = document.getElementById('offline-client-status-message');
 		statusAction = document.getElementById('offline-client-status-action') as HTMLButtonElement | null;
-		watchNetworkControls();
 		return statusElement;
 	}
 
@@ -382,7 +380,6 @@ function ensureStatusElement(): HTMLElement | null {
 
 	hideElement(statusElement);
 	document.body.appendChild(statusElement);
-	watchNetworkControls();
 	return statusElement;
 }
 
@@ -599,8 +596,8 @@ function syncNetworkControls(client?: LegacyClient): void {
 	const jquery = root.jQuery ?? root.$;
 	if (!jquery) return;
 	const unavailable = offlineMode || !networkAvailable || !root.BattleFormats || !!client?.isDisconnected;
-	const menuScope = jquery('.mainmenu, .rightmenu');
-	const networkControls = menuScope.find([
+	const scope = jquery('.mainmenu, .rightmenu');
+	const networkControls = scope.find([
 		'button.onlineonly',
 		'button[name="joinRoom"][value="ladder"]',
 		'button[name="send"][value="/smogtours"]',
@@ -608,32 +605,8 @@ function syncNetworkControls(client?: LegacyClient): void {
 	networkControls.addClass('onlineonly');
 	setControlsDisabled(networkControls, unavailable);
 
-	const battleButton = menuScope.find('button.big');
+	const battleButton = scope.find('button.big');
 	setControlsDisabled(battleButton, unavailable);
-
-	const deferredNetworkControls = jquery([
-		'#room-teambuilder button[name="validate"]',
-		'#room-teambuilder button[name="psExport"]',
-		'#room-teambuilder button[name="pokepasteExport"]',
-		'#room-teambuilder button[name="send"][value="/teams"]',
-		'#room-rooms button[name="toggleMoreRooms"]',
-		'#room-rooms button[name="joinRoomPopup"]',
-	].join(','));
-	deferredNetworkControls.addClass('onlineonly');
-	setControlsDisabled(deferredNetworkControls, unavailable);
-}
-
-function watchNetworkControls(): void {
-	if (networkControlObserver) return;
-	const document = getDocument();
-	const Observer = root.MutationObserver;
-	if (!document?.body || !Observer) return;
-	const observer = new Observer(() => {
-		if (!offlineMode && networkAvailable && !attachedClient?.isDisconnected) return;
-		syncNetworkControls(attachedClient ?? root.app);
-	});
-	observer.observe(document.body, { childList: true, subtree: true });
-	networkControlObserver = observer;
 }
 
 function updateClientViews(client?: LegacyClient): void {
@@ -865,7 +838,11 @@ const OfflineClient: OfflineClient = {
 		const now = Date.now();
 		if (lastNetworkFeedback && now - lastNetworkFeedback < this.networkFeedbackDelay) return false;
 		lastNetworkFeedback = now;
-		showConnectivityStatus(false);
+		const message = 'This action requires an internet connection.';
+		showConnectivityStatus(false, message);
+		try {
+			root.app?.addPopupMessage?.(message);
+		} catch {}
 		return true;
 	},
 };
