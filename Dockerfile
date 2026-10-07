@@ -26,7 +26,7 @@ RUN mkdir -p play.pokemonshowdown.com/randbats/data \
     && cp -r caches/pokemon-showdown/data/random-battles/gen3mega/generated/. \
         play.pokemonshowdown.com/randbats/data/
 
-RUN cat > config/config.js <<EOF
+RUN cat > config/config.js <<EOF2
 var Config = Config || {};
 Config.version = "0";
 Config.defaultserver = {
@@ -40,22 +40,29 @@ Config.defaultserver = {
 Config.customcolors = {};
 Config.bannedHosts = [];
 Config.whitelist = [];
-EOF
+EOF2
 
 # The bot directory is opt-in and scoped to this deployment's simulator host.
 RUN node -e "const fs = require('fs'); fs.appendFileSync('config/config.js', '\nConfig.botChallenges = {host: Config.defaultserver.host, bots: ' + JSON.stringify(require('./docker/bot-challenges.json')) + '};\n');"
 
-# Upstream's Preact refactor renamed the classic testclient.html to
-# testclient-old.html. The offline finalizer derives the self-hosted production
-# shell from it without mutating the upstream entrypoint.
+# Self-host the classic client. Upstream's preact refactor renamed the old
+# testclient.html -> testclient-old.html (testclient-new.html is the preact
+# client). Point config.js at our local copy and drop test-client mode.
+RUN sed -i 's#https://play.pokemonshowdown.com/config/config.js#config/config.js#' play.pokemonshowdown.com/testclient-old.html
+RUN sed -i 's/Config.testclient = true;//' play.pokemonshowdown.com/testclient-old.html
+# Bot challenges UI (previously injected by the removed offline shell finalizer).
+RUN sed -i 's#</head>#\t\t<link rel="stylesheet" href="style/bot-challenges.css" />\n\t</head>#' play.pokemonshowdown.com/testclient-old.html
+RUN sed -i 's#<script src="js/battledata.js"#<script src="js/oldclient/bot-challenges.js"></script>\n\t\t<script src="js/battledata.js"#' play.pokemonshowdown.com/testclient-old.html
 RUN node build full
 RUN find play.pokemonshowdown.com -type l -exec sh -c \
     'target=$(readlink -f "$1") && rm "$1" && cp "$target" "$1"' _ {} \;
+RUN echo "// testclient-key stub for self-hosted" > play.pokemonshowdown.com/config/testclient-key.js
 RUN echo "Config.routes.client = '${CLIENT_HOST}';" >> play.pokemonshowdown.com/config/config.js
 # Self-hosted replay host: where the in-battle loadReplay() fetches {id}.json and
 # where the Download/Upload-and-share replay buttons point (default route is
 # replay.pokemonshowdown.com, which our deployment never reaches).
 RUN echo "Config.routes.replays = '${REPLAY_HOST}';" >> play.pokemonshowdown.com/config/config.js
+RUN sed -i '/<script src="js\/battledata.js"/a <script>if(window.Dex){Dex.resourcePrefix="https://play.pokemonshowdown.com/";Dex.fxPrefix="https://play.pokemonshowdown.com/fx/";}<\/script>' play.pokemonshowdown.com/testclient-old.html
 
 # Publish the standalone replay player's compiled bundles (built just above by
 # `node build full` into replay.pokemonshowdown.com/js) under the play vhost at
@@ -76,13 +83,7 @@ RUN cp replay.pokemonshowdown.com/js/*.js.map play.pokemonshowdown.com/replays-j
 RUN mkdir -p play.pokemonshowdown.com/sprites/gen2sw97 \
     && cp -r custom-sprites/gen2sw97/. play.pokemonshowdown.com/sprites/gen2sw97/
 
-# Generate the final precache only after the deployed HTML and runtime config
-# have their production contents. Strict mode keeps a missing local dependency
-# from turning into a silently incomplete offline install.
-RUN npm run --silent offline:finalize -- --strict
-
 FROM nginxinc/nginx-unprivileged:alpine
 COPY docker/nginx-client.conf /etc/nginx/conf.d/default.conf
-COPY docker/nginx-offline.inc /etc/nginx/conf.d/offline.inc
 COPY --from=build /app/play.pokemonshowdown.com /usr/share/nginx/html
 EXPOSE 8080
