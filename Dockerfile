@@ -51,6 +51,8 @@ RUN node -e "const fs = require('fs'); fs.appendFileSync('config/config.js', '\n
 RUN sed -i 's#https://play.pokemonshowdown.com/config/config.js#config/config.js#' play.pokemonshowdown.com/testclient-old.html
 RUN sed -i 's/Config.testclient = true;//' play.pokemonshowdown.com/testclient-old.html
 # Bot challenges UI (previously injected by the removed offline shell finalizer).
+# One-shot cleanup for browsers that still have the removed offline service worker.
+RUN sed -i 's#</head>#\t\t<script>(function(){if(!("serviceWorker"in navigator))return;navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});});if(window.caches)caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});})();</script>\n\t</head>#' play.pokemonshowdown.com/testclient-old.html
 RUN sed -i 's#</head>#\t\t<link rel="stylesheet" href="style/bot-challenges.css" />\n\t</head>#' play.pokemonshowdown.com/testclient-old.html
 RUN sed -i 's#<script src="js/battledata.js"#<script src="js/oldclient/bot-challenges.js"></script>\n\t\t<script src="js/battledata.js"#' play.pokemonshowdown.com/testclient-old.html
 RUN node build full
