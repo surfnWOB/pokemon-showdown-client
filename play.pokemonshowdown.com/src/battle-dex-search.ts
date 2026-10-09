@@ -1104,6 +1104,8 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		return '' as ID;
 	}
 	protected canLearn(speciesid: ID, moveid: ID) {
+		// ADV ES grants Extreme Speed to every Pokemon, independently of its ordinary learnset.
+		if (this.dex.gen === 3 && this.format === 'adves' && moveid === 'extremespeed') return true;
 		const move = this.dex.moves.get(moveid);
 		if (this.formatType?.includes('natdex') && move.isNonstandard && move.isNonstandard !== 'Past') {
 			return false;
@@ -2437,6 +2439,12 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 				if (moves.includes(move.id)) continue;
 				if (this.canLearnBySTABmons(species.id, move.id)) moves.push(id);
 			}
+		}
+
+		if (dex.gen === 3 && format === 'adves') {
+			if (!moves.includes('extremespeed')) moves.push('extremespeed');
+			// Smeargle gets it directly too, not a duplicate in the Sketched moves group.
+			sketchMoves = sketchMoves.filter(id => id !== 'extremespeed');
 		}
 
 		moves.sort();
