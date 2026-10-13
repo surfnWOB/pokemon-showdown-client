@@ -4,7 +4,7 @@
 
 	window.FormatPickerLayout = {
 		column: function (section) {
-			return (section === 'Gen 3 Megas' || section === 'surfnWOB Customs') ? 1 : 2;
+			return (section === 'Gen 3 Megas' || section === 'surfnWOB Customs' || section === 'Sample Team Randbats') ? 1 : 2;
 		},
 		wrap: function (html) {
 			return '<div class="fork-format-columns">' + html + '</div>';

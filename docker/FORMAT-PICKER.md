@@ -5,9 +5,9 @@ The self-hosted classic client loads `src/oldclient/format-picker.js` and
 HTML entrypoint and shared `oldclient.css` are unchanged.
 
 The module owns the two-column grouping policy and a namespaced layout wrapper.
-Favorites remain in upstream's first column. Gen 3 Megas and surfnWOB Customs
-share that column; all other sections use the second. The scoped stylesheet
-provides spacing, full-width buttons, and narrow-screen stacking. It overrides
+Favorites remain in upstream's first column. Gen 3 Megas, surfnWOB Customs, and
+Sample Team Randbats share that column; all other sections use the second. The
+scoped stylesheet provides spacing, full-width buttons, and narrow-screen stacking. It overrides
 only the legacy renderer's inline column padding; flex layout ignores its floats.
 
 ## Upstream sync contract

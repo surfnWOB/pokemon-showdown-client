@@ -11,7 +11,7 @@ const popupSource = source.slice(start, source.indexOf('\n\t});', start) + 5);
 
 function render(options = {}) {
 	const sections = ['Gen 3 Megas', 'surfnWOB Customs', 'Yak Attack', 'Archie Madness', 'Other',
-		'S/V Singles', 'National Dex', 'Past Generations'];
+		'S/V Singles', 'National Dex', 'Past Generations', 'Sample Team Randbats'];
 	const formats = Object.fromEntries(sections.map((section, index) => [`format${index}`, {
 		id: `format${index}`, section, column: Math.floor(index / 2) + 1,
 		effectType: 'Format', challengeShow: true, searchShow: index !== 2, isTeambuilderFormat: index !== 3,
@@ -40,15 +40,15 @@ function columns(html) {
 }
 
 describe('Classic format popup', () => {
-	it('keeps only the two primary categories in the first column without losing other formats', () => {
+	it('keeps the fork and sample-team categories in the first column without losing other formats', () => {
 		const html = render();
 		const [primary, other] = columns(html);
 		assert.equal(columns(html).length, 2);
 		assert.deepEqual([...primary.matchAll(/section="([^"]+)"/g)].map(match => match[1]),
-			['Gen 3 Megas', 'surfnWOB Customs']);
+			['Gen 3 Megas', 'surfnWOB Customs', 'Sample Team Randbats']);
 		assert.match(other, /section="Yak Attack"/);
 		assert.match(other, /section="Past Generations"/);
-		for (let i = 0; i < 8; i++) assert.equal(html.split(`value="format${i}"`).length - 1, 1);
+		for (let i = 0; i < 9; i++) assert.equal(html.split(`value="format${i}"`).length - 1, 1);
 		assert.match(html, /^<div class="fork-format-columns">/);
 	});
 
@@ -75,7 +75,7 @@ describe('Classic format popup', () => {
 
 	it('retains server columns and legacy fallback when the fork module is absent', () => {
 		const html = render({upstream: true});
-		assert.equal(columns(html).length, 4);
+		assert.equal(columns(html).length, 5);
 		assert.doesNotMatch(html, /fork-format-columns/);
 		assert.equal(columns(render({upstream: true, legacyColumns: true})).length, 2);
 		assert.equal(columns(render({legacyColumns: true})).length, 2);
