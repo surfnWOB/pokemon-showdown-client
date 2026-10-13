@@ -1,0 +1,29 @@
+.fork-format-columns {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px 24px;
+	width: 584px;
+	max-width: calc(100vw - 48px);
+}
+.fork-format-columns > .popupmenu {
+	flex: 1 1 260px;
+	min-width: 0;
+	/* Override the legacy renderer's inline column padding. Floats are ignored by flex. */
+	padding-left: 0 !important;
+}
+.fork-format-columns summary {
+	padding: 3px 0;
+}
+.fork-format-columns .option {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	text-align: left;
+}
+.fork-format-columns .option i {
+	flex: none;
+	margin-left: auto;
+}

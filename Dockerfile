@@ -55,6 +55,9 @@ RUN sed -i 's/Config.testclient = true;//' play.pokemonshowdown.com/testclient-o
 RUN sed -i 's#</head>#\t\t<script>(function(){if(!("serviceWorker"in navigator))return;navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});});if(window.caches)caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});})();</script>\n\t</head>#' play.pokemonshowdown.com/testclient-old.html
 RUN sed -i 's#</head>#\t\t<link rel="stylesheet" href="style/bot-challenges.css" />\n\t</head>#' play.pokemonshowdown.com/testclient-old.html
 RUN sed -i 's#<script src="js/battledata.js"#<script src="js/oldclient/bot-challenges.js"></script>\n\t\t<script src="js/battledata.js"#' play.pokemonshowdown.com/testclient-old.html
+# Fork format layout assets load before the classic app starts.
+RUN sed -i 's#</head>#\t\t<link rel="stylesheet" href="style/format-picker.css" />\n\t</head>#' play.pokemonshowdown.com/testclient-old.html
+RUN sed -i 's#<script src="js/battledata.js"#<script src="js/oldclient/format-picker.js"></script>\n\t\t<script src="js/battledata.js"#' play.pokemonshowdown.com/testclient-old.html
 RUN node build full
 RUN find play.pokemonshowdown.com -type l -exec sh -c \
     'target=$(readlink -f "$1") && rm "$1" && cp "$target" "$1"' _ {} \;

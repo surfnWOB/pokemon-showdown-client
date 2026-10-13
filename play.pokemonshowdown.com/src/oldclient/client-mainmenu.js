@@ -1422,6 +1422,7 @@
 					} else {
 						curBuf = format.column || 1;
 					}
+					if (window.FormatPickerLayout) curBuf = window.FormatPickerLayout.column(curSection);
 					if (!bufs[curBuf]) {
 						bufs[curBuf] = '';
 					}
@@ -1454,7 +1455,7 @@
 					html += '>' + bufs[i] + '</ul>';
 				}
 			}
-			return html;
+			return window.FormatPickerLayout ? window.FormatPickerLayout.wrap(html) : html;
 		},
 		update: function () {
 			var $formatEl = this.$el.find('span[name=formats]');
