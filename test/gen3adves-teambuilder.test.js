@@ -25,6 +25,21 @@ function pokemonMatchingMove(format, move) {
 }
 
 describe('[Gen 3] ADV ES teambuilder', () => {
+	it('uses server-provided ADV ES accuracy and descriptions without changing ADV OU', () => {
+		const {Dex: ServerDex} = require('../caches/pokemon-showdown/dist/sim/dex');
+		const es = Dex.forFormat('gen3adves');
+		assert.equal(es.modid, 'gen3es');
+		const search = new DexSearch('move', 'gen3adves', {species: 'Metagross', moves: []});
+		assert.equal(search.typedSearch.dex.modid, 'gen3es');
+		for (const id of ['meteormash', 'rockslide', 'toxic']) {
+			const expected = ServerDex.mod('gen3es').moves.get(id);
+			assert.equal(es.moves.get(id).accuracy, expected.accuracy);
+			assert.equal(es.moves.get(id).shortDesc, expected.shortDesc);
+			assert.equal(Dex.forFormat('gen3ou').moves.get(id).accuracy,
+				ServerDex.mod('gen3').moves.get(id).accuracy);
+		}
+	});
+
 	it('offers Extreme Speed exactly once as a legal move for every Gen 3 species', () => {
 		const {Dex: ServerDex} = require('../caches/pokemon-showdown/dist/sim/dex');
 		const dex = ServerDex.mod('gen3es');
