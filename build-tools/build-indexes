@@ -1717,8 +1717,7 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 			// global-data object to clone, so emit its full client-facing structure —
 			// including name/num/exists — rather than category-less stat deltas.
 			const isModOnly = !parentEntry.exists && modEntry.exists;
-			const keys = isModOnly ? modOnlyMoveKeys :
-				mod === 'gen3es' ? [...overrideMoveKeys, 'desc', 'shortDesc'] : overrideMoveKeys;
+			const keys = isModOnly ? modOnlyMoveKeys : overrideMoveKeys;
 			for (const key of keys) {
 				if (key === 'category' && modDex.gen <= 3 && !isModOnly) continue;
 				if ((isModOnly && modEntry[key] !== undefined) ||
