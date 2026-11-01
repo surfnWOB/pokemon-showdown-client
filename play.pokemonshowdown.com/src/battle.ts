@@ -3728,6 +3728,7 @@ export class Battle {
 		case 'tier': {
 			this.tier = args[1];
 			this.format = Dex.formats.get(this.tier);
+			if (this.format.mod === 'gen3es') this.dex = Dex.mod('gen3es' as ID);
 			if (this.tier.endsWith('Random Battle')) {
 				this.speciesClause = true;
 			}

@@ -13,7 +13,7 @@ const UI_TRANSLATIONS_PATH = path.resolve(ROOT_PATH, 'translations');
 const OUTPUT_PATH = path.resolve(ROOT_PATH, 'play.pokemonshowdown.com/data/text');
 
 /** Mods the client ships data for (see build-indexes) */
-const CLIENT_MODS = ['gen3rs', 'gen3frlg', 'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions'];
+const CLIENT_MODS = ['gen3es', 'gen3rs', 'gen3frlg', 'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions'];
 
 function es3stringify(obj) {
 	const buf = JSON.stringify(obj);

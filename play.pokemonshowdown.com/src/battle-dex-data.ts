@@ -90,6 +90,7 @@ export class Format implements FormatData {
 		if (this.gen === 9 && this.isChampions) this.mod = 'champions' as ID;
 		// Keep fork mod routing shared by the editor, battle client, and Showdex.
 		const formatid = id.slice(4);
+		if (this.gen === 3 && formatid === 'adves') this.mod = 'gen3es' as ID;
 		if (this.gen === 3 && formatid.includes('pss')) {
 			this.mod = 'gen3pss' as ID;
 		}

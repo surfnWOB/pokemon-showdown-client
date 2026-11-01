@@ -42,7 +42,7 @@ console.log("DONE");
 // Mods whose data is reconstructed by BattleTeambuilderTable and can therefore safely
 // contribute otherwise-global search rows. DexSearch filters these rows through its active dex.
 const SUPPORTED_TEAMBUILDER_MODS = [
-	'gen2sw97', 'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen3megascap', 'gen4mega',
+	'gen3es', 'gen2sw97', 'gen3rs', 'gen3frlg', 'gen3zangouse', 'gen3mega', 'gen3megascap', 'gen4mega',
 	'gen5bw1', 'gen7letsgo', 'gen8bdsp', 'gen9ssb', 'champions',
 	'gen3colodoubles', 'gen1rbyplus', 'gen3adv200box', 'gen3advplus', 'gen3tradebacks', 'gen3puretradebacks', 'gen3hoennification', 'gen3frlgindigo', 'gen3shadowcolosseum',
 ];
@@ -1679,6 +1679,9 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 	//
 	// Mods
 	//
+
+	// ADV ES uses the ordinary Gen 3 roster; only its move data differs.
+	BattleTeambuilderTable.gen3es = { ...BattleTeambuilderTable.gen3 };
 
 	for (const mod of SUPPORTED_TEAMBUILDER_MODS) {
 		const modDex = Dex.mod(mod);
