@@ -30,7 +30,8 @@ jobs:
       uses: actions/checkout@v6
       with:
         repository: surfnWOB/pokemon-showdown
-        ref: master
+        # Includes gen3rngless data required by the companion client integration.
+        ref: 2588ed476b789a6d138374f23955ed4e476af01a
         path: caches/pokemon-showdown
     - run: npm ci
       working-directory: caches/pokemon-showdown
