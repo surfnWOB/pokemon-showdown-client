@@ -843,6 +843,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.dex = Dex.mod('gen5bw1' as ID);
 		}
 		if (this.dex.gen === 3 && format === 'adves') this.dex = Dex.mod('gen3es' as ID);
+		if (this.dex.gen === 3 && format === 'rngless') this.dex = Dex.mod('gen3rngless' as ID);
 		if (this.dex.gen === 3 && format === 'coloonlydoubles') {
 			this.formatType = 'gen3colodoubles';
 			this.dex = Dex.mod('gen3colodoubles' as ID);
