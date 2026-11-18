@@ -21,6 +21,10 @@ require('../play.pokemonshowdown.com/js/battle-dex-search.js');
 require('../play.pokemonshowdown.com/js/battle-scene-stub.js');
 require('../play.pokemonshowdown.com/js/battle-text-parser.js');
 require('../play.pokemonshowdown.com/js/battle.js');
+const {BattleTooltips, ModifiableValue} = require('vm').runInNewContext(
+	require('fs').readFileSync(require.resolve('../play.pokemonshowdown.com/js/battle-tooltips.js'), 'utf8') +
+	'\n({BattleTooltips, ModifiableValue});', global
+);
 
 const {Dex: ServerDex} = require('../caches/pokemon-showdown/dist/sim/dex');
 const server = ServerDex.mod('gen3rngless');
@@ -78,6 +82,27 @@ describe('[Gen 3] RNGless client', () => {
 		assert.match(dex.text.get(dex.abilities.get('sandveil'), 'en').desc, /no evasion boost/);
 		for (const id of ['figyberry', 'iapapaberry', 'magoberry']) {
 			assert.match(dex.text.get(dex.items.get(id), 'en').desc, /Does not cause confusion/);
+		}
+	});
+
+	it('calculates Hustle accuracy without a penalty only in RNGless', () => {
+		for (const [tier, accuracy] of [['RNGless', 100], ['OU', 80]]) {
+			const battle = new Battle({paused: true, debug: true, log: [
+				'|gen|3', `|tier|[Gen 3] ${tier}`,
+				'|switch|p1a: Togetic|Togetic, L100|100/100',
+				'|-ability|p1a: Togetic|Hustle', '|turn|1',
+			]});
+			try {
+				const pokemon = battle.p1.active[0];
+				const value = new ModifiableValue(battle, pokemon, {ability: 'Hustle', item: ''});
+				const tooltips = new BattleTooltips(battle);
+				const result = tooltips.getMoveAccuracy(battle.dex.moves.get('bodyslam'), value);
+				assert.equal(result.value, accuracy, tier);
+				assert.match(result.toString(), new RegExp(`${accuracy}%`), tier);
+				assert.equal(tooltips.getMoveAccuracy(battle.dex.moves.get('flamethrower'), value).value, 100, tier);
+			} finally {
+				battle.destroy();
+			}
 		}
 	});
 

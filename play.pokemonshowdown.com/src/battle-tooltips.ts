@@ -2573,7 +2573,7 @@ export class BattleTooltips {
 			}
 		}
 
-		if (value.tryAbility('Hustle') && move.category === 'Physical') {
+		if (this.battle.dex.modid !== 'gen3rngless' && value.tryAbility('Hustle') && move.category === 'Physical') {
 			accuracyModifiers.push(3277);
 			value.abilityModify(0.8, "Hustle");
 		} else if (value.tryAbility('Compound Eyes')) {
