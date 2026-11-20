@@ -41,11 +41,13 @@ describe('[Gen 3] RNGless client', () => {
 
 	it('uses server move data while keeping ADV OU and ADV ES unchanged', () => {
 		const dex = Dex.forFormat('gen3rngless');
-		for (const id of ['crunch', 'firepunch', 'flamethrower', 'meteormash', 'rockslide', 'toxic']) {
+		for (const id of ['crunch', 'firepunch', 'flamethrower', 'meteormash', 'rockslide', 'toxic', 'willowisp']) {
 			for (const key of ['name', 'type', 'basePower', 'accuracy', 'pp', 'category']) {
 				assert.equal(dex.moves.get(id)[key], server.moves.get(id)[key], `${id}: ${key}`);
 			}
 		}
+		assert.equal(dex.moves.get('willowisp').accuracy, 100);
+		assert.equal(Dex.forFormat('gen3ou').moves.get('willowisp').accuracy, 75);
 		assert.equal(dex.moves.get('meteormash').basePower, 90);
 		assert.equal(Dex.forFormat('gen3ou').moves.get('meteormash').basePower, 100);
 		assert.equal(Dex.forFormat('gen3adves').moves.get('meteormash').basePower, 100);
@@ -99,6 +101,8 @@ describe('[Gen 3] RNGless client', () => {
 				const result = tooltips.getMoveAccuracy(battle.dex.moves.get('bodyslam'), value);
 				assert.equal(result.value, accuracy, tier);
 				assert.match(result.toString(), new RegExp(`${accuracy}%`), tier);
+				const burnAccuracy = tooltips.getMoveAccuracy(battle.dex.moves.get('willowisp'), value);
+				assert.equal(burnAccuracy.value, tier === 'RNGless' ? 100 : 75, tier);
 				assert.equal(tooltips.getMoveAccuracy(battle.dex.moves.get('flamethrower'), value).value, 100, tier);
 			} finally {
 				battle.destroy();

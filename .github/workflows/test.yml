@@ -30,8 +30,8 @@ jobs:
       uses: actions/checkout@v6
       with:
         repository: surfnWOB/pokemon-showdown
-        # Includes gen3rngless data required by the companion client integration.
-        ref: 2588ed476b789a6d138374f23955ed4e476af01a
+        # Includes the RNGless Will-O-Wisp accuracy update.
+        ref: 74d941b1697aa7b9dbb4080146a16df886764890
         path: caches/pokemon-showdown
     - run: npm ci
       working-directory: caches/pokemon-showdown
