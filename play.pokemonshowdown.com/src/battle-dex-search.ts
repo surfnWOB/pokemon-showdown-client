@@ -1226,6 +1226,11 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			(GEN3_EU.includes(pokemon.id) || GEN3_EU.includes(toID(pokemon.baseSpecies)))) {
 			return 'EU';
 		}
+		// [Gen 3] ADV SU New: every legal mon carries the "SU" label (ban map from build-indexes).
+		if (this.dex.gen === 3 && this.format === 'advsunew') {
+			const bans = window.BattleTeambuilderTable?.gen3?.metagameBans?.advsunew;
+			if (bans && !(pokemon.id in bans)) return 'SU';
+		}
 		let table = window.BattleTeambuilderTable;
 		const gen = this.dex.gen;
 		const tableKey = this.formatType === 'doubles' ? `gen${gen}doubles` :
@@ -1546,6 +1551,10 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 						!['gougingfire', 'ironboulder', 'ironcrown', 'ragingbolt'].includes(id);
 				});
 			}
+		} else if (dex.gen === 3 && format === 'lcuu') {
+			// [Gen 3] LC UU (surfnWOB Customs): LC pool minus the generated server ban map.
+			const bans = window.BattleTeambuilderTable?.gen3?.metagameBans?.lcuu || {};
+			tierSet = tierSet.filter(([type, id]) => type !== 'pokemon' || !(id in bans));
 		} else if (format === 'ou') tierSet = tierSet.slice(slices.OU);
 		else if (dex.gen === 3 && format === 'uubluu') {
 			// No tier slice: UUBL explicitly allows some OU-tagged species (Porygon2).
@@ -1553,6 +1562,14 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			const bans = table.metagameBans?.uubluu || {};
 			tierSet = [
 				['header', 'UUBL UU'],
+				...tierSet.filter(([type, id]) => type === 'pokemon' && !(id in bans)),
+			];
+		} else if (dex.gen === 3 && format === 'advsunew') {
+			// [Gen 3] ADV SU New (surfnWOB Customs): show only the legal roster. The ban map is
+			// generated from the server's rule table by build-indexes (metagameBans.advsunew).
+			const bans = table.metagameBans?.advsunew || {};
+			tierSet = [
+				['header', 'SU'],
 				...tierSet.filter(([type, id]) => type === 'pokemon' && !(id in bans)),
 			];
 		} else if (format === 'uubl') tierSet = tierSet.slice(slices['(OU)'] || slices.UUBL);

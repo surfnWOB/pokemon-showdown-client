@@ -1777,6 +1777,33 @@ process.stdout.write("Building `data/teambuilder-tables.js`... ");
 		BattleTeambuilderTable.gen3.metagameBans.uubluu = bans;
 	}
 
+	// [Gen 3] ADV SU New (config/custom-formats.ts): derive the legal roster from the
+	// server's own rule table, like UUBL UU above, so the client never hardcodes the VR cut.
+	const advSUNew = Dex.formats.get('gen3advsunew');
+	if (advSUNew.exists) {
+		const dex = Dex.mod(advSUNew.mod);
+		const rules = dex.formats.getRuleTable(advSUNew);
+		const bans = {};
+		for (const species of dex.species.all()) {
+			if (species.isNonstandard || rules.isBannedSpecies(species)) bans[species.id] = 1;
+		}
+		BattleTeambuilderTable.gen3.metagameBans ||= {};
+		BattleTeambuilderTable.gen3.metagameBans.advsunew = bans;
+	}
+
+	// [Gen 3] LC UU (config/custom-formats.ts): ban map from the server's rule table.
+	const lcUU = Dex.formats.get('gen3lcuu');
+	if (lcUU.exists) {
+		const dex = Dex.mod(lcUU.mod);
+		const rules = dex.formats.getRuleTable(lcUU);
+		const bans = {};
+		for (const species of dex.species.all()) {
+			if (species.isNonstandard || rules.isBannedSpecies(species)) bans[species.id] = 1;
+		}
+		BattleTeambuilderTable.gen3.metagameBans ||= {};
+		BattleTeambuilderTable.gen3.metagameBans.lcuu = bans;
+	}
+
 	buf += `exports.BattleTeambuilderTable = JSON.parse('${JSON.stringify(BattleTeambuilderTable).replace(/['\\]/g, "\\$&")}');\n\n`;
 
 	fs.writeFileSync('play.pokemonshowdown.com/data/teambuilder-tables.js', buf);
