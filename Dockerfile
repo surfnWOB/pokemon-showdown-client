@@ -58,6 +58,9 @@ RUN sed -i 's#<script src="js/battledata.js"#<script src="js/oldclient/bot-chall
 # Fork format layout assets load before the classic app starts.
 RUN sed -i 's#</head>#\t\t<link rel="stylesheet" href="style/format-picker.css" />\n\t</head>#' play.pokemonshowdown.com/testclient-old.html
 RUN sed -i 's#<script src="js/battledata.js"#<script src="js/oldclient/format-picker.js"></script>\n\t\t<script src="js/battledata.js"#' play.pokemonshowdown.com/testclient-old.html
+# Private deployment: drop upstream's hardcoded "Latest News" box (stock
+# "Test client ... Zarel, Sep 25, 2015" entry) so nothing pops up on load.
+RUN sed -i '/<div class="pm-window news-embed">/,/^\t\t\t\t\t\t<\/div>$/d' play.pokemonshowdown.com/testclient-old.html
 RUN node build full
 RUN find play.pokemonshowdown.com -type l -exec sh -c \
     'target=$(readlink -f "$1") && rm "$1" && cp "$target" "$1"' _ {} \;

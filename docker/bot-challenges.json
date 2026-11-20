@@ -1,18 +1,1 @@
-[
-	{
-		"name": "surfnWOB Bot",
-		"formats": [
-			"gen3megas", "gen3su", "gen3megarandombattle", "gen3megascap",
-			"gen3uubl", "gen3ru", "gen3lc", "gen3nfe", "gen3frlgou",
-			"gen3stabmons", "gen3monotype", "gen3adv200", "gen3ousampleteamrandbats"
-		]
-	},
-	{
-		"name": "surfnWOB Bot Alt",
-		"formats": [
-			"gen3megas", "gen3su", "gen3megarandombattle", "gen3megascap",
-			"gen3uubl", "gen3ru", "gen3lc", "gen3nfe", "gen3frlgou",
-			"gen3stabmons", "gen3monotype", "gen3adv200", "gen3ousampleteamrandbats"
-		]
-	}
-]
+[{"name": "surfnWOB Bot", "formats": ["gen3megas", "gen3su", "gen3megarandombattle", "gen3megascap", "gen3uubl", "gen3ru", "gen3lc", "gen3nfe", "gen3frlgou", "gen3stabmons", "gen3monotype", "gen3adv200", "gen3ousampleteamrandbats", "gen3badnboosted", "gen3uu", "gen4ou", "gen4ousampleteamrandbats", "gen3uublsampleteamrandbats", "gen3adves"]}, {"name": "surfnWOB Bot Alt", "formats": ["gen3megas", "gen3su", "gen3megarandombattle", "gen3megascap", "gen3uubl", "gen3ru", "gen3lc", "gen3nfe", "gen3frlgou", "gen3stabmons", "gen3monotype", "gen3adv200", "gen3ousampleteamrandbats", "gen3badnboosted", "gen3uu", "gen4ou", "gen4ousampleteamrandbats", "gen3uublsampleteamrandbats", "gen3adves"]}]
